@@ -1,0 +1,121 @@
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,700;1,400&family=Roboto+Condensed:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+
+ul {
+  list-style: none; margin: 0;
+  margin: 0;
+  padding: 0;
+}
+
+ul ul {
+  --scrollbar-foreground: #ddd;
+  --scrollbar-background: white;
+  max-height: 0;
+  transition: all 0.5s ease-in-out;
+  overflow-y: hidden;
+  margin-left: -0.5em;
+}
+
+nav {
+  overflow-y: scroll;
+  scrollbar-width: 0.5em;
+  scrollbar-color: var(--scrollbar-foreground) var(--scrollbar-background);
+}
+
+nav::-webkit-scrollbar {
+  width: 0.5em;
+}
+
+nav::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-foreground);
+}
+
+nav::-webkit-scrollbar-track {
+  background: var(--scrollbar-background);
+}
+
+li {
+  margin: 0;
+  font-family: "JetBrains Mono";
+  font-size: calc(3px + 0.8em);
+  line-height: 1.8em;
+  padding-left: 2.5em;
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+li:hover {
+  font-weight: bold;
+}
+
+li:hover ul {
+  font-weight: normal;
+  padding-left: 0;
+}
+
+body {
+  margin: 0;
+}
+
+header {
+  position: absolute;
+  margin-left: 0;
+  height: 5em;
+  width: 100vw;
+  background: #222 url('etc/logo.svg') no-repeat fixed right;
+  background-size: 3em;
+  background-position: calc(100vw - 4em) 1em;
+}
+
+header ul {
+  height: 5em;
+  margin: 0;
+}
+
+nav {
+  position: absolute;
+  margin: 8em 0 0 3em;
+  height: calc(100vh - 10em);
+  width: 25em;
+}
+
+header a, header a:link, header a:visited {
+  text-decoration: none;
+  color: white;
+  font-family: "Roboto Condensed";
+  font-weight: bold;
+  line-height: 5em;
+}
+
+header ul li {
+  display: inline;
+}
+
+li:hover {
+  opacity: 0.9;
+}
+
+li:has(li:focus) {
+  opacity: 1;
+}
+
+li:focus {
+  outline-width: 0;
+  opacity: 1;
+}
+
+ul:has(li:focus) { max-height: 1000vh; }
+li:focus>ul { max-height: 1000vh; }
+li.package { padding-left: 2em; background-image: url("etc/m.svg"); background-size: 1.6em; background-repeat: no-repeat; background-position: 0 0; }
+li.class { padding-left: 2em; background-image: url("etc/sc.svg"); background-size: 1.6em; background-repeat: no-repeat; background-position: 0 0; }
+li.module { padding-left: 2em; background-image: url("etc/o.svg"); background-size: 1.6em; background-repeat: no-repeat; background-position: 0 0; }
+li.method { padding-left: 2em; background-image: url("etc/d.svg"); background-size: 1.6em; background-repeat: no-repeat; background-position: 0 0; }
+li.inlinemethod { padding-left: 2em; background-image: url("etc/di.svg"); background-size: 1.6em; background-repeat: no-repeat; background-position: 0 0; }
+li.transinlinemethod { padding-left: 2em; background-image: url("etc/dit.svg"); background-size: 1.6em; background-repeat: no-repeat; background-position: 0 0; }
+li.transinlinegiven { padding-left: 2em; background-image: url("etc/git.svg"); background-size: 1.6em; background-repeat: no-repeat; background-position: 0 0; }
+li.inlinegiven { padding-left: 2em; background-image: url("etc/gi.svg"); background-size: 1.6em; background-repeat: no-repeat; background-position: 0 0; }
+li.given { padding-left: 2em; background-image: url("etc/g.svg"); background-size: 1.6em; background-repeat: no-repeat; background-position: 0 0; }
+li.type { padding-left: 2em; background-image: url("etc/y.svg"); background-size: 1.6em; background-repeat: no-repeat; background-position: 0 0; }
+li.var { padding-left: 2em; background-image: url("etc/w.svg"); background-size: 1.6em; background-repeat: no-repeat; background-position: 0 0; }
+li.val { padding-left: 2em; background-image: url("etc/v.svg"); background-size: 1.6em; background-repeat: no-repeat; background-position: 0 0; }
+li.trait { padding-left: 2em; background-image: url("etc/z.svg"); background-size: 1.6em; background-repeat: no-repeat; background-position: 0 0; }

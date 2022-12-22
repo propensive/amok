@@ -1,12 +1,19 @@
 package amok
 
-import joviality.*
+import joviality.*, filesystems.unix
 import serpentine.*
-import gossamer.*
-import rudiments.*, environments.system
+import eucalyptus.*
+import anticipation.*, integration.jovialityPath
+import honeycomb.*
+import parasitism.*, monitors.global, threading.platform
+import gossamer.*, stdouts.stdout
+import turbulence.*
+import escapade.*, rendering.ansi
+import cellulose.*
+import euphemism.*
+import rudiments.{is => _, *}, environments.system
 import anticipation.*, timekeeping.long
 import java.util.zip.*
-import scala.collection.JavaConverters.*
 import scala.reflect.*
 import scala.quoted.*
 import scala.tasty.inspector.*
@@ -14,137 +21,187 @@ import scala.tasty.*
 
 import unsafeExceptions.canThrowAny
 
-object Model:
-  enum Term:
-    case Object(name: Text)
-    case Val(isLazy: Boolean, isAbstract: Boolean, name: Text)
-    case Def(isAbstract: Boolean, name: Text, paramLists: List[List[Param]])
-  
-  case class Param()
+import language.dynamics
 
-  enum Type:
-    case Class(name: Text)
-    case Trait(name: Text)
-    case Alias(name: Text)
+val logDest = Unix.parse(t"/home/propensive/amok.log").file(Ensure).sink
+given Log({ case _ => logDest })
+given Realm(t"amok")
 
-object Doc:
-  case class Signature(path: Path, params: List[List[Doc.Param]] = Nil, returnType: Option[Doc.Path] = None):
-    override def toString(): String = text.s
-    def text: Text =
-      val first = path.text+params.map(_.map(_.text).join(t"(", t", ", t")")).join
-      val rtype = returnType.fold(t"")(t": "+_.text)
-      
-      first+rtype
 
-  case class Path(elements: Vector[Doc.Name]):
-    def /(name: Name): Path = Path(elements :+ name)
+enum Entity:
+  case Trait
+  case Class(`abstract`: Boolean)
+  case Module
+  case OpenClass
+  case Given
+  case Method
+  case Val
+  case Var
+  case LazyVal
+  case Package
+  case Type
+  case InlineMethod
+  case InlineGiven
+  case TransInlineMethod
+  case TransInlineGiven
+
+object Docs:
+  opaque type Dictionary = Map[Text, Docs]
+
+  object Dictionary:
+    def apply(): Dictionary = Map()
     
-    def ioPath(root: DiskPath[Unix]): DiskPath[Unix] = elements match
-      case Name.Term(term) +: tail =>
-        Path(tail).ioPath(root / term)
+    given Codec[Dictionary] with
+      def schema = summon[Codec[Docs]].schema
+      def serialize(value: Dictionary) = summon[Codec[List[Docs]]].serialize(value.values.to(List))
       
-      case Name.Type(typ) +: tail =>
-        Path(tail).ioPath(root / t"+$typ")
+      def deserialize(value: List[Indexed]): Dictionary throws IncompatibleTypeError =
+        summon[Codec[List[Docs]]].deserialize(value).map: docs =>
+          docs.name -> docs
+        .to(Map)
       
-      case empty =>
-        val filename = if root.name.startsWith(t"+") then root.name.drop(1) else root.name
-        root.parent / t"$filename.md"
+      extension (dict: Dictionary)
+        def values: Iterable[Docs] = dict.values
+        def add(value: Docs): Dictionary = dict.get(value.name) match
+          case None =>
+            dict.updated(value.name, value)
+          
+          case Some(cdocs) => 
+            val cdocs2: Docs = value.term.values.foldLeft(cdocs): (a, n) =>
+              a.copy(term = a.term.add(n))
+
+            val cdocs3: Docs = value.`type`.values.foldLeft(cdocs2): (a, n) =>
+              a.copy(`type` = a.`type`.add(n))
+             
+            dict.updated(value.name, cdocs3)
+
+import Docs.Dictionary
+
+// object Entity:
+//   given Codec[Entity] with
+//     def schema: Schema = Field(Arity.One)
     
-    def text: Text = elements match
-      case name +: Vector()        => name.text
-      case Name.Term(term) +: tail => t"$term."+Path(tail).text
-      case Name.Type(typ) +: tail  => t"$typ#"+Path(tail).text
+//     def serialize(value: Entity): List[IArray[cellulose.Node]] =
+//       List(IArray(cellulose.Node(value.toString.show.lower)()))
     
-  enum Name:
-    case Term(name: Text)
-    case Type(name: Text)
+//     def deserialize(value: List[Indexed]): Entity throws IncompatibleTypeError =
+//       Entity.valueOf(text(value).capitalize.s)
+    
 
-    def text: Text = this match
-      case Term(name) => name
-      case Type(name) => name
+case class Docs(name: Text, summary: Maybe[Text] = Unset, doc: Maybe[Text] = Unset,
+                    term: Dictionary = Dictionary(), `type`: Dictionary = Dictionary(),
+                    value: Maybe[Int] = Unset) extends Dynamic:
+  def selectDynamic(id: String): Docs = term.values.find(_.name.s == id).get
+  def applyDynamic(id: String)(): Docs = `type`.values.find(_.name.s == id).get
+  def addTerm(t: Docs): Docs = copy(term = term.add(t))
+  def addType(t: Docs): Docs = copy(`type` = `type`.add(t))
 
-  case class Param(name: Option[Text], tpe: Doc.Name.Type):
-    override def toString: String = (name.fold(t"")(_+t": ")+tpe.text).s
-    def text: Text = toString.show
-  
-  case class TypeParam(name: Text):
-    override def toString: String = name.s
-    def text: Text = name
+object Amok:
+  def inspect[F: FileInterpreter](tastyFiles: Seq[F]): Docs =
+    case class DocInspector() extends Inspector:
+      private var rootDocs: Docs = Docs(t"_root_", Unset, Unset, Dictionary(), Dictionary(), Unset)
+      def inspect(using Quotes)(tastys: List[Tasty[quotes.type]]): Unit =
+        import quotes.reflect.*
+        import Flags.*
 
-case class DocInspector(out: Directory[Unix]) extends Inspector:
-  def inspect(using Quotes)(tastys: List[Tasty[quotes.type]]): Unit =
-    import quotes.reflect.*
+        def walk(using Quotes)(docs: Docs, ast: Tree, imports: List[Text]): Docs = ast match
+          case pc@PackageClause(id@Ident(name), body) =>
+            docs.addTerm(body.foldLeft(Docs(name.show))(walk(_, _, t"${name.show}." :: imports)))
+            
+          case term@ValDef(name, rtn, body) if !term.symbol.flags.is(Synthetic | Private) =>
+            if name.show.endsWith(t"$$package") then body.foldLeft(docs)(walk(_, _, imports))
+            else docs.addTerm(body.foldLeft(Docs(name.show))(walk(_, _, imports)))
 
-    def makeType(tree: Tree): Doc.Name.Type = tree match
-      case TypeIdent(id) => Doc.Name.Type(id.show)
-      case Applied(a, b) => Doc.Name.Type(makeType(a).text+b.map(makeType(_).name).join(t"[", t", ", t"]"))
-      case Annotated(a, b) => Doc.Name.Type(t"annotated "+b.toString.show)
-      case TypeBoundsTree(a, b) => Doc.Name.Type(makeType(a).name+t"  "+b.toString.show)
-      //case AppliedTypeTree(t, params) => makeType(tree).text+params.map(makeType(_).map(_.text)).mkString("[", ", ", "]")
-      case other     => Doc.Name.Type(other.getClass.toString.show)
+          case classDef@ClassDef(name, b, c, None, body) if !classDef.symbol.flags.is(Synthetic) =>
+            docs.addType(body.foldLeft(Docs(name.show))(walk(_, _, imports)))
 
-    def walk(using Quotes)(ast: Tree, path: Doc.Path): Vector[Doc.Signature] =
-      ast match
-        case pc@PackageClause(id@Ident(pkg), body) =>
-          body.to(Vector).flatMap(walk(_, path / Doc.Name.Term(pkg.toString.show)))
+          case classDef@ClassDef(name, b, c, Some(companion), body) if !classDef.symbol.flags.is(Synthetic) =>
+            val docs2 = docs.addTerm(body.foldLeft(Docs((if name.show.endsWith(t"$$") then name.show.drop(1, Rtl) else name.show)))(walk(_, _, imports)))
+            walk(docs2, companion, imports)
+
+          case term@DefDef(name, params, rtn, body) if !term.symbol.flags.is(Synthetic) =>
+            val flags = term.symbol.flags
+            if flags.is(Given) then
+              docs.addTerm(params.flatMap(_.params).foldLeft(Docs(name.show))(walk(_, _, imports)))
+            else
+              docs.addTerm(params.flatMap(_.params).foldLeft(Docs(name.show))(walk(_, _, imports)))
+            
+          case typeDef@TypeDef(name, a) =>
+            docs.addType(Docs(name.show))
+
+          case Export(name, x) =>
+            walk(docs, name, imports)
         
-        case term@ValDef(name, rtn, body) if !term.symbol.flags.is(Flags.Synthetic | Flags.Private) =>
-          val newPath = path / Doc.Name.Term(name.show)
-          Vector(Doc.Signature(newPath, returnType = None))//Some(makeType(rtn))))
+          case DefDef(_, _, _, _) =>
+            docs
 
-        case classDef@ClassDef(name, b, c, None, body) if !classDef.symbol.flags.is(Flags.Synthetic) && !(name.contains(t"$$")) =>
-          val newPath = path / Doc.Name.Type(name.show)
-          body.to(Vector).flatMap(walk(_, newPath)) :+ Doc.Signature(newPath)
-
-        case classDef@ClassDef(name, b, c, Some(companion), body) if !classDef.symbol.flags.is(Flags.Synthetic) =>
-          val newPath = path / Doc.Name.Term(if name.show.endsWith(t"$$") then name.show.drop(1, Rtl) else name.show)
-
-          body.to(Vector).flatMap(walk(_, newPath)) :+ Doc.Signature(newPath)
-        
-        case term@DefDef(name, params, rtn, body) if !term.symbol.flags.is(Flags.Synthetic) =>
-          val newPath = path / Doc.Name.Term(name.show)
-          Vector(Doc.Signature(newPath, params.map(_.params.map:
-            case term@ValDef(name, rtn, c) =>
-              Doc.Param(if term.symbol.flags.is(Flags.Synthetic) then None else Some(name.show), makeType(rtn))
-            case TypeDef(name, rtn) =>
-              Doc.Param(Some(name.show), makeType(rtn))
-          )))
-        
-        case typeDef@TypeDef(name, a) =>
-          val newPath = path / Doc.Name.Type(name.show)
-          Vector(Doc.Signature(newPath))
-        case Export(name, x) => 
-          Vector()
-        case DefDef(_, _, _, _) => Vector()
-        case Import(_, _) => Vector()
-        case ValDef(_, _, _) => Vector()
-        case ClassDef(_, _, _, _, _) => Vector()
-        case other =>
-          Vector()
+          case Import(_, _) =>
+            docs
+          
+          case ValDef(_, _, _) =>
+            docs
+          
+          case ClassDef(_, _, _, _, _) =>
+            docs
+          
+          case other =>
+            //Log.info(t"Found ${other.toString}")
+            docs
+          
+        rootDocs = tastys.foldLeft(rootDocs): (docs, tasty) =>
+          walk(docs, tasty.ast, List(t"scala."))
       
-    val sigs = for tasty <- tastys yield walk(tasty.ast, Doc.Path(Vector()))
-    sigs.flatten.foreach:
-      sig =>
-        val path = sig.path.ioPath(out.path)
-        if !path.parent.exists() then path.parent.directory(Create)
+      def apply(): Docs = rootDocs
+    val inspector = DocInspector()
+    val files = tastyFiles.to(List).map(summon[FileInterpreter[F]].filePath(_))
+    for file <- files do
+      try TastyInspector.inspectTastyFiles(List(file))(inspector)
+      catch case err: Exception => println(s"Failed to read file $file")
 
-        if !path.exists() then
-          println(path.show)
-          path.file(Create)
-    sigs
-
+    inspector()
+    
 @main
-def run(files: Text*): Unit =
-try
-  val userDir = pwd[Unix]()
-  val dirs = files.init.map(Unix.parse(_, userDir).to(LazyList)).flatten.map(_.directory(Ensure))
-  val out: DiskPath[Unix] = Unix.parse(files.last, userDir).get
-  val dir: Directory[Unix] = out.directory(Ensure)
-  val t0 = now()
-  val tastyFiles: List[String] = dirs.flatMap(_.files).filter(_.name.endsWith(t".tasty")).to(List).map(_.fullname.s)
-  val signatures = TastyInspector.inspectTastyFiles(tastyFiles)(DocInspector(dir))
-  val t1 = System.currentTimeMillis
-  println((t1 - t0).toString+"ms")
-catch case err: Exception =>
-  err.printStackTrace()
-  sys.exit(1)
+def run(): Unit =
+  try
+    val dir = Unix.parse(t"/home/propensive/.cache/irk/cls/gossamer/core").directory(Expect)
+    val tastyFiles = dir.descendants.filter(_.name.endsWith(t".tasty")).files
+    
+    val docs = Amok.inspect(tastyFiles)
+    
+    def rewrite(node: cellulose.Node): cellulose.Node =
+      node.copy(data = node.data.mm { data => data.copy(children = data.children.map(rewrite)) }).promote(1)
+
+    val codec = summon[Codec[Docs]]
+    val codl = Doc(IArray.from(codec.serialize(docs).flatten).map(rewrite), codec.schema, 0)
+    println(codl.serialize)
+
+    val count = Counter(0)
+  
+    def render(docs: Docs): List[Element["ul"]] =
+      if docs.term.values.size + docs.`type`.values.size > 0 then List(Ul(
+        (docs.term.values ++ docs.`type`.values).to(List).sortBy(_.name).map: item =>
+          Li(tabindex = count())(item.name, render(item))
+        .to(List)
+      )) else Nil
+  
+    val html = HtmlDoc(
+      Html(
+        Head(
+          Title(t"Amok Documentation"),
+          Link(rel = Rel.Stylesheet, href = Relative.Self / p"styles.css")
+        ),
+        Body(
+          Header(Ul(
+            Li(A(href = ^)(t"Home")),
+            Li(A(href = ^ / p"about")(t"About"))
+          )),
+          Nav(render(docs)),
+          Main(),
+          Footer()
+        )
+      )
+    )
+  
+    HtmlDoc.serialize(html).writeTo(Unix.parse(t"/home/propensive/dev/amok/out.html").file(Ensure))
+  catch case err: Exception =>
+    println(err.toString+" at "+err.getStackTrace().nn.to(List).mkString("\n"))

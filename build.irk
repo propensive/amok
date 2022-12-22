@@ -22,21 +22,41 @@
       "id": "amok/core",
       "links": [
         "gossamer/core",
+        "cellulose/core",
         "xylophone/core",
         "profanity/core",
         "guillotine/core",
         "acyclicity/core",
         "joviality/core",
+        "joviality/integration",
         "scintillate/server",
         "euphemism/core",
         "honeycomb/core"
       ],
       "sources": ["src/core"],
-      "main": "amok.run",
-      "artifact": {
-        "main": "amok.run",
-	"path": "amok.jar",
-	"format": "fat-jar"
+      "xec": {
+        "browsers": [],
+	      "start": "amok.run"
+      }
+    },
+    {
+      "name": "Amok Test Entities",
+      "id": "amok/entities",
+      "links": [],
+      "sources": ["src/entities"]
+    },
+    {
+      "name": "Amok Tests",
+      "id": "amok/test",
+      "links": [
+        "amok/core",
+        "amok/entities",
+        "probably/cli"
+      ],
+      "sources": ["src/test"],
+      "exec": {
+        "browsers": [],
+        "start": "amok.Tests"
       }
     }
   ]
