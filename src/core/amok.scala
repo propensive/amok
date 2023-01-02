@@ -55,7 +55,7 @@ object Docs:
       def schema = summon[Codec[Docs]].schema
       def serialize(value: Dictionary) = summon[Codec[List[Docs]]].serialize(value.values.to(List))
       
-      def deserialize(value: List[Indexed]): Dictionary throws IncompatibleTypeError =
+      def deserialize(value: List[Indexed]): Dictionary throws CodlReadError =
         summon[Codec[List[Docs]]].deserialize(value).map: docs =>
           docs.name -> docs
         .to(Map)
