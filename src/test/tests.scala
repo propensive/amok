@@ -3,14 +3,14 @@ package amok
 import rudiments.*
 import gossamer.*
 import probably.*
-import joviality.*, filesystems.unix
-import anticipation.*, integration.jovialityPath
+import galilei.*, filesystems.unix
+import anticipation.*, integration.galileiPath
 
 import unsafeExceptions.canThrowAny
 
 object Tests extends Suite(t"Amok Tests"):
   def run(using Runner): Unit =
-    val files = Unix.parse(t"/home/propensive/.cache/irk/cls/amok/entities").directory(Expect).descendants.filter(_.name.endsWith(t".tasty")).files
+    val files = Unix.parse(t"/home/propensive/.cache/irk/cls/amok/entities").directory(Expect).descendants.filter(_.name.ends(t".tasty")).files
     val docs: Docs = Amok.inspect(files)
     
     test(t"Read object"):

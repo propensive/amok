@@ -1,9 +1,9 @@
 package amok
 
-import joviality.*, filesystems.unix
+import galilei.*, filesystems.unix
 import serpentine.*
 import eucalyptus.*
-import anticipation.*, integration.jovialityPath
+import anticipation.*, integration.galileiPath
 import honeycomb.*
 import parasitism.*, monitors.global, threading.platform
 import gossamer.*, stdouts.stdout
@@ -109,14 +109,14 @@ object Amok:
             docs.addTerm(body.foldLeft(Docs(name.show))(walk(_, _, t"${name.show}." :: imports)))
             
           case term@ValDef(name, rtn, body) if !term.symbol.flags.is(Synthetic | Private) =>
-            if name.show.endsWith(t"$$package") then body.foldLeft(docs)(walk(_, _, imports))
+            if name.show.ends(t"$$package") then body.foldLeft(docs)(walk(_, _, imports))
             else docs.addTerm(body.foldLeft(Docs(name.show))(walk(_, _, imports)))
 
           case classDef@ClassDef(name, b, c, None, body) if !classDef.symbol.flags.is(Synthetic) =>
             docs.addType(body.foldLeft(Docs(name.show))(walk(_, _, imports)))
 
           case classDef@ClassDef(name, b, c, Some(companion), body) if !classDef.symbol.flags.is(Synthetic) =>
-            val docs2 = docs.addTerm(body.foldLeft(Docs((if name.show.endsWith(t"$$") then name.show.drop(1, Rtl) else name.show)))(walk(_, _, imports)))
+            val docs2 = docs.addTerm(body.foldLeft(Docs((if name.show.ends(t"$$") then name.show.drop(1, Rtl) else name.show)))(walk(_, _, imports)))
             walk(docs2, companion, imports)
 
           case term@DefDef(name, params, rtn, body) if !term.symbol.flags.is(Synthetic) =>
@@ -164,15 +164,15 @@ object Amok:
 def run(): Unit =
   try
     val dir = Unix.parse(t"/home/propensive/.cache/irk/cls/gossamer/core").directory(Expect)
-    val tastyFiles = dir.descendants.filter(_.name.endsWith(t".tasty")).files
+    val tastyFiles = dir.descendants.filter(_.name.ends(t".tasty")).files
     
     val docs = Amok.inspect(tastyFiles)
     
-    def rewrite(node: cellulose.Node): cellulose.Node =
+    def rewrite(node: Nodule): Nodule =
       node.copy(data = node.data.mm { data => data.copy(children = data.children.map(rewrite)) }).promote(1)
 
     val codec = summon[Codec[Docs]]
-    val codl = Doc(IArray.from(codec.serialize(docs).flatten).map(rewrite), codec.schema, 0)
+    val codl = CodlDoc(IArray.from(codec.serialize(docs).flatten).map(rewrite), codec.schema, 0)
     println(codl.serialize)
 
     val count = Counter(0)

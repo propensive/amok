@@ -27,8 +27,8 @@
         "profanity/core",
         "guillotine/core",
         "acyclicity/core",
-        "joviality/core",
-        "joviality/integration",
+        "galilei/core",
+        "galilei/integration",
         "scintillate/server",
         "euphemism/core",
         "honeycomb/core"
