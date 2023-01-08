@@ -12,7 +12,7 @@ import escapade.*, rendering.ansi
 import cellulose.*
 import euphemism.*
 import rudiments.{is => _, *}, environments.system
-import anticipation.*, timekeeping.long
+import anticipation.*, timeRepresentation.long
 import java.util.zip.*
 import scala.reflect.*
 import scala.quoted.*
@@ -97,7 +97,7 @@ case class Docs(name: Text, summary: Maybe[Text] = Unset, doc: Maybe[Text] = Uns
   def addType(t: Docs): Docs = copy(`type` = `type`.add(t))
 
 object Amok:
-  def inspect[F: FileInterpreter](tastyFiles: Seq[F]): Docs =
+  def inspect[F: GenericFileReader](tastyFiles: Seq[F]): Docs =
     case class DocInspector() extends Inspector:
       private var rootDocs: Docs = Docs(t"_root_", Unset, Unset, Dictionary(), Dictionary(), Unset)
       def inspect(using Quotes)(tastys: List[Tasty[quotes.type]]): Unit =
@@ -153,7 +153,7 @@ object Amok:
       
       def apply(): Docs = rootDocs
     val inspector = DocInspector()
-    val files = tastyFiles.to(List).map(summon[FileInterpreter[F]].filePath(_))
+    val files = tastyFiles.to(List).map(summon[GenericFileReader[F]].filePath(_))
     for file <- files do
       try TastyInspector.inspectTastyFiles(List(file))(inspector)
       catch case err: Exception => println(s"Failed to read file $file")

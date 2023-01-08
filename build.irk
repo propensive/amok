@@ -54,7 +54,7 @@
         "probably/cli"
       ],
       "sources": ["src/test"],
-      "exec": {
+      "xec": {
         "browsers": [],
         "start": "amok.Tests"
       }
