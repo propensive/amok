@@ -1,17 +1,30 @@
+@font-face {
+  font-family: "Overpass Mono";
+  src: url("fonts/overpass-mono.ttf");
+}
 
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,700;1,400&family=Roboto+Condensed:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+@font-face {
+  font-family: "Overpass";
+  src: url("fonts/overpass.ttf");
+}
+
+@font-face {
+  font-family: "Overpass";
+  src: url("fonts/overpass-italic.ttf");
+  font-style: italic;
+}
 
 ul {
-  list-style: none; margin: 0;
+  list-style: none;
   margin: 0;
   padding: 0;
+  font-variation-settings: 300;
 }
 
 ul ul {
   --scrollbar-foreground: #ddd;
   --scrollbar-background: white;
   max-height: 0;
-  transition: all 0.5s ease-in-out;
   overflow-y: hidden;
   margin-left: -0.5em;
 }
@@ -36,25 +49,27 @@ nav::-webkit-scrollbar-track {
 
 li {
   margin: 0;
-  font-family: "JetBrains Mono";
+  font-family: "Overpass Mono";
   font-size: calc(3px + 0.8em);
   line-height: 1.8em;
   padding-left: 2.5em;
   cursor: pointer;
-  opacity: 0.8;
+  transition: font-variation-settings 0.2s ease-in-out;
+  user-select: none;
 }
 
 li:hover {
-  font-weight: bold;
+  font-variation-settings: 'wght' 600;
 }
 
 li:hover ul {
-  font-weight: normal;
+  font-variation-settings: 'wght' 300;
   padding-left: 0;
 }
 
 body {
   margin: 0;
+  font-variation-settings: 'wght' 300;
 }
 
 header {
@@ -82,8 +97,8 @@ nav {
 header a, header a:link, header a:visited {
   text-decoration: none;
   color: white;
-  font-family: "Roboto Condensed";
-  font-weight: bold;
+  font-family: "Overpass";
+  font-variation-settings: 'wght' 700;
   line-height: 5em;
 }
 
@@ -91,17 +106,8 @@ header ul li {
   display: inline;
 }
 
-li:hover {
-  opacity: 0.9;
-}
-
-li:has(li:focus) {
-  opacity: 1;
-}
-
 li:focus {
   outline-width: 0;
-  opacity: 1;
 }
 
 ul:has(li:focus) { max-height: 1000vh; }
@@ -119,3 +125,50 @@ li.type { padding-left: 2em; background-image: url("etc/y.svg"); background-size
 li.var { padding-left: 2em; background-image: url("etc/w.svg"); background-size: 1.6em; background-repeat: no-repeat; background-position: 0 0; }
 li.val { padding-left: 2em; background-image: url("etc/v.svg"); background-size: 1.6em; background-repeat: no-repeat; background-position: 0 0; }
 li.trait { padding-left: 2em; background-image: url("etc/z.svg"); background-size: 1.6em; background-repeat: no-repeat; background-position: 0 0; }
+
+.slideshow-outer {
+  overflow: hidden;
+  overscroll-behavior: contain;
+  width: 650px;
+}
+
+.slideshow {
+  overflow: hidden;
+  display: flex;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  flex-wrap: nowrap;
+  flex-direction: row;
+  width: 640px;
+  height: 400px;
+}
+
+.slideshow>div {
+  scroll-snap-align: start;
+  width: 600px;
+  height: 400px;
+  margin-right: 50px;
+  background-color: #fafafa;
+  flex-shrink: 0;
+}
+.slideshow>div>.next {
+  height: 300px;
+  background-color: black;
+  color: white;
+  text-decoration: none;
+  width: 50px;
+  position: absolute;
+  display: block;
+  margin-left: 600px;
+}
+
+.slideshow>div>.prev {
+  height: 300px;
+  background-color: black;
+  color: white;
+  text-decoration: none;
+  width: 50px;
+  position: absolute;
+  display: block;
+}

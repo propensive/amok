@@ -1,18 +1,23 @@
 package amok
 
 import galilei.*, filesystems.unix
-import serpentine.*
 import eucalyptus.*
-import anticipation.*, integration.galileiPath
+import anticipation.*, fileApi.galileiApi
 import honeycomb.*
-import parasitism.*, monitors.global, threading.platform
-import gossamer.*, stdouts.stdout
-import turbulence.*
+import cataclysm.{mm as _, *}
+import serpentine.*
+import parasitism.*, monitors.global
+import gossamer.*
+import turbulence.*, characterEncodings.utf8
 import escapade.*, rendering.ansi
 import cellulose.*
-import euphemism.*
-import rudiments.{is => _, *}, environments.system
-import anticipation.*, timeRepresentation.long
+import jacinta.*
+import scintillate.*
+import iridescence.*
+import telekinesis.*
+import rudiments.{Cursor as _, is as _, *}
+import ambience.*, environments.system
+import anticipation.*, timeApi.long
 import java.util.zip.*
 import scala.reflect.*
 import scala.quoted.*
@@ -23,8 +28,9 @@ import unsafeExceptions.canThrowAny
 
 import language.dynamics
 
-val logDest = Unix.parse(t"/home/propensive/amok.log").file(Ensure).sink
-given Log({ case _ => logDest })
+import basicIo.jvm
+import logging.stdout
+
 given Realm(t"amok")
 
 
@@ -163,12 +169,15 @@ object Amok:
 @main
 def run(): Unit =
   try
-    val dir = Unix.parse(t"/home/propensive/.cache/irk/cls/gossamer/core").directory(Expect)
-    val tastyFiles = dir.descendants.filter(_.name.ends(t".tasty")).files
+    val dirs = List(
+      Unix.parse(t"/home/propensive/work/amok/out").directory(Expect)
+    )
+
+    val tastyFiles = dirs.flatMap(_.descendants.filter(_.name.ends(t".tasty")).files)
     
     val docs = Amok.inspect(tastyFiles)
     
-    def rewrite(node: Nodule): Nodule =
+    def rewrite(node: CodlNode): CodlNode =
       node.copy(data = node.data.mm { data => data.copy(children = data.children.map(rewrite)) }).promote(1)
 
     val codec = summon[Codec[Docs]]
@@ -177,23 +186,28 @@ def run(): Unit =
 
     val count = Counter(0)
   
-    def render(docs: Docs): List[Element["ul"]] =
+    def render(docs: Docs, prefix: Text = t"i"): List[Element["ul"]] =
       if docs.term.values.size + docs.`type`.values.size > 0 then List(Ul(
-        (docs.term.values ++ docs.`type`.values).to(List).sortBy(_.name).map: item =>
-          Li(tabindex = count())(item.name, render(item))
+        (docs.term.values ++ docs.`type`.values).to(List).sortBy(_.name).zipWithIndex.map: (item, idx) =>
+          Li(tabindex = count())(
+            Label(`for` = t"$prefix-$idx")(item.name),
+            Input(id = t"$prefix-$idx", htype = HType.Checkbox),
+            render(item, t"$prefix-$idx")
+          )
         .to(List)
       )) else Nil
-  
+    
     val html = HtmlDoc(
       Html(
         Head(
           Title(t"Amok Documentation"),
-          Link(rel = Rel.Stylesheet, href = Relative.Self / p"styles.css")
+          Link(rel = Rel.Stylesheet, href = ^ / p"styles.css")
         ),
         Body(
           Header(Ul(
             Li(A(href = ^)(t"Home")),
-            Li(A(href = ^ / p"about")(t"About"))
+            Li(A(href = ^ / p"about")(t"About")),
+            Li(A(href = ^ / p"kill")(t"Kill"))
           )),
           Nav(render(docs)),
           Main(),
@@ -201,7 +215,42 @@ def run(): Unit =
         )
       )
     )
-  
-    HtmlDoc.serialize(html).writeTo(Unix.parse(t"/home/propensive/dev/amok/out.html").file(Ensure))
-  catch case err: Exception =>
+    println("Serializing...")
+
+    lazy val server: ActiveServer = HttpServer(8080).listen:
+      request.path match
+        case ^ / t"kill" =>
+          server.cancel()
+          Response(html)
+        case ^ / t"styles.css" =>
+          Response(css)
+        case _ =>
+          Response(html)
+    
+    server.task.await()
+    
+    Log.info("Server completed running")
+
+
+    //HtmlDoc.serialize(html).writeTo(Unix.parse(t"/home/propensive/dev/amok/out.html").file(Ensure))
+  catch case err: Throwable =>
     println(err.toString+" at "+err.getStackTrace().nn.to(List).mkString("\n"))
+
+import pseudo.*
+
+val css = CssStylesheet(
+  select(Label):
+    Css(fontWeight = 400, userSelect = UserSelect.None),
+  
+  // select(Ul >> Input):
+  //   Css(display = Display.None),
+  
+  select(Li&&hover):
+    Css(fontWeight = 700, cursor = Cursor.Pointer),
+  
+  select(Ul >> Input ~ Ul > Li):
+    Css(minHeight = Inherit, height = Inherit, maxHeight = 0.px, overflowY = Overflow.Hidden, transition = t"all ease-in-out 0.4s"),
+  
+  select(Ul >> Input&&checked ~ Ul > Li):
+    Css(minHeight = 20.px, height = Inherit, maxHeight = Inherit),
+)

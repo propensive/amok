@@ -4,12 +4,12 @@ import rudiments.*
 import gossamer.*
 import probably.*
 import galilei.*, filesystems.unix
-import anticipation.*, integration.galileiPath
+import anticipation.*, fileApi.galileiApi
 
 import unsafeExceptions.canThrowAny
 
 object Tests extends Suite(t"Amok Tests"):
-  def run(using Runner): Unit =
+  def run(): Unit =
     val files = Unix.parse(t"/home/propensive/.cache/irk/cls/amok/entities").directory(Expect).descendants.filter(_.name.ends(t".tasty")).files
     val docs: Docs = Amok.inspect(files)
     
