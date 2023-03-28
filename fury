@@ -1,0 +1,26 @@
+target amok/core
+
+repo propensive/xylophone
+repo propensive/profanity
+repo propensive/galilei
+repo propensive/honeycomb
+repo propensive/acyclicity
+repo propensive/guillotine
+repo propensive/cellulose
+repo propensive/cataclysm
+repo propensive/jacinta
+repo propensive/scintillate
+
+project amok
+  module core
+    sources src/core
+    main amok.run
+    include gossamer/core cellulose/core xylophone/core profanity/core guillotine/core acyclicity/core galilei/core scintillate/server jacinta/core cataclysm/core honeycomb/core
+
+  module test
+    include amok/core probably/cli amok/entities
+    sources src/test
+    main amok.Tests
+
+  module entities
+    sources src/entities
