@@ -29,6 +29,7 @@ import escapade.*, rendering.ansi
 import cellulose.*
 import jacinta.*
 import scintillate.*
+import gesticulate.*
 import iridescence.*
 import telekinesis.*
 import rudiments.{Cursor as _, is as _, *}
@@ -39,6 +40,7 @@ import scala.reflect.*
 import scala.quoted.*
 import scala.tasty.inspector.*
 import scala.tasty.*
+import scala.compiletime.*
 
 import unsafeExceptions.canThrowAny
 
@@ -121,33 +123,21 @@ case class Docs(name: Text, summary: Maybe[Text] = Unset, doc: Maybe[Text] = Uns
   def addType(t: Docs): Docs = copy(`type` = `type`.add(t))
   def empty: Boolean = term.empty && `type`.empty
 
-enum TypeSpec:
-  case Simple(path: List[Text], name: Text)
-  case Applied(path: List[Text], name: Text, args: List[TypeSpec])
-  case Singleton(path: List[Text], name: Text)
-  case Path(path: List[Text], pathType: TypeSpec, name: Text)
-  case Projection(projected: TypeSpec, path: List[Text], name: Text)
-  case Disjunction(left: TypeSpec, right: TypeSpec)
-  case Conjunction(left: TypeSpec, right: TypeSpec)
-
-
 object Scope:
-  given scope: Scope = Scope(Set(List(t"scala")))
+  given scope: Scope = Scope(Set(
+    List(t"_root_", t"scala"),
+    List(t"_root_", t"scala", t"caps")
+  ))
 
 case class Scope(packages: Set[List[Text]]):
   def prefix(path: List[Text]): Text =
     if packages.contains(path) then t"" else t"${path.join(t".")}."
 
-object TypeSpec:
-  given (using scope: Scope): Show[TypeSpec] =
-    case Simple(path, name)           => t"${scope.prefix(path)}.$name"
-    case Applied(path, name, args)    => t"${scope.prefix(path)}.$name[${args.map(_.show).join(t", ")}]"
-    case Singleton(path, name)        => t"${scope.prefix(path)}.$name.type"
-    case Projection(proj, path, name) => t"$proj#${path.join(t"", t".", t".")}$name"
-    case Disjunction(left, right)     => t"$left | $right"
-    case Conjunction(left, right)     => t"$left & $right"
+case class Info(name: Text, modifiers: List[Text], signature: Text)
 
 object Amok:
+
+
   def inspect[FileType: GenericFileReader](tastyFiles: Seq[FileType]): Docs =
     case class DocInspector() extends Inspector:
       private var rootDocs: Docs = Docs(t"_root_", Unset, Unset, Dictionary(), Dictionary(), Unset)
@@ -155,13 +145,59 @@ object Amok:
       def inspect(using Quotes)(tastys: List[Tasty[quotes.type]]): Unit =
         import quotes.reflect.*
         import Flags.*
+        
+        val retainsSym = TypeRepr.of[annotation.retains].typeSymbol
+        
+        def pname(term: Term, xs: List[Text] = Nil): List[Text] = term match
+          case Ident(base)        => base.show :: xs
+          case Select(parent, id) => pname(parent, id.show :: xs)
+          
+
+        def info(valDef: quotes.reflect.ValDef): Unit =
+          val ValDef(name, returnType, _) = valDef
+          val sym = valDef.symbol
+          val flags = sym.flags
+        
+        def showType(using scope: Scope)(repr: quotes.reflect.TypeRepr, parens: Boolean = false): Text =
+          repr.asMatchable match
+            case AppliedType(base, args)           =>
+              val argTypes = args.map(showType(_)).join(t", ")
+              if defn.isTupleClass(base.typeSymbol) then t"($argTypes)"
+              else t"${showType(base)}[$argTypes]"
+
+            case ConstantType(IntConstant(int))    => int.show
+            case ConstantType(StringConstant(str)) => t"\"$str\""
+            case TypeRef(prefix, ref)              => ref.show
+            case AnnotatedType(tpe, anns)          => t"${captures(anns)}${showType(tpe)}"
+            case OrType(left, right)               => t"${showType(left, true)} | ${showType(right, true)}"
+            case AndType(left, right)              => t"${showType(left, true)} & ${showType(right, true)}"
+            case TermRef(prefix, name)             => t"$name.type"
+            case TypeLambda(from, to, tpe)         => t"[${from.mkString(", ")}] =>> ${showType(tpe)}" // FIXME show bounds
+            
+            case ref: dotty.tools.dotc.core.Types.TypeParamRef =>
+              ref.binder match { case TypeLambda(params, _, _) => params(ref.paramNum) }
+        
+            case other =>
+              println("Unmatched: "+other)
+              t"???"
+        
+        def captures(using scope: Scope)(term: quotes.reflect.Term): Text =
+          term match
+            case Apply(Select(New(focus), _), List(Typed(Repeated(values, _), _))) if focus.tpe.typeSymbol == retainsSym =>
+              values.map:
+                case Select(prefix, name) => t"${scope.prefix(pname(prefix))}${name}"
+                case Ident(name)          => t"${name}"
+              .join(t"{", t", ", t"} ")
+            case other => t""
+
 
         def walk(using Quotes)(docs: Docs, ast: Tree, imports: List[Text]): Docs = ast match
           case pc@PackageClause(id@Ident(name), body) =>
             docs.addTerm(body.foldLeft(Docs(name.show))(walk(_, _, t"${name.show}." :: imports)))
             
-          case term@ValDef(name, rtn, body) if !(term.symbol.flags.is(Synthetic) || term.symbol.flags.is(Private) || name == "_") =>
-            val termName = if term.symbol.flags.is(Given) && name.startsWith("given_") then t"[${rtn.show}]" else name.show
+          case valDef@ValDef(name, rtn, body) if !(valDef.symbol.flags.is(Synthetic) || valDef.symbol.flags.is(Private) || name == "_") =>
+            info(valDef)
+            val termName = if valDef.symbol.flags.is(Given) && name.startsWith("given_") then showType(rtn.tpe) else name.show
             docs.addTerm(body.foldLeft(Docs(termName.show))(walk(_, _, imports)))
 
           case classDef@ClassDef(name, b, c, None, body) if !classDef.symbol.flags.is(Synthetic | Private | PrivateLocal) =>
@@ -175,22 +211,22 @@ object Amok:
               walk(docs2, companion, imports)
 
           case term@DefDef(name, params, rtn, body) if !term.symbol.flags.is(Synthetic) && !term.symbol.flags.is(Private) && !name.contains("$default$") =>
-            println(name+": "+term.symbol.flags.show)
-            val termName = if term.symbol.flags.is(Given) && name.startsWith("given_") then rtn.toString.show else name.show
+            //println(name+": "+term.symbol.flags.show)
+            val termName = if term.symbol.flags.is(Given) && name.startsWith("given_") then showType(rtn.tpe) else name.show
             val flags = term.symbol.flags
             if flags.is(Given) then
               docs.addTerm(params.flatMap(_.params).foldLeft(Docs(termName))(walk(_, _, imports)))
             else
               docs.addTerm(params.flatMap(_.params).foldLeft(Docs(termName))(walk(_, _, imports)))
             
-          case typeDef@TypeDef(name, a) =>
+          case typeDef@TypeDef(name, a) if name != "MirroredMonoType" =>
             docs.addType(Docs(name.show))
 
           case Export(name, x) =>
             walk(docs, name, imports)
         
           case other =>
-            println(other)
+            //println(other)
             docs
           
         rootDocs = tastys.foldLeft(rootDocs): (docs, tasty) =>
@@ -201,7 +237,10 @@ object Amok:
     val files = tastyFiles.to(List).map(summon[GenericFileReader[FileType]].filePath(_))
     for file <- files do
       try TastyInspector.inspectTastyFiles(List(file))(inspector)
-      catch case err: Exception => println(s"Failed to read file $file")
+      catch case err: Exception =>
+        println(err)
+        err.printStackTrace()
+        println(s"Failed to read file $file")
 
     inspector()
     
@@ -225,22 +264,24 @@ def run(): Unit =
 
     val count = Counter(0)
   
-    def render(docs: Docs, prefix: Text = t"i"): List[Element["ul"]] =
-      if docs.term.values.size + docs.`type`.values.size > 0 then List(Ul(
-        (docs.term.values ++ docs.`type`.values).to(List).sortBy(_.name).zipWithIndex.map: (item, idx) =>
-          Li(tabindex = count(), hclass = if item.empty then cls"" else more)(
-            Label(`for` = t"$prefix-$idx")(item.name),
+    def render(docs: Docs, prefix: Text = t"i", path: List[Text] = Nil): List[Element["li"]] =
+      if docs.term.values.size + docs.`type`.values.size > 0
+      then (docs.term.values ++ docs.`type`.values).groupBy(_.name).to(List).sortBy(_(0)).zipWithIndex.map:
+        case ((name, items), idx) =>
+          val empty = items.forall(_.empty)
+          Li(tabindex = count(), hclass = if empty then cls"" else more)(
+            Label(`for` = t"$prefix-$idx")(A(href = ^ / p"info" / path.reverse.join(t"", t".", t".$name"), target = t"main")(name)),
             Input(id = t"$prefix-$idx", htype = HType.Checkbox),
-            render(item, t"$prefix-$idx")
+            if empty then Nil else List(Ul(items.flatMap(render(_, t"$prefix-$idx", name :: path)).to(List)))
           )
-        .to(List)
-      )) else Nil
+      else Nil
     
     val html = HtmlDoc(
       Html(
         Head(
           Title(t"Amok Documentation"),
-          Link(rel = Rel.Stylesheet, href = ^ / p"styles" / p"amok.css")
+          Link(rel = Rel.Stylesheet, href = ^ / p"styles" / p"amok.css"),
+          Link(rel = Rel.Icon, htype = media"image/svg+xml", href = ^ / p"images" / p"logo.svg")
         ),
         Body(
           Header(Ul(
@@ -248,24 +289,25 @@ def run(): Unit =
             Li(A(href = ^ / p"about")(t"ABOUT AMOK")),
             Li(A(href = ^ / p"kill")(t"SHUTDOWN"))
           )),
-          Main(Iframe(title = t"main", src = ^ / p"welcome")),
+          Main(Iframe(name = t"main", src = ^ / p"info" / p"welcome")),
           Nav(
             H2(t"API Documentation"),
-            render(docs)
+            Input(name = t"filter"),
+            Ul(render(docs))
           ),
           Footer()
         )
       )
     )
     
-    def welcome = HtmlDoc(
+    def infoPage(name: Text) = HtmlDoc(
       Html(
         Head(
-          Title(t"Welcome"),
+          Title(t"$name"),
           Link(rel = Rel.Stylesheet, href = ^ / p"styles" / p"amok.css")
         ),
         Body(
-          H1(Code(t"Welcome")),
+          H1(Code(t"$name")),
           H2(t"About Amok"),
           P(t"Welcome to Amok, an API tool for Scala and other languages. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet."),
           Pre(t"This is some code.")
@@ -281,7 +323,7 @@ def run(): Unit =
         case ^ / t"styles" / t"amok.css" => Response(css)
         case ^ / t"fonts" / name         => Response(Ttf(font(name)))
         case ^ / t"images" / name        => Response(Svg(image(name)))
-        case ^ / t"welcome"              => Response(welcome)
+        case ^ / t"info" / name          => Response(infoPage(name))
         case _                           => Response(html)
     
     server.task.await()
@@ -303,7 +345,7 @@ val css = CssStylesheet(
   FontFace(fontFamily = t"\"Overpass Italic\"", src = t"url(\"../fonts/overpass-italic.ttf\")"),
   
   select(Body):
-    Css(fontFamily = Font(t"Overpass"), margin = 0, padding = 0, overflowY = Overflow.Hidden),
+    Css(fontFamily = Font(t"Overpass"), margin = 0, padding = 0, overflowY = Overflow.Hidden, textAlign = TextAlign.Justify),
 
   select(Label):
     Css(fontWeight = 400, userSelect = UserSelect.None, fontFamily = Font(t"Overpass Mono"),
@@ -346,10 +388,16 @@ val css = CssStylesheet(
     Css(fontWeight = 325, fontSize = 0.95.em, lineHeight = 1.5.em, color = rgb"#444444"),
 
   select(H2):
-    Css(color = rgb"#777777", fontWeight = 400, fontSize = 1.2.em),
+    Css(color = rgb"#555555", fontWeight = 400, fontSize = 1.2.em),
 
   select(Nav >> Li):
-    Css(paddingLeft = 1.7.em),
+    Css(paddingLeft = 1.7.em, overflowX = Overflow.Hidden),
+  
+  select(Nav >> A):
+    Css(color = rgb"#000000", textDecoration = TextDecorationLine.None),
+  
+  select(Nav >> A&&hover):
+    Css(textDecoration = TextDecorationLine.Underline),
 
   select(Li > Label):
     Css(lineHeight = 1.5.em, backgroundImage = ^ / p"images" / p"m.svg", backgroundRepeat = t"no-repeat",
@@ -364,6 +412,14 @@ val css = CssStylesheet(
   
   select(Nav >> Li > Ul):
     Css(marginLeft = 0.em),
+  
+  select(Nav > Input):
+    Css(borderStyle = BorderStyle.None, borderBottom = (BorderStyle.Solid, 1.px, rgb"#777777"),
+        fontFamily = Font(t"Overpass Mono"), fontSize = 0.9.em, width = 20.em, marginLeft = -0.3.em, padding = (0, 0, 0.1.em, 1.9.em),
+        backgroundImage = ^ / p"images" / p"filter.svg", backgroundSize = 1.3.em, backgroundRepeat = t"no-repeat", backgroundPosition = t"0.1em -0.2em"),
+  
+  select(Nav > Input&&focus):
+    Css(borderColor = rgb"#000000", outline = t"none"),
     
   select(Ul >> Input):
     Css(display = Display.None),
@@ -377,7 +433,7 @@ val css = CssStylesheet(
   select(Ul >> Input&&checked ~ Ul > Li):
     Css(minHeight = 20.px, height = Inherit, maxHeight = Inherit),
   
-  Media(t"only screen and (max-width: 1000px)")(
+  cataclysm.Media(t"only screen and (max-width: 1000px)")(
     select(Main):
       Css(height = 50.vh, margin = (50.vh, 0, 0, 0), width = 100.vw - 4.em,
           borderTop = (BorderStyle.Solid, 1.px, rgb"#dddddd")),
@@ -385,7 +441,7 @@ val css = CssStylesheet(
     select(Nav):
       Css(height = 50.vh - 8.em, margin = (8.em, 0, 0, 0), width = 100.vw - 4.em)
   ),
-  Media(t"only screen and (max-device-width: 768px)")(
+  cataclysm.Media(t"only screen and (max-device-width: 768px)")(
     select(Main):
       Css(height = 50.vh, margin = (50.vh, 0, 0, 0), width = 100.vw - 4.em,
           borderTop = (BorderStyle.Solid, 1.px, rgb"#dddddd")),
