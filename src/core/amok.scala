@@ -47,8 +47,9 @@ import language.dynamics
 import basicIo.jvm
 import logging.stdout
 
-given Realm(t"amok")
+given Realm = Realm(t"amok")
 
+val classpath = Classpath()
 
 enum Entity:
   case Trait
@@ -84,6 +85,7 @@ object Docs:
       
       extension (dict: Dictionary)
         def values: Iterable[Docs] = dict.values
+        def empty: Boolean = dict.isEmpty
         def add(value: Docs): Dictionary = dict.get(value.name) match
           case None =>
             dict.updated(value.name, value)
@@ -117,11 +119,39 @@ case class Docs(name: Text, summary: Maybe[Text] = Unset, doc: Maybe[Text] = Uns
   def applyDynamic(id: String)(): Docs = `type`.values.find(_.name.s == id).get
   def addTerm(t: Docs): Docs = copy(term = term.add(t))
   def addType(t: Docs): Docs = copy(`type` = `type`.add(t))
+  def empty: Boolean = term.empty && `type`.empty
+
+enum TypeSpec:
+  case Simple(path: List[Text], name: Text)
+  case Applied(path: List[Text], name: Text, args: List[TypeSpec])
+  case Singleton(path: List[Text], name: Text)
+  case Path(path: List[Text], pathType: TypeSpec, name: Text)
+  case Projection(projected: TypeSpec, path: List[Text], name: Text)
+  case Disjunction(left: TypeSpec, right: TypeSpec)
+  case Conjunction(left: TypeSpec, right: TypeSpec)
+
+
+object Scope:
+  given scope: Scope = Scope(Set(List(t"scala")))
+
+case class Scope(packages: Set[List[Text]]):
+  def prefix(path: List[Text]): Text =
+    if packages.contains(path) then t"" else t"${path.join(t".")}."
+
+object TypeSpec:
+  given (using scope: Scope): Show[TypeSpec] =
+    case Simple(path, name)           => t"${scope.prefix(path)}.$name"
+    case Applied(path, name, args)    => t"${scope.prefix(path)}.$name[${args.map(_.show).join(t", ")}]"
+    case Singleton(path, name)        => t"${scope.prefix(path)}.$name.type"
+    case Projection(proj, path, name) => t"$proj#${path.join(t"", t".", t".")}$name"
+    case Disjunction(left, right)     => t"$left | $right"
+    case Conjunction(left, right)     => t"$left & $right"
 
 object Amok:
-  def inspect[F: GenericFileReader](tastyFiles: Seq[F]): Docs =
+  def inspect[FileType: GenericFileReader](tastyFiles: Seq[FileType]): Docs =
     case class DocInspector() extends Inspector:
       private var rootDocs: Docs = Docs(t"_root_", Unset, Unset, Dictionary(), Dictionary(), Unset)
+
       def inspect(using Quotes)(tastys: List[Tasty[quotes.type]]): Unit =
         import quotes.reflect.*
         import Flags.*
@@ -130,23 +160,28 @@ object Amok:
           case pc@PackageClause(id@Ident(name), body) =>
             docs.addTerm(body.foldLeft(Docs(name.show))(walk(_, _, t"${name.show}." :: imports)))
             
-          case term@ValDef(name, rtn, body) if !term.symbol.flags.is(Synthetic | Private) =>
-            if name.show.ends(t"$$package") then body.foldLeft(docs)(walk(_, _, imports))
-            else docs.addTerm(body.foldLeft(Docs(name.show))(walk(_, _, imports)))
+          case term@ValDef(name, rtn, body) if !(term.symbol.flags.is(Synthetic) || term.symbol.flags.is(Private) || name == "_") =>
+            val termName = if term.symbol.flags.is(Given) && name.startsWith("given_") then t"[${rtn.show}]" else name.show
+            docs.addTerm(body.foldLeft(Docs(termName.show))(walk(_, _, imports)))
 
-          case classDef@ClassDef(name, b, c, None, body) if !classDef.symbol.flags.is(Synthetic) =>
+          case classDef@ClassDef(name, b, c, None, body) if !classDef.symbol.flags.is(Synthetic | Private | PrivateLocal) =>
             docs.addType(body.foldLeft(Docs(name.show))(walk(_, _, imports)))
 
-          case classDef@ClassDef(name, b, c, Some(companion), body) if !classDef.symbol.flags.is(Synthetic) =>
-            val docs2 = docs.addTerm(body.foldLeft(Docs((if name.show.ends(t"$$") then name.show.drop(1, Rtl) else name.show)))(walk(_, _, imports)))
-            walk(docs2, companion, imports)
+          case classDef@ClassDef(name, b, c, Some(companion), body) if !classDef.symbol.flags.is(Synthetic | Private | PrivateLocal) =>
+            if name.endsWith("$package$") then
+              body.foldLeft(docs)(walk(_, _, imports))
+            else
+              val docs2 = docs.addTerm(body.foldLeft(Docs((if name.show.ends(t"$$") then name.show.drop(1, Rtl) else name.show)))(walk(_, _, imports)))
+              walk(docs2, companion, imports)
 
-          case term@DefDef(name, params, rtn, body) if !term.symbol.flags.is(Synthetic) =>
+          case term@DefDef(name, params, rtn, body) if !term.symbol.flags.is(Synthetic) && !term.symbol.flags.is(Private) && !name.contains("$default$") =>
+            println(name+": "+term.symbol.flags.show)
+            val termName = if term.symbol.flags.is(Given) && name.startsWith("given_") then rtn.toString.show else name.show
             val flags = term.symbol.flags
             if flags.is(Given) then
-              docs.addTerm(params.flatMap(_.params).foldLeft(Docs(name.show))(walk(_, _, imports)))
+              docs.addTerm(params.flatMap(_.params).foldLeft(Docs(termName))(walk(_, _, imports)))
             else
-              docs.addTerm(params.flatMap(_.params).foldLeft(Docs(name.show))(walk(_, _, imports)))
+              docs.addTerm(params.flatMap(_.params).foldLeft(Docs(termName))(walk(_, _, imports)))
             
           case typeDef@TypeDef(name, a) =>
             docs.addType(Docs(name.show))
@@ -154,20 +189,8 @@ object Amok:
           case Export(name, x) =>
             walk(docs, name, imports)
         
-          case DefDef(_, _, _, _) =>
-            docs
-
-          case Import(_, _) =>
-            docs
-          
-          case ValDef(_, _, _) =>
-            docs
-          
-          case ClassDef(_, _, _, _, _) =>
-            docs
-          
           case other =>
-            //Log.info(t"Found ${other.toString}")
+            println(other)
             docs
           
         rootDocs = tastys.foldLeft(rootDocs): (docs, tasty) =>
@@ -175,7 +198,7 @@ object Amok:
       
       def apply(): Docs = rootDocs
     val inspector = DocInspector()
-    val files = tastyFiles.to(List).map(summon[GenericFileReader[F]].filePath(_))
+    val files = tastyFiles.to(List).map(summon[GenericFileReader[FileType]].filePath(_))
     for file <- files do
       try TastyInspector.inspectTastyFiles(List(file))(inspector)
       catch case err: Exception => println(s"Failed to read file $file")
@@ -198,7 +221,7 @@ def run(): Unit =
 
     val codec = summon[Codec[Docs]]
     val codl = CodlDoc(IArray.from(codec.serialize(docs).flatten).map(rewrite), codec.schema, 0)
-    println(codl.serialize)
+    //println(codl.serialize)
 
     val count = Counter(0)
   
@@ -206,7 +229,7 @@ def run(): Unit =
       if docs.term.values.size + docs.`type`.values.size > 0 then List(Ul(
         (docs.term.values ++ docs.`type`.values).to(List).sortBy(_.name).zipWithIndex.map: (item, idx) =>
           Li(tabindex = count())(
-            Label(`for` = t"$prefix-$idx")(item.name),
+            Label(`for` = t"$prefix-$idx", hclass = if item.empty then cls"" else more)(item.name),
             Input(id = t"$prefix-$idx", htype = HType.Checkbox),
             render(item, t"$prefix-$idx")
           )
@@ -217,31 +240,49 @@ def run(): Unit =
       Html(
         Head(
           Title(t"Amok Documentation"),
-          Link(rel = Rel.Stylesheet, href = ^ / p"styles.css")
+          Link(rel = Rel.Stylesheet, href = ^ / p"styles" / p"amok.css")
         ),
         Body(
           Header(Ul(
-            Li(A(href = ^)(t"Home")),
-            Li(A(href = ^ / p"about")(t"About")),
-            Li(A(href = ^ / p"kill")(t"Kill"))
+            Li(A(href = ^)(t"HOME")),
+            Li(A(href = ^ / p"about")(t"ABOUT AMOK")),
+            Li(A(href = ^ / p"kill")(t"SHUTDOWN"))
           )),
-          Nav(render(docs)),
-          Main(),
+          Main(Iframe(title = t"main", src = ^ / p"welcome")),
+          Nav(
+            H2(t"API Documentation"),
+            render(docs)
+          ),
           Footer()
         )
       )
     )
-    println("Serializing...")
+    
+    def welcome = HtmlDoc(
+      Html(
+        Head(
+          Title(t"Welcome"),
+          Link(rel = Rel.Stylesheet, href = ^ / p"styles" / p"amok.css")
+        ),
+        Body(
+          H1(Code(t"Welcome")),
+          H2(t"About Amok"),
+          P(t"Welcome to Amok, an API tool for Scala and other languages. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet."),
+          Pre(t"This is some code.")
+        )
+      )
+    )
+
+    def font(name: Text): Bytes = (classpath / p"amok" / p"fonts" / name).read[Bytes]
+    def image(name: Text): Text = (classpath / p"amok" / p"images" / name).read[Text]
 
     lazy val server: ActiveServer = HttpServer(8080).listen:
       request.path match
-        case ^ / t"kill" =>
-          server.cancel()
-          Response(html)
-        case ^ / t"styles.css" =>
-          Response(css)
-        case _ =>
-          Response(html)
+        case ^ / t"styles" / t"amok.css" => Response(css)
+        case ^ / t"fonts" / name         => Response(Ttf(font(name)))
+        case ^ / t"images" / name        => Response(Svg(image(name)))
+        case ^ / t"welcome"              => Response(welcome)
+        case _                           => Response(html)
     
     server.task.await()
     
@@ -254,19 +295,96 @@ def run(): Unit =
 
 import pseudo.*
 
+val more = cls"more"
+
 val css = CssStylesheet(
+  FontFace(fontFamily = t"\"Overpass\"", src = t"url(\"../fonts/overpass.ttf\")"),
+  FontFace(fontFamily = t"\"Overpass Mono\"", src = t"url(\"../fonts/overpass-mono.ttf\")"),
+  FontFace(fontFamily = t"\"Overpass Italic\"", src = t"url(\"../fonts/overpass-italic.ttf\")"),
+  
+  select(Body):
+    Css(fontFamily = Font(t"Overpass"), margin = 0, padding = 0, overflowY = Overflow.Hidden),
+
   select(Label):
-    Css(fontWeight = 400, userSelect = UserSelect.None),
+    Css(fontWeight = 400, userSelect = UserSelect.None, fontFamily = Font(t"Overpass Mono"),
+        fontVariantLigatures = t"none", fontSize = 0.9.em, width = 400.px,
+        cursor = Cursor.Pointer, padding = (0.2.em, 4.5.em), marginLeft = -4.em),
   
-  // select(Ul >> Input):
-  //   Css(display = Display.None),
+  select(Header):
+    Css(position = Position.Absolute, margin = 0, height = 6.em, width = 100.vw - 6.em, padding = (0, 0, 0, 6.em),
+        backgroundColor = rgb"#111111", boxShadow = (0, 0, 1.em, rgb"#aaaaaa"),
+        backgroundImage = ^ / p"images" / p"logo.svg",
+        backgroundRepeat = t"no-repeat", backgroundSize = 4.em, backgroundPosition = t"1em"),
   
-  select(Li&&hover):
-    Css(fontWeight = 700, cursor = Cursor.Pointer),
+  select(Header >> A || Header >> A&&hover || Header >> A&&visited || Header >> A&&active):
+    Css(color = rgb"#dddddd", textDecoration = TextDecorationLine.None, fontWeight = 800, fontSize = 0.85.em),
+  
+  select(Header >> Ul):
+    Css(margin = (1.4.em, 0)),
+  
+  select(Header >> Li):
+    Css(display = Display.InlineBlock, padding = 1.em),
+  
+  select(Main):
+    Css(position = Position.Absolute, height = 100.vh - 8.em, width = 54.vw - 4.em, padding = (0, 2.em),
+        margin = (8.em, 0, 0, 42.vw), overflowY = Overflow.Scroll),
+  
+  select(Iframe):
+    Css(width = 100.pc, height = 100.pc, borderStyle = BorderStyle.None),
+
+  select(Nav):
+    Css(position = Position.Absolute, height = 100.vh - 8.em, margin = (8.em, 0, 0, 0), width = 38.vw,
+        padding = (0, 2.em, 0, 2.em), overflowY = Overflow.Scroll),
+  
+  select(Ul):
+    Css(listStyle = t"none", padding = 0),
+
+  select(H1 > Code):
+    Css(fontFamily = Font(t"Overpass Mono"), fontWeight = 500, fontSize = 0.8.em),
+  
+  select(P):
+    Css(fontWeight = 325, fontSize = 0.95.em, lineHeight = 1.5.em, color = rgb"#444444"),
+
+  select(H2):
+    Css(color = rgb"#777777", fontWeight = 400, fontSize = 1.2.em),
+
+  select(Nav >> Li):
+    Css(lineHeight = 1.5.em, backgroundImage = ^ / p"images" / p"m.svg", backgroundRepeat = t"no-repeat",
+        backgroundSize = 1.3.em, overflowX = Overflow.Hidden, padding = (0.em, 0.em, 0.em, 2.em)),
+  
+  select(Label && more):
+    Css(backgroundImage = ^ / p"images" / p"more.svg", backgroundSize = 1.3.em, backgroundRepeat = t"no-repeat", backgroundPosition = t"3em 0.12em"),
+    
+  select(Ul >> Input):
+    Css(display = Display.None),
+  
+  select(Li && hover):
+    Css(fontWeight = 700),
   
   select(Ul >> Input ~ Ul > Li):
     Css(minHeight = Inherit, height = Inherit, maxHeight = 0.px, overflowY = Overflow.Hidden, transition = t"all ease-in-out 0.4s"),
   
   select(Ul >> Input&&checked ~ Ul > Li):
     Css(minHeight = 20.px, height = Inherit, maxHeight = Inherit),
+  
+  Media(t"only screen and (max-width: 1000px)")(
+    select(Main):
+      Css(height = 50.vh, margin = (50.vh, 0, 0, 0), width = 100.vw - 4.em,
+          borderTop = (BorderStyle.Solid, 1.px, rgb"#dddddd")),
+    
+    select(Nav):
+      Css(height = 50.vh - 8.em, margin = (8.em, 0, 0, 0), width = 100.vw - 4.em)
+  ),
+  Media(t"only screen and (max-device-width: 768px)")(
+    select(Main):
+      Css(height = 50.vh, margin = (50.vh, 0, 0, 0), width = 100.vw - 4.em,
+          borderTop = (BorderStyle.Solid, 1.px, rgb"#dddddd")),
+    
+    select(Nav):
+      Css(height = 50.vh - 8.em, margin = (8.em, 0, 0, 0), width = 100.vw - 4.em)
+  )
 )
+
+enum TypeEntry:
+  case CaseClass, AbstractClass, AbstractOpenClass, Trait, SealedTrait, TypeAlias, OpaqueTypeAlias,
+      OpenClass, Class, TransparentSealedTrait
