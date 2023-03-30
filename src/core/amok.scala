@@ -228,8 +228,8 @@ def run(): Unit =
     def render(docs: Docs, prefix: Text = t"i"): List[Element["ul"]] =
       if docs.term.values.size + docs.`type`.values.size > 0 then List(Ul(
         (docs.term.values ++ docs.`type`.values).to(List).sortBy(_.name).zipWithIndex.map: (item, idx) =>
-          Li(tabindex = count())(
-            Label(`for` = t"$prefix-$idx", hclass = if item.empty then cls"" else more)(item.name),
+          Li(tabindex = count(), hclass = if item.empty then cls"" else more)(
+            Label(`for` = t"$prefix-$idx")(item.name),
             Input(id = t"$prefix-$idx", htype = HType.Checkbox),
             render(item, t"$prefix-$idx")
           )
@@ -349,11 +349,21 @@ val css = CssStylesheet(
     Css(color = rgb"#777777", fontWeight = 400, fontSize = 1.2.em),
 
   select(Nav >> Li):
+    Css(paddingLeft = 1.7.em),
+
+  select(Li > Label):
     Css(lineHeight = 1.5.em, backgroundImage = ^ / p"images" / p"m.svg", backgroundRepeat = t"no-repeat",
-        backgroundSize = 1.3.em, overflowX = Overflow.Hidden, padding = (0.em, 0.em, 0.em, 2.em)),
+        backgroundPosition = t"3.5em -0.1em",
+        backgroundSize = 1.3.em, overflowX = Overflow.Hidden, padding = (0.em, 0.em, 0.em, 5.5.em)),
   
-  select(Label && more):
-    Css(backgroundImage = ^ / p"images" / p"more.svg", backgroundSize = 1.3.em, backgroundRepeat = t"no-repeat", backgroundPosition = t"3em 0.12em"),
+  select(Nav >> Li && more):
+    Css(backgroundImage = ^ / p"images" / p"more.svg", backgroundSize = 1.3.em, backgroundRepeat = t"no-repeat", backgroundPosition = t"-0.35em -0.1em"),
+  
+  select(Nav >> Li && more && has(Input&&checked)):
+    Css(backgroundImage = ^ / p"images" / p"less.svg", backgroundSize = 1.3.em, backgroundRepeat = t"no-repeat", backgroundPosition = t"-0.35em -0.1em"),
+  
+  select(Nav >> Li > Ul):
+    Css(marginLeft = 0.em),
     
   select(Ul >> Input):
     Css(display = Display.None),
