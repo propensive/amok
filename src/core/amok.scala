@@ -18,28 +18,16 @@ package amok
 
 import Docs.Dictionary
 
-import galilei.*, filesystems.unix
 import eucalyptus.*
-import anticipation.*, fileApi.galileiApi
-import honeycomb.*
-import cataclysm.{mm as _, *}
-import serpentine.*
-import parasitism.*, monitors.global
+import anticipation.*
 import gossamer.*
-import turbulence.*, characterEncodings.utf8
-import cellulose.*
-import scintillate.*
 import rudiments.{Cursor as _, is as _, *}
-import scala.reflect.*
 import scala.quoted.*
 import scala.tasty.inspector.*
 import scala.tasty.*
 import scala.compiletime.*
 
 import unsafeExceptions.canThrowAny
-
-import basicIo.jvm
-import logging.stdout
 
 given Realm = Realm(t"amok")
 

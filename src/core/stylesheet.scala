@@ -173,8 +173,6 @@ object Icons:
     case Package, Def, Trait, Given, Enum, Case, Class, Val, Var, Type, Object, ClassObject
 
   case class Icon(entity: Entity, qualifiers: List[Qualifier]):
-    def +(qualifier: Qualifier): Icon = Icon(entity, qualifier :: qualifiers)
-
     def filename: Text =
       val entityName = t"${entity.toString.show.lower}.svg"
       
