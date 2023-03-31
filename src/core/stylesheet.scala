@@ -133,7 +133,7 @@ object styles:
     select(Ul >> Input&&checked ~ Ul > Li):
       Css(minHeight = 20.px, height = Inherit, maxHeight = Inherit),
     
-    Media(t"only screen and (max-width: 1000px)")(
+    MediaRule(t"only screen and (max-width: 1000px)")(
       select(Main):
         Css(height = 50.vh, margin = (50.vh, 0, 0, 0), width = 100.vw - 4.em,
             borderTop = (BorderStyle.Solid, 1.px, rgb"#dddddd")),
@@ -141,7 +141,7 @@ object styles:
       select(Nav):
         Css(height = 50.vh - 8.em, margin = (8.em, 0, 0, 0), width = 100.vw - 4.em)
     ),
-    Media(t"only screen and (max-device-width: 768px)")(
+    MediaRule(t"only screen and (max-device-width: 768px)")(
       select(Main):
         Css(height = 50.vh, margin = (50.vh, 0, 0, 0), width = 100.vw - 4.em,
             borderTop = (BorderStyle.Solid, 1.px, rgb"#dddddd")),
