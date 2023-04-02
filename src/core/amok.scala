@@ -58,7 +58,6 @@ object Amok:
           case Ident(base)        => base.show :: xs
           case Select(parent, id) => pname(parent, id.show :: xs)
           
-
         def info(valDef: quotes.reflect.ValDef): Unit =
           val ValDef(name, returnType, _) = valDef
           val sym = valDef.symbol
@@ -173,4 +172,3 @@ object Amok:
         println(s"Failed to read file $file")
 
     inspector()
-    

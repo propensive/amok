@@ -52,6 +52,7 @@ object pages:
         Header(Ul(
           Li(A(href = ^)(t"HOME")),
           Li(A(href = ^ / p"about")(t"ABOUT AMOK")),
+          Li(A(href = ^ / p"kill")(t"REFERENCE")),
           Li(A(href = ^ / p"kill")(t"CONTRIBUTE"))
         )),
         Main(Iframe(name = t"main", src = ^ / p"info" / p"welcome")),
