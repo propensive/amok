@@ -60,3 +60,4 @@ case class Docs(name: Text, icon: Text, summary: Maybe[Text] = Unset, doc: Maybe
   def addTerm(t: Docs): Docs throws IncompatibleTypeError = copy(term = term.add(t))
   def addType(t: Docs): Docs throws IncompatibleTypeError = copy(`type` = `type`.add(t))
   def empty: Boolean = term.empty && `type`.empty
+

@@ -102,18 +102,19 @@ object Amok:
           var qualifiers: Set[Qualifier] = Set()
           if entity != Entity.Package then
             if flags.is(Flags.Mutable) then entity = Entity.Var
-            else if flags.is(Flags.Given) then entity = Entity.Given
-            else if flags.is(Flags.Enum) then entity = if flags.is(Flags.Case) then Entity.Case else Entity.Enum
+            else if flags.is(Flags.Given) || flags.is(Flags.Implicit) then entity = Entity.Given
+            else if flags.is(Flags.Enum | Flags.Case) then entity = Entity.Case
+            else if flags.is(Flags.Enum) then entity = Entity.Enum
             else if flags.is(Flags.Trait) then entity = Entity.Trait
-            else if flags.is(Flags.Module) then entity = Entity.Object
+            else
+              if flags.is(Flags.Module) then entity = Entity.Object
           //if flags.is(Flags.Final) then qualifiers += Qualifier.Final
           
           if flags.is(Flags.Lazy) then qualifiers += Qualifier.Lazy
-          if flags.is(Flags.Open) then qualifiers += Qualifier.OpaqueOrOpen
+          if flags.is(Flags.Open) || flags.is(Flags.Opaque) then qualifiers += Qualifier.OpaqueOrOpen
           if flags.is(Flags.ExtensionMethod) then qualifiers += Qualifier.Extension
-          //if flags.is(Flags.Accessor) then qualifiers += Qualifier.Param
+          if flags.is(Flags.Param) then qualifiers += Qualifier.Param
           
-          if flags.is(Flags.Opaque) then qualifiers += Qualifier.OpaqueOrOpen
           if flags.is(Flags.Inline) then qualifiers += Qualifier.Inline
           if flags.is(Flags.Transparent) then qualifiers += Qualifier.Transparent
           if flags.is(Flags.Case) then qualifiers += Qualifier.Case
@@ -139,7 +140,6 @@ object Amok:
               walk(docs2, companion, imports)
 
           case term@DefDef(name, params, rtn, body) if !term.symbol.flags.is(Synthetic) && !term.symbol.flags.is(Private) && !name.contains("$default$") =>
-            
             val termName = if term.symbol.flags.is(Given) && name.startsWith("given_") then showType(rtn.tpe) else name.show
             val flags = term.symbol.flags
             if flags.is(Given) then

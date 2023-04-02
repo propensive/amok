@@ -29,15 +29,15 @@ object pages:
 
   def render(docs: Docs, prefix: Text = t"i", path: List[Text] = Nil): List[Element["li"]] =
     if docs.term.values.size + docs.`type`.values.size > 0
-    then (docs.term.values ++ docs.`type`.values).groupBy(_.name).to(List).sortBy(_(0)).zipWithIndex.map:
-      case ((name, items), idx) =>
-        val empty = items.forall(_.empty)
-        val location = unsafely(^ / p"info" / path.reverse.join(t"", t".", t".$name"))
+    then (docs.term.values ++ docs.`type`.values).to(List).sortBy(_.name).zipWithIndex.map:
+      case (item, idx) =>
+        val empty = item.empty
+        val location = unsafely(^ / p"info" / path.reverse.join(t"", t".", t".${item.name}"))
         
         Li(tabindex = count(), hclass = if empty then cls"" else styles.more)(
-          Label(`for` = t"$prefix-$idx", style = Css(backgroundImage = unsafely(^ / p"images" / items.head.icon)))(A(href = location, target = t"main")(name)),
+          Label(`for` = t"$prefix-$idx", style = Css(backgroundImage = unsafely(^ / p"images" / item.icon)))(A(href = location, target = t"main")(item.name)),
           Input(id = t"$prefix-$idx", htype = HType.Checkbox),
-          if empty then Nil else List(Ul(items.flatMap(render(_, t"$prefix-$idx", name :: path)).to(List)))
+          if empty then Nil else List(Ul(render(item, t"$prefix-$idx", item.name :: path)))
         )
     else Nil
   
@@ -52,7 +52,7 @@ object pages:
         Header(Ul(
           Li(A(href = ^)(t"HOME")),
           Li(A(href = ^ / p"about")(t"ABOUT AMOK")),
-          Li(A(href = ^ / p"kill")(t"REFERENCE")),
+          Li(A(href = ^ / p"ref")(t"REFERENCE")),
           Li(A(href = ^ / p"kill")(t"CONTRIBUTE"))
         )),
         Main(Iframe(name = t"main", src = ^ / p"info" / p"welcome")),
