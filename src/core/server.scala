@@ -38,19 +38,13 @@ def run(): Unit =
       val tastyFiles = dirs.flatMap(_.descendants.filter(_.name.ends(t".tasty")).files)
       Amok.inspect(tastyFiles)
     
-    def rewrite(node: CodlNode): CodlNode =
-      node.copy(data = node.data.mm { data => data.copy(children = data.children.map(rewrite)) }).promote(1)
-
-    val codec = summon[Codec[Docs]]
-    val codl = CodlDoc(IArray.from(codec.serialize(docs).flatten).map(rewrite), codec.schema, 0)
-
     lazy val server: ActiveServer = HttpServer(8080).listen:
       request.path match
         case ^ / t"styles" / t"amok.css" => Response(styles.main)
         case ^ / t"fonts" / name         => Response(Ttf(data.font(name)))
         case ^ / t"images" / name        => Response(Svg(data.image(name)))
-        case ^ / t"info" / name          => Response(pages.info(name))
-        case _                           => Response(pages.main(docs))
+        case ^ / t"info" / path          => Response(pages.info(DocPath.parse(path.s)))
+        case _                           => Response(pages.main)
     
     server.task.await()
     

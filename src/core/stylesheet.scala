@@ -25,8 +25,6 @@ import serpentine.*
 
 object styles:
   
-  val more = cls"more"
-  
   val main: CssStylesheet = CssStylesheet(
     FontFace(fontFamily = t"\"Overpass\"", src = t"url(\"../fonts/overpass.ttf\")"),
     FontFace(fontFamily = t"\"Overpass Mono\"", src = t"url(\"../fonts/overpass-mono.ttf\")"),
@@ -100,11 +98,11 @@ object styles:
           backgroundSize = 1.3.em, overflowX = Overflow.Hidden,
           padding = (0.em, 0.em, 0.em, 5.5.em)),
     
-    select(Nav >> Li && more):
+    select(Nav >> Li && has(Div)):
       Css(backgroundImage = ^ / p"images" / p"more.svg", backgroundSize = 1.3.em,
           backgroundRepeat = BackgroundRepeat.NoRepeat, backgroundPosition = (-0.35.em, -0.1.em)),
     
-    select(Nav >> Li && more && has(Input&&checked)):
+    select(Nav >> Li && has(Div) && has(Input&&checked)):
       Css(backgroundImage = ^ / p"images" / p"less.svg", backgroundSize = 1.3.em,
           backgroundRepeat = BackgroundRepeat.NoRepeat, backgroundPosition = (-0.35.em, -0.1.em)),
     
@@ -127,11 +125,14 @@ object styles:
     select(Li && hover):
       Css(fontWeight = 700),
     
-    select(Ul >> Input ~ Ul > Li):
+    select(Ul >> Input ~ Div):
       Css(minHeight = Inherit, height = Inherit, maxHeight = 0.px, overflowY = Overflow.Hidden),
     
-    select(Ul >> Input&&checked ~ Ul > Li):
+    select(Ul >> Input&&checked ~ Div):
       Css(minHeight = 20.px, height = Inherit, maxHeight = Inherit),
+    
+    select(Nav >> H3):
+      Css(fontSize = 0.75.em, color = rgb"#666666", fontWeight = 600, margin = (0.6.em, 0, 0.2.em, 1.9.em)),
     
     MediaRule(t"only screen and (max-width: 1000px)")(
       select(Main):
@@ -141,6 +142,7 @@ object styles:
       select(Nav):
         Css(height = 50.vh - 8.em, margin = (8.em, 0, 0, 0), width = 100.vw - 4.em)
     ),
+    
     MediaRule(t"only screen and (max-device-width: 768px)")(
       select(Main):
         Css(height = 50.vh, margin = (50.vh, 0, 0, 0), width = 100.vw - 4.em,
@@ -170,7 +172,7 @@ object Icons:
     case Extension, Param, Transparent, Sealed, Abstract, Inline, OpaqueOrOpen, Final, Lazy, Case
   
   enum Entity:
-    case Package, Def, Trait, Given, Enum, Case, Class, Val, Var, Type, Object, ClassObject
+    case Package, Def, Trait, Given, Enum, Case, Class, Val, Var, Type, Object, Cclass
 
   case class Icon(entity: Entity, qualifiers: List[Qualifier]):
     def filename: Text =

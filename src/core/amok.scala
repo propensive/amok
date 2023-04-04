@@ -16,7 +16,7 @@
 
 package amok
 
-import Docs.Dictionary
+//import Docs.Dictionary
 
 import eucalyptus.*
 import anticipation.*
@@ -41,12 +41,10 @@ case class Scope(packages: Set[List[Text]]):
   def prefix(path: List[Text]): Text =
     if packages.contains(path) then t"" else t"${path.join(t".")}."
 
-case class Info(name: Text, modifiers: List[Text], signature: Text)
-
 object Amok:
-  def inspect[FileType: GenericFileReader](tastyFiles: Seq[FileType]): Docs =
+  def inspect[FileType: GenericFileReader](tastyFiles: Seq[FileType]): Unit =
     case class DocInspector() extends Inspector:
-      private var rootDocs: Docs = Docs(t"_root_", t"", Unset, Unset, Dictionary(), Dictionary(), Unset)
+      //private var rootDocs: Docs = Docs(t"_root_", t"", Unset, Unset, Dictionary(), Dictionary(), Unset)
 
       def inspect(using Quotes)(tastys: List[Tasty[quotes.type]]): Unit =
         import quotes.reflect.*
@@ -58,11 +56,6 @@ object Amok:
           case Ident(base)        => base.show :: xs
           case Select(parent, id) => pname(parent, id.show :: xs)
           
-        def info(valDef: quotes.reflect.ValDef): Unit =
-          val ValDef(name, returnType, _) = valDef
-          val sym = valDef.symbol
-          val flags = sym.flags
-        
         def showType(using scope: Scope)(repr: quotes.reflect.TypeRepr, parens: Boolean = false): Text =
           repr.asMatchable match
             case AppliedType(base, args)           =>
@@ -77,14 +70,13 @@ object Amok:
             case OrType(left, right)               => t"${showType(left, true)} | ${showType(right, true)}"
             case AndType(left, right)              => t"${showType(left, true)} & ${showType(right, true)}"
             case TermRef(prefix, name)             => t"$name.type"
-            case TypeLambda(from, to, tpe)         => t"[${from.mkString(", ")}] =>> ${showType(tpe, true)}" // FIXME show bounds
-            case TypeBounds(lb, ub)                => t"? >: ${showType(lb, true)} <: ${showType(ub, true)}}" // FIXME
+            case TypeLambda(from, to, tpe)         => t"[${from.mkString(", ")}] =>> ${showType(tpe, true)}"
+            case TypeBounds(lb, ub)                => t"? >: ${showType(lb, true)} <: ${showType(ub, true)}}" // FIXME: hide Any/Nothing
             
             case ref: dotty.tools.dotc.core.Types.TypeParamRef =>
               ref.binder match { case TypeLambda(params, _, _) => params(ref.paramNum).show }
         
             case other =>
-              println("Unmatched: "+other)
               t"???"
         
         def captures(using scope: Scope)(term: quotes.reflect.Term): Text =
@@ -100,14 +92,14 @@ object Amok:
           import Icons.*
           var entity: Entity = entityType
           var qualifiers: Set[Qualifier] = Set()
-          if entity != Entity.Package then
-            if flags.is(Flags.Mutable) then entity = Entity.Var
-            else if flags.is(Flags.Given) || flags.is(Flags.Implicit) then entity = Entity.Given
-            else if flags.is(Flags.Enum | Flags.Case) then entity = Entity.Case
-            else if flags.is(Flags.Enum) then entity = Entity.Enum
-            else if flags.is(Flags.Trait) then entity = Entity.Trait
-            else
-              if flags.is(Flags.Module) then entity = Entity.Object
+          if flags.is(Flags.Package) then entity = Entity.Package
+          else if flags.is(Flags.Mutable) then entity = Entity.Var
+          else if flags.is(Flags.Given) || flags.is(Flags.Implicit) then entity = Entity.Given
+          else if flags.is(Flags.Enum | Flags.Case) then entity = Entity.Case
+          else if flags.is(Flags.Enum) then entity = Entity.Enum
+          else if flags.is(Flags.Trait) then entity = Entity.Trait
+          else
+            if flags.is(Flags.Module) then entity = Entity.Object
           //if flags.is(Flags.Final) then qualifiers += Qualifier.Final
           
           if flags.is(Flags.Lazy) then qualifiers += Qualifier.Lazy
@@ -121,45 +113,45 @@ object Amok:
 
           Icons.Icon(entity, qualifiers.to(List))
 
-        def walk(docs: Docs, ast: Tree, imports: List[Text]): Docs = ast match
+        def walk(ast: Tree, path: DocPath): Unit = ast match
           case pc@PackageClause(id@Ident(name), body) =>
-            docs.addTerm(body.foldLeft(Docs(name.show, icon(Icons.Entity.Package, pc.symbol.flags).filename))(walk(_, _, t"${name.show}." :: imports)))
+            DocNode(path / name.show) = NodeInfo(name.show, icon(Icons.Entity.Package, pc.symbol.flags))
+            body.foreach(walk(_, path / name.show))
             
           case valDef@ValDef(name, rtn, body) if !(valDef.symbol.flags.is(Synthetic) || valDef.symbol.flags.is(Private) || name == "_") =>
-            val termName = if valDef.symbol.flags.is(Given) && name.startsWith("given_") then showType(rtn.tpe) else name.show
-            docs.addTerm(body.foldLeft(Docs(termName.show, icon(Icons.Entity.Val, valDef.symbol.flags).filename))(walk(_, _, imports)))
+            val termName = if valDef.symbol.flags.is(Given) && (name.startsWith("given_") || name.startsWith("evidence$")) then showType(rtn.tpe) else name.show
+            DocNode(path / termName.show) = NodeInfo(termName, icon(Icons.Entity.Val, valDef.symbol.flags))
+            body.foreach(walk(_, path / termName.show))
 
-          case classDef@ClassDef(name, b, c, None, body) if !classDef.symbol.flags.is(Synthetic | Private | PrivateLocal) =>
-            docs.addType(body.foldLeft(Docs(name.show, icon(Icons.Entity.Class, classDef.symbol.flags).filename))(walk(_, _, imports)))
-
-          case classDef@ClassDef(name, b, c, Some(companion), body) if !classDef.symbol.flags.is(Synthetic | Private | PrivateLocal) =>
-            if name.endsWith("$package$") then body.foldLeft(docs)(walk(_, _, imports))
+          case classDef@ClassDef(name, _, _, companion, body) =>
+            if name.endsWith("$package$") then body.foreach(walk(_, path))
             else
-              val docs2 = docs.addTerm(body.foldLeft(Docs(if name.show.ends(t"$$") then name.show.drop(1, Rtl) else name.show,
-                  icon(Icons.Entity.Class, classDef.symbol.flags).filename))(walk(_, _, imports)))
-              walk(docs2, companion, imports)
+              val className = if name.endsWith("$") then name.show.drop(1, Rtl) else name.show
+              DocNode(path /# className) = NodeInfo(className, icon(if companion.isEmpty then Icons.Entity.Class else Icons.Entity.Cclass, classDef.symbol.flags))
+              body.foreach(walk(_, path /# className))
+              companion.foreach: companion =>
+                DocNode(path / className) = NodeInfo(className, icon(Icons.Entity.Class, companion.symbol.flags))
+                walk(companion, path / className)
 
           case term@DefDef(name, params, rtn, body) if !term.symbol.flags.is(Synthetic) && !term.symbol.flags.is(Private) && !name.contains("$default$") =>
             val termName = if term.symbol.flags.is(Given) && name.startsWith("given_") then showType(rtn.tpe) else name.show
-            val flags = term.symbol.flags
-            if flags.is(Given) then
-              docs.addTerm(params.flatMap(_.params).foldLeft(Docs(termName, icon(Icons.Entity.Def, term.symbol.flags).filename))(walk(_, _, imports)))
-            else
-              docs.addTerm(params.flatMap(_.params).foldLeft(Docs(termName, icon(Icons.Entity.Def, term.symbol.flags).filename))(walk(_, _, imports)))
+            val newPath = path / termName
+            DocNode(newPath) = NodeInfo(termName, icon(Icons.Entity.Def, term.symbol.flags))
+            params.flatMap(_.params).foreach(walk(_, newPath))
             
           case typeDef@TypeDef(name, a) if name != "MirroredMonoType" =>
-            docs.addType(Docs(name.show, icon(Icons.Entity.Type, typeDef.symbol.flags).filename))
+            DocNode(path /# name.show) = NodeInfo(name.show, icon(Icons.Entity.Type, typeDef.symbol.flags))
 
-          case Export(name, x) =>
-            walk(docs, name, imports)
-        
-          case other =>
-            docs
+          case Export(_, _) =>
+            ()
           
-        rootDocs = tastys.foldLeft(rootDocs): (docs, tasty) =>
-          walk(docs, tasty.ast, List(t"scala."))
+          case other =>
+            ()
+            
+        tastys.foreach: tasty =>
+          walk(tasty.ast, DocPath(Nil))
       
-      def apply(): Docs = rootDocs
+      //def apply(): Docs = rootDocs
     
     val inspector = DocInspector()
     val files = tastyFiles.to(List).map(summon[GenericFileReader[FileType]].filePath(_))
@@ -171,4 +163,4 @@ object Amok:
         err.printStackTrace()
         println(s"Failed to read file $file")
 
-    inspector()
+    //inspector()
