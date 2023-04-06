@@ -22,10 +22,12 @@ import eucalyptus.*
 import anticipation.*
 import gossamer.*
 import rudiments.{Cursor as _, is as _, *}
+
 import scala.quoted.*
 import scala.tasty.inspector.*
 import scala.tasty.*
 import scala.compiletime.*
+import scala.collection.mutable as scm
 
 import unsafeExceptions.canThrowAny
 
@@ -41,10 +43,13 @@ case class Scope(packages: Set[List[Text]]):
   def prefix(path: List[Text]): Text =
     if packages.contains(path) then t"" else t"${path.join(t".")}."
 
+case class Info(name: Text, icon: Icons.Icon)
+
 object Amok:
-  def inspect[FileType: GenericFileReader](tastyFiles: Seq[FileType]): Unit =
+  def inspect[FileType: GenericFileReader](tastyFiles: Seq[FileType]): Db =
+    val db: Db = Db()
+    
     case class DocInspector() extends Inspector:
-      //private var rootDocs: Docs = Docs(t"_root_", t"", Unset, Unset, Dictionary(), Dictionary(), Unset)
 
       def inspect(using Quotes)(tastys: List[Tasty[quotes.type]]): Unit =
         import quotes.reflect.*
@@ -113,34 +118,32 @@ object Amok:
 
           Icons.Icon(entity, qualifiers.to(List))
 
-        def walk(ast: Tree, path: DocPath): Unit = ast match
+        def walk(ast: Tree, path: Path): Unit = ast match
           case pc@PackageClause(id@Ident(name), body) =>
-            DocNode(path / name.show) = NodeInfo(name.show, icon(Icons.Entity.Package, pc.symbol.flags))
-            body.foreach(walk(_, path / name.show))
+            db((path / name.show).asTerm) = Info(name.show, icon(Icons.Entity.Package, pc.symbol.flags))
+            body.foreach(walk(_, (path / name.show).asTerm))
             
           case valDef@ValDef(name, rtn, body) if !(valDef.symbol.flags.is(Synthetic) || valDef.symbol.flags.is(Private) || name == "_") =>
             val termName = if valDef.symbol.flags.is(Given) && (name.startsWith("given_") || name.startsWith("evidence$")) then showType(rtn.tpe) else name.show
-            DocNode(path / termName.show) = NodeInfo(termName, icon(Icons.Entity.Val, valDef.symbol.flags))
-            body.foreach(walk(_, path / termName.show))
+            db((path / termName).asTerm) = Info(termName, icon(Icons.Entity.Val, valDef.symbol.flags))
+            body.foreach(walk(_, (path / termName).asTerm))
 
-          case classDef@ClassDef(name, _, _, companion, body) =>
+          case classDef@ClassDef(name, defDef, _, companion, body) =>
             if name.endsWith("$package$") then body.foreach(walk(_, path))
             else
               val className = if name.endsWith("$") then name.show.drop(1, Rtl) else name.show
-              DocNode(path /# className) = NodeInfo(className, icon(if companion.isEmpty then Icons.Entity.Class else Icons.Entity.Cclass, classDef.symbol.flags))
-              body.foreach(walk(_, path /# className))
-              companion.foreach: companion =>
-                DocNode(path / className) = NodeInfo(className, icon(Icons.Entity.Class, companion.symbol.flags))
-                walk(companion, path / className)
+              db((path / className).asType) = Info(className, icon(if companion.isEmpty then Icons.Entity.Class else Icons.Entity.Cclass, classDef.symbol.flags))
+              //walk(defDef, (path / className).asType)
+              companion.foreach(walk(_, (path / className).asTerm))
+              body.foreach(walk(_, (path / className).asType))
 
           case term@DefDef(name, params, rtn, body) if !term.symbol.flags.is(Synthetic) && !term.symbol.flags.is(Private) && !name.contains("$default$") =>
             val termName = if term.symbol.flags.is(Given) && name.startsWith("given_") then showType(rtn.tpe) else name.show
-            val newPath = path / termName
-            DocNode(newPath) = NodeInfo(termName, icon(Icons.Entity.Def, term.symbol.flags))
-            params.flatMap(_.params).foreach(walk(_, newPath))
+            db((path / termName).asType) = Info(termName, icon(Icons.Entity.Def, term.symbol.flags))
+            params.flatMap(_.params).foreach(walk(_, (path / termName).asTerm))
             
           case typeDef@TypeDef(name, a) if name != "MirroredMonoType" =>
-            DocNode(path /# name.show) = NodeInfo(name.show, icon(Icons.Entity.Type, typeDef.symbol.flags))
+            db((path / name.show).asType) = Info(name.show, icon(Icons.Entity.Type, typeDef.symbol.flags))
 
           case Export(_, _) =>
             ()
@@ -149,7 +152,7 @@ object Amok:
             ()
             
         tastys.foreach: tasty =>
-          walk(tasty.ast, DocPath(Nil))
+          walk(tasty.ast, Path.Root)
       
       //def apply(): Docs = rootDocs
     
@@ -163,4 +166,27 @@ object Amok:
         err.printStackTrace()
         println(s"Failed to read file $file")
 
-    //inspector()
+    db
+
+class Db():
+  private object data:
+    val info: scm.Map[Name, Info] = scm.HashMap()
+    val types: scm.Map[Path, scm.ListBuffer[Path.Type]] = scm.HashMap()
+    val terms: scm.Map[Path, scm.ListBuffer[Path.Term]] = scm.HashMap()
+
+  def update(path: Path, info: Info): Unit =
+    path match
+      case path@Path.Type(parent, id) => data.types.getOrElseUpdate(parent, scm.ListBuffer()).append(path)
+      case path@Path.Term(parent, id) => data.terms.getOrElseUpdate(parent, scm.ListBuffer()).append(path)
+    
+    path match
+      case Name(name) => data.info(name) = info
+      case _               => ()
+  
+  def types(path: Path): List[Path.Type] = data.types.get(path).map(_.to(List)).getOrElse(Nil)
+  def terms(path: Path): List[Path.Term] = data.terms.get(path).map(_.to(List)).getOrElse(Nil)
+
+  def children(path: Path): List[Name] =
+    (types(path) ++ terms(path)).to(Set).collect { case Name(name) => name }.to(List).sortBy(_.id)
+
+  def info(name: Name): Info = data.info(name)

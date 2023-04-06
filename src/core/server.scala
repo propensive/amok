@@ -33,7 +33,7 @@ import unsafeExceptions.canThrowAny
 @main
 def run(): Unit =
   try
-    val docs = unsafely:
+    val db = unsafely:
       val dirs = List(Unix.parse(t"/home/propensive/work/amok/out").directory(Expect))
       val tastyFiles = dirs.flatMap(_.descendants.filter(_.name.ends(t".tasty")).files)
       Amok.inspect(tastyFiles)
@@ -43,8 +43,8 @@ def run(): Unit =
         case ^ / t"styles" / t"amok.css" => Response(styles.main)
         case ^ / t"fonts" / name         => Response(Ttf(data.font(name)))
         case ^ / t"images" / name        => Response(Svg(data.image(name)))
-        case ^ / t"info" / path          => Response(pages.info(DocPath.parse(path.s)))
-        case _                           => Response(pages.main)
+        case ^ / t"info" / path          => Response(pages.info(db, Name.fromUrl(path)))
+        case _                           => Response(pages.main(db))
     
     server.task.await()
     

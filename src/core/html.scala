@@ -27,36 +27,22 @@ import cataclysm.*
 object pages:
   val count: Counter = Counter(0)
 
-  def render(node: DocNode, prefix: Text, path: DocPath, isType: Boolean): List[Element["li"]] =
-    (node.terms.keys ++ node.types.keys).to(List).sorted.zipWithIndex.map: (name, idx) =>
-      val list: List[Element[Flow]] = if node.terms.contains(name) && node.types.contains(name) then
-        println("Mixed: "+name+" "+node.terms(name).info+" "+node.types(name).info)
-        val terms = render(node.terms(name), t"$prefix-$idx", path / name, false)
-        val types = render(node.types(name), t"$prefix-$idx", path /# name, true)
-        
-        List(
-          if types.isEmpty then Nil else List(Ul(types)),
-          if terms.isEmpty then Nil else List(H3(t"Companion")),
-          if terms.isEmpty then Nil else List(Ul(terms))
-        ).flatten
-
-      else if node.terms.contains(name) then
-        val terms = render(node.terms(name), t"$prefix-$idx", path / name, false)
-        if terms.isEmpty then Nil else List(Ul(terms))
-      else
-        val types = render(node.types(name), t"$prefix-$idx", path /# name, true)
-        if types.isEmpty then Nil else List(Ul(types))
-      
-      val newPath = if node.terms.isEmpty then path /# name else path / name
-      
-      val info = node.types.get(name).getOrElse(node.terms(name)).info
-      
-      Li(tabindex = count())(
-        Label(`for` = t"$prefix-$idx", style = Css(backgroundImage = unsafely(^ / p"images" / info.option.map(_.icon.filename).getOrElse(t"object.svg"))))(
-          A(href = unsafely(^ / p"info" / newPath.url), target = t"main")(name)
+  def render(db: Db, prefix: Text, path: Path, italic: Boolean = false): List[Element["li"]] =
+    db.children(path).zipWithIndex.map: (item, idx) =>
+      val info = db.info(item).option.get
+      val typeChildren = render(db, t"$prefix-$idx", item.asType, true)
+      val termChildren = render(db, t"$prefix-$idx", item.asTerm)
+      Li(
+        Label(`for` = t"$prefix-$idx", style = Css(backgroundImage = unsafely(^ / p"images" / info.icon.filename)))(
+          A(href = unsafely(^ / p"info" / item.url), target = t"main")(if italic then Em(item.id) else B(item.id))
         ),
         Input(id = t"$prefix-$idx", htype = HType.Checkbox),
-        if list.isEmpty then Nil else List(Div(list))
+        if typeChildren.isEmpty && termChildren.isEmpty then Nil else List(Div(
+          List(
+            if typeChildren.isEmpty then Nil else List(Ul(typeChildren)),
+            if termChildren.isEmpty then Nil else List(Ul(termChildren))
+          ).flatten
+        ))
       )
 
   def template(title: Text, body: Element["header" | "main" | "nav"]*): HtmlDoc = HtmlDoc(
@@ -70,7 +56,7 @@ object pages:
     )
   )
 
-  val main: HtmlDoc = HtmlDoc(
+  def main(db: Db): HtmlDoc = HtmlDoc(
     Html(
       Head(
         Title(t"Amok Documentation"),
@@ -88,15 +74,15 @@ object pages:
         Nav(
           H2(t"API Documentation"),
           Input(name = t"filter"),
-          Ul(render(DocNode.root, t"i", DocPath(Nil), false))
+          Ul(render(db, t"i", Path.Root))
         ),
         Footer()
       )
     )
   )
   
-  def info(path: DocPath): HtmlDoc =
-    DocNode.unapply(path) match
+  def info(db: Db, path: Name): HtmlDoc =
+    db.info(path).option match
       case None =>
         HtmlDoc(
           Html(
@@ -115,12 +101,11 @@ object pages:
               Link(rel = Rel.Stylesheet, href = ^ / p"styles" / p"amok.css")
             ),
             Body(
-              H2(Code(path.init.text)),
-              H1(Code(t"${path.last}")),
+              H2(Code(path.path.text)),
+              H1(Code(t"${path.id}")),
               H2(t"About Amok"),
               P(t"Welcome to Amok, an API tool for Scala and other languages. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet."),
               Pre(t"This is some code.")
             )
           )
         )
-
