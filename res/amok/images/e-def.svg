@@ -49,33 +49,30 @@
      inkscape:current-layer="svg8307" />
   <defs
      id="defs8304" />
+  <rect
+     y="3.214287"
+     x="3.209048"
+     height="3.5714283"
+     width="3.5766685"
+     id="rect4759-9-8-2-6"
+     style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.00893508;stroke-dasharray:none;stroke-opacity:1" />
   <g
-     id="g5849">
+     id="g5827"
+     transform="translate(3.8708558,-2.855825)">
     <rect
-       style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.00893508;stroke-dasharray:none;stroke-opacity:1"
-       id="rect4759-9-8-2-6"
-       width="3.5766685"
-       height="3.5714283"
-       x="3.5714273"
-       y="3.2142923" />
-    <g
-       transform="translate(4.2332351,-2.8558198)"
-       id="g5827">
-      <rect
-         style="opacity:1;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.00553284;stroke-dasharray:none;stroke-opacity:1"
-         id="rect4877"
-         width="0.71428567"
-         height="2.1428568"
-         x="3.6278236"
-         y="3.9285781" />
-      <rect
-         style="opacity:1;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.00553284;stroke-dasharray:none;stroke-opacity:1"
-         id="rect4877-6"
-         width="0.71428567"
-         height="2.1428568"
-         x="-5.3571496"
-         y="2.913538"
-         transform="rotate(-90)" />
-    </g>
+       y="3.9285781"
+       x="3.6278236"
+       height="2.1428568"
+       width="0.71428567"
+       id="rect4877"
+       style="opacity:1;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.00553284;stroke-dasharray:none;stroke-opacity:1" />
+    <rect
+       transform="rotate(-90)"
+       y="2.913538"
+       x="-5.3571496"
+       height="2.1428568"
+       width="0.71428567"
+       id="rect4877-6"
+       style="opacity:1;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.00553284;stroke-dasharray:none;stroke-opacity:1" />
   </g>
 </svg>

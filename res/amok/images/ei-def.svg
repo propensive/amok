@@ -36,49 +36,28 @@
      guidetolerance="10"
      inkscape:pageopacity="0"
      inkscape:pageshadow="2"
-     inkscape:window-width="1852"
-     inkscape:window-height="1360"
+     inkscape:window-width="2256"
+     inkscape:window-height="1481"
      id="namedview5871"
      showgrid="false"
      inkscape:zoom="8.8305043"
-     inkscape:cx="18.897865"
+     inkscape:cx="-0.41020555"
      inkscape:cy="18.897811"
-     inkscape:window-x="0"
-     inkscape:window-y="0"
-     inkscape:window-maximized="0"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
      inkscape:current-layer="svg8307" />
   <defs
      id="defs8304" />
-  <rect
-     style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.00691609;stroke-dasharray:none;stroke-opacity:1"
-     id="rect4759-9-8-2"
-     width="2.1428828"
-     height="3.571461"
-     x="3.5766249"
-     y="3.2143843" />
-  <rect
-     style="opacity:1;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.00714293;stroke-dasharray:none;stroke-opacity:1"
-     id="rect4877-7-05"
-     width="0.71429431"
-     height="3.571461"
-     x="6.4338021"
-     y="3.2143843" />
-  <rect
-     style="opacity:1;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.00714293;stroke-dasharray:none;stroke-opacity:1"
-     id="rect4879-2-5"
-     width="0.71429431"
-     height="3.571461"
-     x="2.1480365"
-     y="3.2143843" />
   <g
-     id="g5827"
-     transform="translate(4.2332354,-2.8557283)">
+     id="g5827-9"
+     transform="translate(3.8708562,-2.8557333)">
     <rect
        y="3.9285781"
        x="3.6278236"
        height="2.1428568"
        width="0.71428567"
-       id="rect4877"
+       id="rect4877-5"
        style="opacity:1;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.00553284;stroke-dasharray:none;stroke-opacity:1" />
     <rect
        transform="rotate(-90)"
@@ -86,7 +65,36 @@
        x="-5.3571496"
        height="2.1428568"
        width="0.71428567"
-       id="rect4877-6"
+       id="rect4877-6-8"
        style="opacity:1;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.00553284;stroke-dasharray:none;stroke-opacity:1" />
+  </g>
+  <g
+     id="layer1"
+     transform="translate(-55.789184,-178.49037)">
+    <g
+       id="g4969"
+       transform="matrix(0.07142857,0,0,0.07142857,24.00347,153.13332)">
+      <rect
+         style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.0968242;stroke-dasharray:none;stroke-opacity:1"
+         id="rect4759-9"
+         width="30"
+         height="50"
+         x="500"
+         y="400" />
+      <rect
+         style="opacity:1;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1"
+         id="rect4877"
+         width="10"
+         height="50"
+         x="540"
+         y="400" />
+      <rect
+         style="opacity:1;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1"
+         id="rect4879"
+         width="10"
+         height="50"
+         x="480"
+         y="400" />
+    </g>
   </g>
 </svg>
