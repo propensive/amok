@@ -12,15 +12,16 @@ repo propensive/jacinta
 repo propensive/scintillate
 
 project amok
+  module model
+    sources src/model
+    include gossamer/core serpentine/core
+
   module core
     sources src/core
     main amok.run
-    include gossamer/core cellulose/core xylophone/core profanity/core guillotine/core acyclicity/core galilei/core scintillate/server jacinta/core cataclysm/core honeycomb/core
+    include amok/model gossamer/core cellulose/core xylophone/core profanity/core guillotine/core acyclicity/core galilei/core scintillate/server jacinta/core cataclysm/core honeycomb/core
 
   module test
-    include amok/core probably/cli amok/entities
+    include amok/core probably/cli
     sources src/test
     main amok.Tests
-
-  module entities
-    sources src/entities
