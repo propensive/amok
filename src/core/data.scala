@@ -20,7 +20,7 @@ import turbulence.*, characterEncodings.utf8
 import galilei.*
 import rudiments.*
 import serpentine.*
-import deviation.*
+import digression.*
 
 object data:
   private val classpath = Classpath()

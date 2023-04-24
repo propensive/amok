@@ -17,7 +17,7 @@
 package amok
 
 import cellulose.*
-import deviation.*
+import digression.*
 import galilei.*, filesystems.unix
 import gossamer.*
 import anticipation.*, fileApi.galileiApi

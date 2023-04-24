@@ -16,7 +16,7 @@
 
 package amok
 
-import deviation.*
+import digression.*
 import gesticulate.*
 import gossamer.*
 import honeycomb.*
