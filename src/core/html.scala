@@ -21,7 +21,7 @@ import gesticulate.*
 import gossamer.*
 import honeycomb.*
 import rudiments.*
-import serpentine.*
+import serpentine.*, hierarchies.simple
 import cataclysm.*
 
 object pages:
@@ -33,8 +33,8 @@ object pages:
       val typeChildren = render(db, t"$prefix-$idx", item.asType, true)
       val termChildren = render(db, t"$prefix-$idx", item.asTerm)
       Li(
-        Label(`for` = t"$prefix-$idx", style = Css(backgroundImage = unsafely(^ / p"images" / info.icon.filename)))(
-          A(href = unsafely(^ / p"info" / item.url), target = t"main")(if italic then Em(item.id) else B(item.id))
+        Label(`for` = t"$prefix-$idx", style = Css(backgroundImage = unsafely(% / p"images" /- info.icon.filename)))(
+          A(href = unsafely(% / p"info" /- item.url), target = t"main")(if italic then Em(item.id) else B(item.id))
         ),
         Input(id = t"$prefix-$idx", htype = HType.Checkbox),
         if typeChildren.isEmpty && termChildren.isEmpty then Nil else List(Div(
@@ -49,8 +49,8 @@ object pages:
     Html(
       Head(
         Title(t"Amok: $title"),
-        Link(rel = Rel.Stylesheet, href = ^ / p"styles" / p"amok.css"),
-        Link(rel = Rel.Icon, htype = media"image/svg+xml", href = ^ / p"images" / p"logo.svg")
+        Link(rel = Rel.Stylesheet, href = % / p"styles" / p"amok.css"),
+        Link(rel = Rel.Icon, htype = media"image/svg+xml", href = % / p"images" / p"logo.svg")
       ),
       Body(List(body*))
     )
@@ -60,17 +60,17 @@ object pages:
     Html(
       Head(
         Title(t"Amok Documentation"),
-        Link(rel = Rel.Stylesheet, href = ^ / p"styles" / p"amok.css"),
-        Link(rel = Rel.Icon, htype = media"image/svg+xml", href = ^ / p"images" / p"logo.svg")
+        Link(rel = Rel.Stylesheet, href = % / p"styles" / p"amok.css"),
+        Link(rel = Rel.Icon, htype = media"image/svg+xml", href = % / p"images" / p"logo.svg")
       ),
       Body(
         Header(Ul(
-          Li(A(href = ^)(t"HOME")),
-          Li(A(href = ^ / p"about")(t"ABOUT AMOK")),
-          Li(A(href = ^ / p"ref")(t"REFERENCE")),
-          Li(A(href = ^ / p"kill")(t"CONTRIBUTE"))
+          Li(A(href = %)(t"HOME")),
+          Li(A(href = % / p"about")(t"ABOUT AMOK")),
+          Li(A(href = % / p"ref")(t"REFERENCE")),
+          Li(A(href = % / p"kill")(t"CONTRIBUTE"))
         )),
-        Main(Iframe(name = t"main", src = ^ / p"info" / p"welcome")),
+        Main(Iframe(name = t"main", src = % / p"info" / p"welcome")),
         Nav(
           H2(t"API Documentation"),
           Input(name = t"filter"),
@@ -88,7 +88,7 @@ object pages:
           Html(
             Head(
               Title(t"Amok: not found ${path.text}"),
-              Link(rel = Rel.Stylesheet, href = ^ / p"styles" / p"amok.css")
+              Link(rel = Rel.Stylesheet, href = % / p"styles" / p"amok.css")
             ),
             Body(H1(t"Not Found: ${path.text}"))
           )
@@ -98,7 +98,7 @@ object pages:
           Html(
             Head(
               Title(t"Amok: ${path.text}"),
-              Link(rel = Rel.Stylesheet, href = ^ / p"styles" / p"amok.css")
+              Link(rel = Rel.Stylesheet, href = % / p"styles" / p"amok.css")
             ),
             Body(
               H2(Code(path.path.text)),

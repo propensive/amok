@@ -21,6 +21,7 @@ package amok
 import eucalyptus.*
 import anticipation.*
 import gossamer.*
+import spectacular.*
 import rudiments.{Cursor as _, is as _, *}
 
 import scala.quoted.*
@@ -160,7 +161,7 @@ object Amok:
     val files = tastyFiles.to(List).map(summon[GenericFileReader[FileType]].filePath(_))
     
     for file <- files do
-      try TastyInspector.inspectTastyFiles(List(file))(inspector)
+      try TastyInspector.inspectTastyFiles(List(file.s))(inspector)
       catch case err: Exception =>
         println(err)
         err.printStackTrace()

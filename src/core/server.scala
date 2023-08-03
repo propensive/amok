@@ -18,15 +18,17 @@ package amok
 
 import cellulose.*
 import digression.*
-import galilei.*, filesystems.unix
+import galilei.*
 import gossamer.*
 import anticipation.*, fileApi.galileiApi
 import scintillate.*
-import serpentine.*
-import parasitism.*, monitors.global
+import spectacular.*
+import serpentine.*, hierarchies.simple
+import parasite.*, monitors.global
 import rudiments.*
 import eucalyptus.*, logging.stdout
-import turbulence.*, characterEncodings.utf8, basicIo.jvm
+import turbulence.*, basicIo.jvm
+import hieroglyph.*, charEncoders.utf8
 
 import unsafeExceptions.canThrowAny
 
@@ -34,16 +36,16 @@ import unsafeExceptions.canThrowAny
 def run(): Unit =
   try
     val db = unsafely:
-      val dirs = List(Unix.parse(t"/home/propensive/work/amok/out").directory(Expect))
+      val dirs = List(t"/home/propensive/work/amok/out".decodeAs[Path].as[Directory])
       val tastyFiles = dirs.flatMap(_.descendants.filter(_.name.ends(t".tasty")).files)
       Amok.inspect(tastyFiles)
     
     lazy val server: ActiveServer = HttpServer(8080).listen:
       request.path match
-        case ^ / t"styles" / t"amok.css" => Response(styles.main)
-        case ^ / t"fonts" / name         => Response(Ttf(data.font(name)))
-        case ^ / t"images" / name        => Response(Svg(data.image(name)))
-        case ^ / t"info" / path          => Response(pages.info(db, Name.fromUrl(path)))
+        case % / p"styles" / p"amok.css" => Response(styles.main)
+        case % / p"fonts" / name         => Response(Ttf(data.font(name)))
+        case % / p"images" / name        => Response(Svg(data.image(name)))
+        case % / p"info" / path          => Response(pages.info(db, Name.fromUrl(path)))
         case _                           => Response(pages.main(db))
     
     server.task.await()

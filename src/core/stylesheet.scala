@@ -19,9 +19,11 @@ package amok
 import cataclysm.*, pseudo.*
 import honeycomb.*
 import gossamer.*
+import anticipation.*
 import iridescence.*
+import spectacular.*
 import rudiments.*
-import serpentine.*
+import serpentine.*, hierarchies.simple
 
 object styles:
   
@@ -42,7 +44,7 @@ object styles:
     select(Header):
       Css(position = Position.Absolute, margin = 0, height = 6.em, width = 100.vw - 6.em,
           padding = (0, 0, 0, 6.em), backgroundColor = rgb"#111111",
-          boxShadow = (0, 0, 1.em, rgb"#aaaaaa"), backgroundImage = ^ / p"images" / p"logo.svg",
+          boxShadow = (0, 0, 1.em, rgb"#aaaaaa"), backgroundImage = % / p"images" / p"logo.svg",
           backgroundRepeat = BackgroundRepeat.NoRepeat, backgroundSize = 4.em,
           backgroundPosition = t"1em"),
     
@@ -93,17 +95,17 @@ object styles:
       Css(textDecoration = TextDecorationLine.Underline),
 
     select(Li > Label):
-      Css(lineHeight = 1.5.em, backgroundImage = ^ / p"images" / p"type.svg",
+      Css(lineHeight = 1.5.em, backgroundImage = % / p"images" / p"type.svg",
           backgroundRepeat = BackgroundRepeat.NoRepeat, backgroundPosition = (3.5.em, -0.1.em),
           backgroundSize = 1.3.em, overflowX = Overflow.Hidden,
           padding = (0.em, 0.em, 0.em, 5.5.em)),
     
     select(Nav >> Li && has(Div)):
-      Css(backgroundImage = ^ / p"images" / p"more.svg", backgroundSize = 1.3.em,
+      Css(backgroundImage = % / p"images" / p"more.svg", backgroundSize = 1.3.em,
           backgroundRepeat = BackgroundRepeat.NoRepeat, backgroundPosition = (-0.35.em, -0.1.em)),
     
     select(Nav >> Li && has(Div) && has(Input&&checked)):
-      Css(backgroundImage = ^ / p"images" / p"less.svg", backgroundSize = 1.3.em,
+      Css(backgroundImage = % / p"images" / p"less.svg", backgroundSize = 1.3.em,
           backgroundRepeat = BackgroundRepeat.NoRepeat, backgroundPosition = (-0.35.em, -0.1.em)),
     
     select(Nav >> Li > Ul):
@@ -113,7 +115,7 @@ object styles:
       Css(borderStyle = BorderStyle.None, borderBottom = (BorderStyle.Solid, 1.px, rgb"#777777"),
           fontFamily = Font(t"Overpass Mono"), fontSize = 0.9.em, width = 20.em,
           marginLeft = -0.3.em, padding = (0, 0, 0.1.em, 1.9.em),
-          backgroundImage = ^ / p"images" / p"filter.svg", backgroundSize = 1.3.em,
+          backgroundImage = % / p"images" / p"filter.svg", backgroundSize = 1.3.em,
           backgroundRepeat = BackgroundRepeat.NoRepeat, backgroundPosition = (0.1.em, -0.2.em)),
     
     select(Nav > Input&&focus):

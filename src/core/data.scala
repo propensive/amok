@@ -16,9 +16,11 @@
 
 package amok
 
-import turbulence.*, characterEncodings.utf8
+import turbulence.*
+import hieroglyph.*, charEncoders.utf8
 import galilei.*
 import rudiments.*
+import anticipation.*
 import serpentine.*
 import digression.*
 
