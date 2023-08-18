@@ -6,7 +6,11 @@
 
 __A comprehensive API documentation system__
 
-TBC
+Amok is a comprehensive tool for authoring, maintaining and sharing software documentation, in various forms.
+
+Providing documentation for software is a human communication challenge, with the primary goal to give users the
+most correct, precise and up-to-date information that's available, and a secondary goal of facilitating the
+development and continuance of that information in pristine condition.
 
 ## Features
 
@@ -38,7 +42,7 @@ be used, but caution should be taken if there is a mismatch between the
 project's stability level and the importance of your own project.
 
 Amok is designed to be _small_. Its entire source code currently consists
-of 483 lines of code.
+of 486 lines of code.
 
 ## Building
 
