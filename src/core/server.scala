@@ -23,12 +23,13 @@ import gossamer.*
 import anticipation.*, fileApi.galileiApi
 import scintillate.*
 import spectacular.*
-import serpentine.*, hierarchies.simple
+import serpentine.*, hierarchies.unix
 import parasite.*, monitors.global
 import rudiments.*
 import eucalyptus.*, logging.stdout
 import turbulence.*, basicIo.jvm
 import hieroglyph.*, charEncoders.utf8
+import perforate.*, exceptionHandlers.throwUnsafely
 
 import unsafeExceptions.canThrowAny
 

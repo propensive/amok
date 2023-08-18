@@ -19,6 +19,7 @@ package amok
 import digression.*
 import gesticulate.*
 import gossamer.*
+import anticipation.*
 import honeycomb.*
 import rudiments.*
 import serpentine.*, hierarchies.simple

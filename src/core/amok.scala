@@ -47,7 +47,7 @@ case class Scope(packages: Set[List[Text]]):
 case class Info(name: Text, icon: Icons.Icon)
 
 object Amok:
-  def inspect[FileType: GenericFileReader](tastyFiles: Seq[FileType]): Db =
+  def inspect[FileType: GenericFile](tastyFiles: Seq[FileType]): Db =
     val db: Db = Db()
     
     case class DocInspector() extends Inspector:
@@ -158,7 +158,7 @@ object Amok:
       //def apply(): Docs = rootDocs
     
     val inspector = DocInspector()
-    val files = tastyFiles.to(List).map(summon[GenericFileReader[FileType]].filePath(_))
+    val files = tastyFiles.to(List).map(_.fileText)
     
     for file <- files do
       try TastyInspector.inspectTastyFiles(List(file.s))(inspector)
