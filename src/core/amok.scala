@@ -32,7 +32,7 @@ import scala.collection.mutable as scm
 
 import unsafeExceptions.canThrowAny
 
-given Realm = Realm(t"amok")
+given Realm = realm"amok"
 
 object Scope:
   given scope: Scope = Scope(Set(
