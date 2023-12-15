@@ -2,6 +2,7 @@ target amok/core
 
 repo propensive/xylophone
 repo propensive/profanity
+repo propensive/hellenism
 repo propensive/galilei
 repo propensive/honeycomb
 repo propensive/acyclicity
@@ -14,7 +15,7 @@ repo propensive/scintillate
 project amok
   module model
     sources src/model
-    include gossamer/core serpentine/core
+    include gossamer/core serpentine/core hellenism/core
 
   module core
     sources src/core

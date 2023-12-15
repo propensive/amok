@@ -17,15 +17,18 @@
 package amok
 
 import turbulence.*
-import hieroglyph.*, charEncoders.utf8
+import hieroglyph.*, charEncoders.utf8, charDecoders.utf8, badEncodingHandlers.strict
 import galilei.*
 import rudiments.*
 import perforate.*
 import anticipation.*
 import serpentine.*
 import digression.*
+import hellenism.*, classloaders.threadContext
 
 object data:
-  private val classpath = Classpath()
-  def font(name: Text): Bytes = unsafely((classpath / p"amok" / p"fonts" / name).read[Bytes])
-  def image(name: Text): Text = unsafely((classpath / p"amok" / p"images" / name).read[Text])
+  def font(name: PathName[ClasspathRef.Forbidden])(using Raises[ClasspathError]): Bytes =
+    (Classpath / p"amok" / p"fonts" / name)().readAs[Bytes]
+  
+  def image(name: PathName[ClasspathRef.Forbidden])(using Raises[ClasspathError], Raises[UndecodableCharError]): Text =
+    (Classpath / p"amok" / p"images" / name)().readAs[Text]

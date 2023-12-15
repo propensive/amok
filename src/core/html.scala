@@ -21,6 +21,7 @@ import gesticulate.*
 import gossamer.*
 import anticipation.*
 import honeycomb.*
+import perforate.*
 import rudiments.*
 import serpentine.*, hierarchies.simple
 import cataclysm.*
