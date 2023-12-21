@@ -76,7 +76,7 @@ object styles:
     select(Ul):
       Css(listStyle = t"none", padding = 0),
 
-    select(H1 > Code):
+    select(H1 >> Code):
       Css(fontFamily = Font(t"Overpass Mono"), fontWeight = 500, fontSize = 0.8.em),
     
     select(P):
@@ -94,7 +94,7 @@ object styles:
     select(Nav >> A&&hover):
       Css(textDecoration = TextDecorationLine.Underline),
 
-    select(Li > Label):
+    select(Li >> Label):
       Css(lineHeight = 1.5.em, backgroundImage = % / p"images" / p"type.svg",
           backgroundRepeat = BackgroundRepeat.NoRepeat, backgroundPosition = (3.5.em, -0.1.em),
           backgroundSize = 1.3.em, overflowX = Overflow.Hidden,
@@ -108,17 +108,17 @@ object styles:
       Css(backgroundImage = % / p"images" / p"less.svg", backgroundSize = 1.3.em,
           backgroundRepeat = BackgroundRepeat.NoRepeat, backgroundPosition = (-0.35.em, -0.1.em)),
     
-    select(Nav >> Li > Ul):
+    select(Nav >> Li >> Ul):
       Css(marginLeft = 0.em),
     
-    select(Nav > Input):
+    select(Nav >> Input):
       Css(borderStyle = BorderStyle.None, borderBottom = (BorderStyle.Solid, 1.px, rgb"#777777"),
           fontFamily = Font(t"Overpass Mono"), fontSize = 0.9.em, width = 20.em,
           marginLeft = -0.3.em, padding = (0, 0, 0.1.em, 1.9.em),
           backgroundImage = % / p"images" / p"filter.svg", backgroundSize = 1.3.em,
           backgroundRepeat = BackgroundRepeat.NoRepeat, backgroundPosition = (0.1.em, -0.2.em)),
     
-    select(Nav > Input&&focus):
+    select(Nav >> Input&&focus):
       Css(borderColor = rgb"#000000", outline = t"none"),
       
     select(Ul >> Input):

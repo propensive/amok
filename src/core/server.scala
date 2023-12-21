@@ -16,37 +16,42 @@
 
 package amok
 
+import anticipation.*, fileApi.galileiApi
+import cataclysm.*
 import cellulose.*
 import digression.*
+import eucalyptus.*, logging.silent
 import galilei.*, filesystemOptions.{dereferenceSymlinks, createNonexistent, createNonexistentParents}
 import gossamer.*
-import anticipation.*, fileApi.galileiApi
-import scintillate.*
-import spectacular.*
-import serpentine.*, hierarchies.unix
-import parasite.*
-import rudiments.*
-import eucalyptus.*, logging.stdout
-import turbulence.*, stdioSources.jvm
 import hieroglyph.*, charEncoders.utf8
+import parasite.*
 import perforate.*, errorHandlers.throwUnsafely
+import rudiments.*
+import scintillate.*
+import serpentine.*, hierarchies.simple
+import spectacular.*
+import turbulence.*, stdioSources.jvm
 
 import unsafeExceptions.canThrowAny
 
 @main
-def run(): Unit =
+def run(): Unit = supervise:
   try
     val db = unsafely:
       val dirs = List(t"/home/propensive/work/amok/out".decodeAs[Path].as[Directory])
-      val tastyFiles = dirs.flatMap(_.descendants.filter(_.name.ends(t".tasty")).files)
+      
+      val tastyFiles: List[File] =
+        dirs.flatMap(_.descendants.filter(_.is[File]).filter(_.name.ends(t".tasty"))).map(_.as[File]).to(List)
+      
+      import hierarchies.unix
       Amok.inspect(tastyFiles)
-    
+
     lazy val server: HttpService = HttpServer(8080).listen:
       request.path match
         case % / p"styles" / p"amok.css" => Response(styles.main)
-        case % / p"fonts" / name         => Response(Ttf(data.font(name)))
-        case % / p"images" / name        => Response(Svg(data.image(name)))
-        case % / p"info" / path          => Response(pages.info(db, Name.fromUrl(path)))
+        case % / p"fonts" / name         => Response(Ttf(data.font(PathName(name.render))))
+        case % / p"images" / name        => Response(Svg(data.image(PathName(name.render))))
+        case % / p"info" / path          => Response(pages.info(db, Name.fromUrl(path.render)))
         case _                           => Response(pages.main(db))
     
     server.async.await()

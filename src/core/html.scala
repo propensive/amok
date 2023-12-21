@@ -20,6 +20,7 @@ import digression.*
 import gesticulate.*
 import gossamer.*
 import anticipation.*
+import vacuous.*
 import honeycomb.*
 import perforate.*
 import rudiments.*
