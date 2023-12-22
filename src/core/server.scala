@@ -35,10 +35,10 @@ import turbulence.*, stdioSources.jvm
 import unsafeExceptions.canThrowAny
 
 @main
-def run(): Unit = supervise:
+def run(classpath: Text): Unit = supervise:
   try
     val db = unsafely:
-      val dirs = List(t"/home/propensive/work/amok/out".decodeAs[Path].as[Directory])
+      val dirs = classpath.cut(t":").filter(_ != t"").map(_.decodeAs[Path].as[Directory])
       
       val tastyFiles: List[File] =
         dirs.flatMap(_.descendants.filter(_.is[File]).filter(_.name.ends(t".tasty"))).map(_.as[File]).to(List)
