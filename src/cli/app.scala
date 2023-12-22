@@ -24,17 +24,28 @@ import exoskeleton.*, executives.completions, unhandledErrors.stackTrace, parame
 import eucalyptus.*
 import turbulence.*
 import gossamer.*
+import vacuous.*
 import anticipation.*
+import fulminate.*
 import perforate.*
+import ambience.*, environments.jvm, homeDirectories.default
+
+given (using Cli): WorkingDirectory = workingDirectories.daemonClient 
 
 @main
 def main(): Unit =
   unsafely:
     supervise:
       given Log[Output] = logging.silent[Output]
+      
+      val Classpath = Flag[Text](t"classpath", false, List('c'), t"Specify the classpath")
 
       daemon:
+        val classpath = Classpath()
         execute:
-          Out.println(t"Hello world")
+          Out.println(Installer.install().communicate)
+          Out.println(TabCompletions.install(force = true).communicate)
+          Out.println(t"Hello world!")
+          Out.println(t"The classpath is ${classpath.or(t"unknown")}")
           ExitStatus.Ok
 
