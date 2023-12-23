@@ -2,6 +2,7 @@ target amok/cli
 
 repo propensive/xylophone
 repo propensive/profanity
+repo propensive/punctuation
 repo propensive/hellenism
 repo propensive/galilei
 repo propensive/honeycomb
@@ -26,7 +27,7 @@ project amok
 
   module cli
     compiler  scala
-    include   amok/model spectral/core exoskeleton/completions exoskeleton/core escapade/core
+    include   amok/model spectral/core exoskeleton/completions exoskeleton/core escapade/core punctuation/core
     main      amok.main
     sources   src/cli
     artifact  amok
