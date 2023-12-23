@@ -23,14 +23,19 @@ import rudiments.*
 import exoskeleton.*, executives.completions, unhandledErrors.stackTrace, parameterInterpretation.posix
 import eucalyptus.*
 import turbulence.*
+import spectacular.*
 import gossamer.*
 import vacuous.*
-import anticipation.*
+import anticipation.*, fileApi.galileiApi
 import fulminate.*
 import perforate.*
+import galilei.*, filesystemOptions.{doNotCreateNonexistent, dereferenceSymlinks}
+import serpentine.*, hierarchies.unix
 import ambience.*, environments.jvm, homeDirectories.default
 
 given (using Cli): WorkingDirectory = workingDirectories.daemonClient 
+
+case class AmokError(details: Message) extends Error(details)
 
 @main
 def main(): Unit =
@@ -38,14 +43,34 @@ def main(): Unit =
     supervise:
       given Log[Output] = logging.silent[Output]
       
-      val Classpath = Flag[Text](t"classpath", false, List('c'), t"Specify the classpath")
+      val Classpath = Flag[Text](t"classpath", false, List('c'), t"specify the classpath")
+      val File = Flag[Text](t"file", false, List('f'), t"specify a file to check")
+      val Install = Subcommand(t"install", t"install the application")
+      val Check = Subcommand(t"check", t"check a markdown file")
 
       daemon:
-        val classpath = Classpath()
-        execute:
-          Out.println(Installer.install().communicate)
-          Out.println(TabCompletions.install(force = true).communicate)
-          Out.println(t"Hello world!")
-          Out.println(t"The classpath is ${classpath.or(t"unknown")}")
-          ExitStatus.Ok
+        safely(arguments.head) match
+          case Install() =>
+            execute:
+              Out.println(Installer.install().communicate)
+              Out.println(TabCompletions.install(force = true).communicate)
+              ExitStatus.Ok
+          
+          case Check() =>
+            val classpath = Classpath()
+            val file = File()
+            execute:
+              val file2 = file.or(abort(AmokError(msg"The file has not been specified")))
+              
+              val absolute = safely(file2.decodeAs[Path]).or:
+                workingDirectory.or(abort(AmokError(msg"There is no working directory"))) + file2.decodeAs[Unix.Link]
+              
+              Out.println(t"Hello world!")
+              Out.println(t"The classpath is ${classpath.or(t"unknown")}")
+              Out.println(t"The file is ${absolute}")
+              ExitStatus.Ok
 
+          case _ =>
+            execute:
+              Out.println(t"Unknown command")
+              ExitStatus.Fail(1)
