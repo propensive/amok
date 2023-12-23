@@ -62,8 +62,7 @@ def main(): Unit =
             execute:
               val file2 = file.or(abort(AmokError(msg"The file has not been specified")))
               
-              val absolute = safely(file2.decodeAs[Path]).or:
-                workingDirectory.or(abort(AmokError(msg"There is no working directory"))) + file2.decodeAs[Unix.Link]
+              val absolute = safely(file2.decodeAs[Path]).or(file2.decodeAs[Unix.Link].inWorkingDirectory)
               
               Out.println(t"Hello world!")
               Out.println(t"The classpath is ${classpath.or(t"unknown")}")
