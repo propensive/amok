@@ -7,6 +7,7 @@ repo propensive/hellenism
 repo propensive/galilei
 repo propensive/honeycomb
 repo propensive/acyclicity
+repo propensive/anthology
 repo propensive/guillotine
 repo propensive/cellulose
 repo propensive/cataclysm
@@ -27,7 +28,7 @@ project amok
 
   module cli
     compiler  scala
-    include   amok/model spectral/core exoskeleton/completions exoskeleton/core escapade/core punctuation/core
+    include   amok/model spectral/core exoskeleton/completions exoskeleton/core escapade/core punctuation/core jacinta/core cellulose/core anthology/core
     main      amok.main
     sources   src/cli
     artifact  amok

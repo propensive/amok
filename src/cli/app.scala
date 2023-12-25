@@ -22,20 +22,27 @@ import spectral.*
 import rudiments.*
 import exoskeleton.*, executives.completions, unhandledErrors.stackTrace, parameterInterpretation.posix
 import eucalyptus.*
+import anthology.*
 import turbulence.*
 import spectacular.*
 import gossamer.*
+import cellulose.*, codlPrinters.standard
 import vacuous.*
 import anticipation.*, fileApi.galileiApi
 import fulminate.*
 import perforate.*
+import punctuation.*
+import hellenism.*
 import galilei.*, filesystemOptions.{doNotCreateNonexistent, dereferenceSymlinks}
 import serpentine.*, hierarchies.unix
-import ambience.*, environments.jvm, homeDirectories.default
+import hieroglyph.*, charDecoders.utf8, badEncodingHandlers.strict
+import ambience.*, environments.jvm, homeDirectories.default, systemProperties.jvm
 
 given (using Cli): WorkingDirectory = workingDirectories.daemonClient 
 
 case class AmokError(details: Message) extends Error(details)
+case class Fragment(language: Language)
+case class Language(name: Text, version: Text)
 
 @main
 def main(): Unit =
@@ -61,12 +68,33 @@ def main(): Unit =
             val file = File()
             execute:
               val file2 = file.or(abort(AmokError(msg"The file has not been specified")))
+              val classpath2 = classpath.or(abort(AmokError(msg"The classpath has not been specified")))
+              val classpath3 = classpath2.cut(t":").map: path =>
+                safely(path.decodeAs[Path]).or(path.decodeAs[Unix.Link].inWorkingDirectory)
+
+              val markdown = safely(file2.decodeAs[Path]).or(file2.decodeAs[Unix.Link].inWorkingDirectory).as[File]
+              val content = markdown.readAs[Text]
               
-              val absolute = safely(file2.decodeAs[Path]).or(file2.decodeAs[Unix.Link].inWorkingDirectory)
+              Out.println(t"The classpath is ${classpath3.debug}")
+              Out.println(t"The file is ${markdown.path}")
               
-              Out.println(t"Hello world!")
-              Out.println(t"The classpath is ${classpath.or(t"unknown")}")
-              Out.println(t"The file is ${absolute}")
+              Out.println(Fragment(Language(t"test", t"1.0")).codl.show)
+              Out.println(Fragment(Language(t"test", t"1.0")).codl.schema.debug)
+              Out.println(Fragment(Language(t"test", t"1.0")).codl.children.debug)
+              
+              val fragments: Seq[Text] = Markdown.parse(content).nodes.collect:
+                case Markdown.Ast.Block.FencedCode(Some(t"amok"), meta, code) =>
+                  val codl: CodlDoc = Codl.parse(code)
+                  Out.println(codl.children.debug)
+                  Out.println(codl.show)
+                  safely(codl.as[Fragment]).or(Fragment(Language(t"unknown", t"0.0")))
+                  codl.body.foldLeft(t"")(_ + _.show)
+
+              for fragment <- fragments do
+                Out.println(t"Compiling...")
+                Compilation(Map(t"fragment" -> fragment), classpath3, workingDirectory)().foreach: diagnostic =>
+                  Out.println(diagnostic.toString.tt)
+
               ExitStatus.Ok
 
           case _ =>
