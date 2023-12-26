@@ -50,49 +50,49 @@ def main(): Unit =
     supervise:
       given Log[Output] = logging.silent[Output]
       
-      val Classpath = Flag[Text](t"classpath", false, List('c'), t"specify the classpath")
-      val File = Flag[Text](t"file", false, List('f'), t"specify a file to check")
-      val Install = Subcommand(t"install", t"install the application")
-      val Check = Subcommand(t"check", t"check a markdown file")
+      object params:
+        val Classpath = Flag[Text](t"classpath", false, List('c'), t"specify the classpath")
+        val File = Flag[Text](t"file", false, List('f'), t"specify a file to check")
+        val Install = Subcommand(t"install", t"install the application")
+        val Check = Subcommand(t"check", t"check a markdown file")
 
       daemon:
         safely(arguments.head) match
-          case Install() =>
+          case params.Install() =>
             execute:
               Out.println(Installer.install().communicate)
               Out.println(TabCompletions.install(force = true).communicate)
               ExitStatus.Ok
           
-          case Check() =>
-            val classpath = Classpath()
-            val file = File()
-            execute:
-              val file2 = file.or(abort(AmokError(msg"The file has not been specified")))
-              val classpath2 = classpath.or(abort(AmokError(msg"The classpath has not been specified")))
-              val classpath3 = classpath2.cut(t":").map: path =>
-                safely(path.decodeAs[Path]).or(path.decodeAs[Unix.Link].inWorkingDirectory)
+          case params.Check() =>
+            params.Classpath()
+            params.File()
 
-              val markdown = safely(file2.decodeAs[Path]).or(file2.decodeAs[Unix.Link].inWorkingDirectory).as[File]
+            execute:
+              val file = params.File().or(abort(AmokError(msg"The file has not been specified")))
+              
+              val classpath: LocalClasspath = LocalClasspath:
+                params.Classpath().or(abort(AmokError(msg"The classpath has not been specified"))).cut(t":").map: path =>
+                  val path2 = safely(path.decodeAs[Path]).or(path.decodeAs[Unix.Link].inWorkingDirectory)
+                  if path2.is[Directory] then ClasspathEntry.Directory(path2.show)
+                  else ClasspathEntry.Jarfile(path2.show)
+
+              val markdown = safely(file.decodeAs[Path]).or(file.decodeAs[Unix.Link].inWorkingDirectory).as[File]
               val content = markdown.readAs[Text]
               
-              Out.println(t"The classpath is ${classpath3.debug}")
-              Out.println(t"The file is ${markdown.path}")
-              
-              Out.println(Fragment(Language(t"test", t"1.0")).codl.show)
-              Out.println(Fragment(Language(t"test", t"1.0")).codl.schema.debug)
-              Out.println(Fragment(Language(t"test", t"1.0")).codl.children.debug)
-              
-              val fragments: Seq[Text] = Markdown.parse(content).nodes.collect:
-                case Markdown.Ast.Block.FencedCode(Some(t"amok"), meta, code) =>
-                  val codl: CodlDoc = Codl.parse(code)
-                  Out.println(codl.children.debug)
-                  Out.println(codl.show)
-                  safely(codl.as[Fragment]).or(Fragment(Language(t"unknown", t"0.0")))
-                  codl.body.foldLeft(t"")(_ + _.show)
+              val fragments: Map[Fragment, Text] =
+                Markdown.parse(content).nodes.collect:
+                  case Markdown.Ast.Block.FencedCode(Some(t"amok"), meta, code) =>
+                    val codl: CodlDoc = Codl.parse(code)
+                    Out.println(codl.children.debug)
+                    Out.println(codl.show)
+                    val fragment = safely(codl.as[Fragment]).or(Fragment(Language(t"unknown", t"0.0")))
+                    fragment -> codl.body.foldLeft(t"")(_ + _.show)
+                .to(Map)
 
-              for fragment <- fragments do
+              for (options, fragment) <- fragments do
                 Out.println(t"Compiling...")
-                Compilation(Map(t"fragment" -> fragment), classpath3, workingDirectory)().foreach: diagnostic =>
+                Compilation(Map(t"fragment" -> fragment), classpath, workingDirectory)().foreach: diagnostic =>
                   Out.println(diagnostic.toString.tt)
 
               ExitStatus.Ok
