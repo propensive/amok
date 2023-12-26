@@ -28,6 +28,7 @@ import spectacular.*
 import gossamer.*
 import cellulose.*, codlPrinters.standard
 import vacuous.*
+import iridescence.*
 import anticipation.*, fileApi.galileiApi
 import fulminate.*
 import perforate.*
@@ -41,8 +42,8 @@ import ambience.*, environments.jvm, homeDirectories.default, systemProperties.j
 given (using Cli): WorkingDirectory = workingDirectories.daemonClient 
 
 case class AmokError(details: Message) extends Error(details)
-case class Fragment(language: Language)
-case class Language(name: Text, version: Text)
+case class Fragment(id: Text, language: Language, follows: Optional[Text] = Unset)
+case class Language(compiler: Text, version: Text)
 
 @main
 def main(): Unit =
@@ -55,6 +56,7 @@ def main(): Unit =
         val File = Flag[Text](t"file", false, List('f'), t"specify a file to check")
         val Install = Subcommand(t"install", t"install the application")
         val Check = Subcommand(t"check", t"check a markdown file")
+        val Shutdown = Subcommand(t"shutdown", t"stop Amok running as a background process")
 
       daemon:
         safely(arguments.head) match
@@ -77,24 +79,47 @@ def main(): Unit =
                   if path2.is[Directory] then ClasspathEntry.Directory(path2.show)
                   else ClasspathEntry.Jarfile(path2.show)
 
-              val markdown = safely(file.decodeAs[Path]).or(file.decodeAs[Unix.Link].inWorkingDirectory).as[File]
-              val content = markdown.readAs[Text]
+              val markdown = safely(file.decodeAs[Path]).or(file.decodeAs[Unix.Link].inWorkingDirectory).as[File].readAs[Text]
               
-              val fragments: Map[Fragment, Text] =
-                Markdown.parse(content).nodes.collect:
+              val fragments: Seq[(Fragment, Text)] =
+                Markdown.parse(markdown).nodes.collect:
+                  case Markdown.Ast.Block.FencedCode(t"scala", meta, code) =>
+                    val fragment = Fragment(t"id", Language(t"scala", t"3.3"))
+                    fragment -> code
+
                   case Markdown.Ast.Block.FencedCode(t"amok", meta, code) =>
                     val codl: CodlDoc = Codl.parse(code)
-                    Out.println(codl.children.debug)
-                    Out.println(codl.show)
-                    val fragment = safely(codl.as[Fragment]).or(Fragment(Language(t"unknown", t"0.0")))
+                    val fragment = safely(codl.as[Fragment]).or(Fragment(t"id", Language(t"unknown", t"0.0")))
                     fragment -> codl.body.foldLeft(t"")(_ + _.show)
-                .to(Map)
 
-              for (options, fragment) <- fragments do
-                Out.println(t"Compiling...")
-                Scalac(Map(t"fragment" -> fragment), classpath, workingDirectory, List())().foreach: diagnostic =>
-                  Out.println(diagnostic.toString.tt)
+              val allCode: Text = fragments.map(_(1)).join
+              val errors = Scalac(Map(t"fragments" -> allCode), classpath, workingDirectory, List())()
 
+              def recur(codeSize: Int, todo: List[(Fragment, Text)]): Unit = todo match
+                case Nil =>
+                  ()
+                
+                case (fragment, code) :: rest =>
+                  val errors2 = errors.filter { diagnostic => diagnostic.pos.end > codeSize && diagnostic.pos.start < codeSize+code.length }
+                  
+                  if errors2.length > 0 then
+                    code.cut(t"\n").init.map { line => Out.println(e"${Bg(colors.Crimson)}( ) $line") }
+                    Out.println(e"${colors.Crimson}(│)")
+                    errors2.zipWithIndex.foreach: (diagnostic, index) =>
+                      diagnostic.message.tt.trim.cut(t"\n").foreach: line =>
+                        Out.println(e"${colors.Crimson}(│)$Italic(${colors.Silver}( ${line}))")
+                      Out.println(e"${colors.Crimson}(${if index < errors2.length - 1 then t"├" else t"└"})")
+                    
+                    Out.println(t"")
+
+                  recur(codeSize+code.length, rest)
+
+              recur(0, fragments.to(List))
+
+              if errors.isEmpty then ExitStatus.Ok else ExitStatus.Fail(1)
+          case params.Shutdown() =>
+            execute:
+              service.shutdown()
               ExitStatus.Ok
 
           case _ =>
