@@ -82,7 +82,7 @@ def main(): Unit =
               
               val fragments: Map[Fragment, Text] =
                 Markdown.parse(content).nodes.collect:
-                  case Markdown.Ast.Block.FencedCode(Some(t"amok"), meta, code) =>
+                  case Markdown.Ast.Block.FencedCode(t"amok", meta, code) =>
                     val codl: CodlDoc = Codl.parse(code)
                     Out.println(codl.children.debug)
                     Out.println(codl.show)
@@ -92,7 +92,7 @@ def main(): Unit =
 
               for (options, fragment) <- fragments do
                 Out.println(t"Compiling...")
-                Compilation(Map(t"fragment" -> fragment), classpath, workingDirectory)().foreach: diagnostic =>
+                Scalac(Map(t"fragment" -> fragment), classpath, workingDirectory, List())().foreach: diagnostic =>
                   Out.println(diagnostic.toString.tt)
 
               ExitStatus.Ok
