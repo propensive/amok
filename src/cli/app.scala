@@ -115,8 +115,19 @@ def main(): Unit =
                   recur(codeSize+code.length, rest)
 
               recur(0, fragments.to(List))
+              
+              val errorCount: Output = errors.length match
+                case 0 => e"no errors"
+                case 1 => e"$Bold(one) error"
+                case 2 => e"$Bold(two) errors"
+                case 3 => e"$Bold(three) errors"
+                case 4 => e"$Bold(four) errors"
+                case n => e"$Bold($n) errors"
+
+              Out.println(e"$Italic(Checked ${fragments.length} fragments, $errorCount)")
 
               if errors.isEmpty then ExitStatus.Ok else ExitStatus.Fail(1)
+          
           case params.Shutdown() =>
             execute:
               service.shutdown()
