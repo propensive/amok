@@ -19,17 +19,21 @@ package amok
 import escapade.*
 import parasite.*
 import spectral.*
+import aviation.*
 import rudiments.*
+import surveillance.*
 import exoskeleton.*, executives.completions, unhandledErrors.stackTrace, parameterInterpretation.posix
 import eucalyptus.*
 import anthology.*
+import profanity.*
+import quantitative.*
 import turbulence.*
 import spectacular.*
 import gossamer.*
 import cellulose.*, codlPrinters.standard
 import vacuous.*
 import iridescence.*
-import anticipation.*, fileApi.galileiApi
+import anticipation.*, fileApi.galileiApi, timeApi.aviationApi
 import fulminate.*
 import perforate.*
 import punctuation.*
@@ -54,6 +58,7 @@ def main(): Unit =
       object params:
         val Classpath = Flag[Text](t"classpath", false, List('c'), t"specify the classpath")
         val File = Flag[Text](t"file", false, List('f'), t"specify a file to check")
+        val Watch = Switch(t"watch", false, List('w'), t"watch for changes")
         val Install = Subcommand(t"install", t"install the application")
         val Check = Subcommand(t"check", t"check a markdown file")
         val Shutdown = Subcommand(t"shutdown", t"stop Amok running as a background process")
@@ -69,6 +74,7 @@ def main(): Unit =
           case params.Check() =>
             params.Classpath()
             params.File()
+            params.Watch()
 
             execute:
               val file = params.File().or(abort(AmokError(msg"The file has not been specified")))
@@ -79,7 +85,8 @@ def main(): Unit =
                   if path2.is[Directory] then ClasspathEntry.Directory(path2.show)
                   else ClasspathEntry.Jarfile(path2.show)
 
-              val markdown = safely(file.decodeAs[Path]).or(file.decodeAs[Unix.Link].inWorkingDirectory).as[File].readAs[Text]
+              val markdownFile = safely(file.decodeAs[Path]).or(file.decodeAs[Unix.Link].inWorkingDirectory).as[File]
+              val markdown = markdownFile.readAs[Text]
               
               val fragments: Seq[(Fragment, Text)] =
                 Markdown.parse(markdown).nodes.collect:
@@ -115,6 +122,20 @@ def main(): Unit =
                   recur(codeSize+code.length, rest)
 
               recur(0, fragments.to(List))
+              
+              if params.Watch().present then terminal:
+                val watcher = markdownFile.path.parent.vouch(using Unsafe).as[Directory].watch()
+
+                def loop(stream: LazyList[TerminalEvent | WatchEvent]): Unit = stream match
+                  case Keypress.CharKey('q') #:: _ => ()
+                  case event #:: more =>
+                    event match
+                      case event: WatchEvent    => Out.println(event.debug)
+                      case event: TerminalEvent => Out.println(event.debug)
+                    
+                    loop(more)
+
+                loop(watcher.stream.multiplexWith(terminal.events))
               
               val errorCount: Output = errors.length match
                 case 0 => e"no errors"
