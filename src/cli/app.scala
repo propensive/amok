@@ -86,68 +86,74 @@ def main(): Unit =
                   else ClasspathEntry.Jarfile(path2.show)
 
               val markdownFile = safely(file.decodeAs[Path]).or(file.decodeAs[Unix.Link].inWorkingDirectory).as[File]
-              val markdown = markdownFile.readAs[Text]
               
-              val fragments: Seq[(Fragment, Text)] =
-                Markdown.parse(markdown).nodes.collect:
-                  case Markdown.Ast.Block.FencedCode(t"scala", meta, code) =>
-                    val fragment = Fragment(t"id", Language(t"scala", t"3.3"))
-                    fragment -> code
-
-                  case Markdown.Ast.Block.FencedCode(t"amok", meta, code) =>
-                    val codl: CodlDoc = Codl.parse(code)
-                    val fragment = safely(codl.as[Fragment]).or(Fragment(t"id", Language(t"unknown", t"0.0")))
-                    fragment -> codl.body.foldLeft(t"")(_ + _.show)
-
-              val allCode: Text = fragments.map(_(1)).join
-              val errors = Scalac(Map(t"fragments" -> allCode), classpath, workingDirectory, List())()
-
-              def recur(codeSize: Int, todo: List[(Fragment, Text)]): Unit = todo match
-                case Nil =>
-                  ()
+              def recompile(): Unit =
+                val markdown = markdownFile.readAs[Text]
                 
-                case (fragment, code) :: rest =>
-                  val errors2 = errors.filter { diagnostic => diagnostic.pos.end > codeSize && diagnostic.pos.start < codeSize+code.length }
+                val fragments: Seq[(Fragment, Text)] =
+                  Markdown.parse(markdown).nodes.collect:
+                    case Markdown.Ast.Block.FencedCode(t"scala", meta, code) =>
+                      val fragment = Fragment(t"id", Language(t"scala", t"3.3"))
+                      fragment -> code
+
+                    case Markdown.Ast.Block.FencedCode(t"amok", meta, code) =>
+                      val codl: CodlDoc = Codl.parse(code)
+                      val fragment = safely(codl.as[Fragment]).or(Fragment(t"id", Language(t"unknown", t"0.0")))
+                      fragment -> codl.body.foldLeft(t"")(_ + _.show)
+
+                val allCode: Text = fragments.map(_(1)).join
+                val errors = Scalac(Map(t"fragments" -> allCode), classpath, workingDirectory, List())()
+
+                def assign(codeSize: Int, todo: List[(Fragment, Text)]): Unit = todo match
+                  case Nil =>
+                    ()
                   
-                  if errors2.length > 0 then
-                    code.cut(t"\n").init.map { line => Out.println(e"${Bg(colors.Crimson)}( ) $line") }
-                    Out.println(e"${colors.Crimson}(│)")
-                    errors2.zipWithIndex.foreach: (diagnostic, index) =>
-                      diagnostic.message.tt.trim.cut(t"\n").foreach: line =>
-                        Out.println(e"${colors.Crimson}(│)$Italic(${colors.Silver}( ${line}))")
-                      Out.println(e"${colors.Crimson}(${if index < errors2.length - 1 then t"├" else t"└"})")
+                  case (fragment, code) :: more =>
+                    val errors2 = errors.filter { diagnostic => diagnostic.pos.end > codeSize && diagnostic.pos.start < codeSize+code.length }
                     
-                    Out.println(t"")
+                    if errors2.length > 0 then
+                      code.cut(t"\n").init.map { line => Out.println(e"${Bg(colors.Crimson)}( ) $line") }
+                      Out.println(e"${colors.Crimson}(│)")
+                      errors2.zipWithIndex.foreach: (diagnostic, index) =>
+                        diagnostic.message.tt.trim.cut(t"\n").foreach: line =>
+                          Out.println(e"${colors.Crimson}(│)$Italic(${colors.Silver}( ${line}))")
+                        Out.println(e"${colors.Crimson}(${if index < errors2.length - 1 then t"├" else t"└"})")
+                      
+                      Out.println(t"")
 
-                  recur(codeSize+code.length, rest)
+                    assign(codeSize+code.length, more)
+                
+                assign(0, fragments.to(List))
 
-              recur(0, fragments.to(List))
+                val errorCount: Output = errors.length match
+                  case 0 => e"no errors"
+                  case 1 => e"$Bold(one) error"
+                  case 2 => e"$Bold(two) errors"
+                  case 3 => e"$Bold(three) errors"
+                  case 4 => e"$Bold(four) errors"
+                  case n => e"$Bold($n) errors"
+
+                Out.println(e"$Italic(Checked ${fragments.length} fragments, $errorCount)")
               
-              if params.Watch().present then terminal:
-                val watcher = markdownFile.path.parent.vouch(using Unsafe).as[Directory].watch()
-
-                def loop(stream: LazyList[TerminalEvent | WatchEvent]): Unit = stream match
-                  case Keypress.CharKey('q') #:: _ => ()
-                  case event #:: more =>
-                    event match
-                      case event: WatchEvent    => Out.println(event.debug)
-                      case event: TerminalEvent => Out.println(event.debug)
+              terminal:
+                def loop(stream: LazyList[TerminalEvent | List[WatchEvent]]): Unit =
+                  recompile()
+                  Out.println(e"Waiting for changes... $Italic[(press $Bold[q] to exit)]")
+                  stream match
+                    case Keypress.CharKey('q') #:: _ => ()
+                    case event #:: more =>
+                      event match
+                        case event: List[WatchEvent] => Out.println(event.debug)
+                        case event: TerminalEvent    => Out.println(event.debug)
                     
-                    loop(more)
+                      loop(more)
+                    case _ => ()
 
-                loop(watcher.stream.multiplexWith(terminal.events))
-              
-              val errorCount: Output = errors.length match
-                case 0 => e"no errors"
-                case 1 => e"$Bold(one) error"
-                case 2 => e"$Bold(two) errors"
-                case 3 => e"$Bold(three) errors"
-                case 4 => e"$Bold(four) errors"
-                case n => e"$Bold($n) errors"
+                loop:
+                  if params.Watch().absent then LazyList()
+                  else markdownFile.path.parent.vouch(using Unsafe).as[Directory].watch().stream.cluster(0.1*Second).multiplexWith(terminal.events)
 
-              Out.println(e"$Italic(Checked ${fragments.length} fragments, $errorCount)")
-
-              if errors.isEmpty then ExitStatus.Ok else ExitStatus.Fail(1)
+              ExitStatus.Ok
           
           case params.Shutdown() =>
             execute:
