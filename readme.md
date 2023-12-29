@@ -42,7 +42,7 @@ be used, but caution should be taken if there is a mismatch between the
 project's stability level and the importance of your own project.
 
 Amok is designed to be _small_. Its entire source code currently consists
-of 616 lines of code.
+of 618 lines of code.
 
 ## Building
 
