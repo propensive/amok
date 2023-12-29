@@ -136,22 +136,26 @@ def main(): Unit =
                 Out.println(e"$Italic(Checked ${fragments.length} fragments, $errorCount)")
               
               terminal:
-                def loop(stream: LazyList[TerminalEvent | Update.type]): Unit =
-                  recompile()
-                  if params.Watch().present
-                  then Out.println(e"Waiting for changes... $Italic[(press $Bold[Ctrl+C] to exit)]")
+                def loop(stream: LazyList[TerminalEvent | Update.type], skip: Boolean): Unit =
+                  if !skip then
+                    recompile()
+                    Out.println(e"Waiting for changes...")
+                  
+                    if params.Watch().present
+                    then Out.println(e"$Italic[(Press $Bold[Ctrl+C] or $Bold[Esc] to exit)]")
 
                   stream match
-                    case Keypress.Control('C') #:: _ => ()
-                    case Update #:: more             => loop(more)
-                    case _ => ()
+                    case (Keypress.Control('C') | Keypress.Escape) #:: _ => ()
+                    case Update #:: more                                 => loop(more, false)
+                    case _ #:: more                                      => loop(more, true)
 
-                loop:
-                  if params.Watch().absent then LazyList() else
-                    val path = markdownFile.path
-                    val changes = path.parent.vouch(using Unsafe).as[Directory].watch().stream
-                    val fileChanges = changes.cluster(0.1*Second).map(_.map(_.path.fullname).to(Set)).filter(_.contains(path.fullname)).map(Update.waive)
-                    fileChanges.multiplexWith(terminal.events)
+                if params.Watch().absent then loop(LazyList(), false) else
+                  val path = markdownFile.path
+                  val changes = path.parent.vouch(using Unsafe).as[Directory].watch().stream
+                  val fileChanges = changes.cluster(0.1*Second).map(_.map(_.path.fullname).to(Set))
+                  val relevantChanges = fileChanges.filter(_.contains(path.fullname)).map(Update.waive)
+                    
+                  loop(relevantChanges.multiplexWith(terminal.events), false)
 
               ExitStatus.Ok
           
