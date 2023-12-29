@@ -81,7 +81,7 @@ def main(): Unit =
               
               val classpath: LocalClasspath = LocalClasspath:
                 params.Classpath().or(abort(AmokError(msg"The classpath has not been specified"))).cut(t":").map: path =>
-                  val path2 = safely(path.decodeAs[Path]).or(path.decodeAs[Unix.Link].inWorkingDirectory)
+                  val path2 = safely(path.decodeAs[Unix.Path]).or(path.decodeAs[Unix.Link].inWorkingDirectory)
                   if path2.is[Directory] then ClasspathEntry.Directory(path2.show)
                   else ClasspathEntry.Jarfile(path2.show)
 
@@ -136,22 +136,22 @@ def main(): Unit =
                 Out.println(e"$Italic(Checked ${fragments.length} fragments, $errorCount)")
               
               terminal:
-                def loop(stream: LazyList[TerminalEvent | List[WatchEvent]]): Unit =
+                def loop(stream: LazyList[TerminalEvent | Update.type]): Unit =
                   recompile()
-                  Out.println(e"Waiting for changes... $Italic[(press $Bold[q] to exit)]")
+                  if params.Watch().present
+                  then Out.println(e"Waiting for changes... $Italic[(press $Bold[Ctrl+C] to exit)]")
+
                   stream match
-                    case Keypress.CharKey('q') #:: _ => ()
-                    case event #:: more =>
-                      event match
-                        case event: List[WatchEvent] => Out.println(event.debug)
-                        case event: TerminalEvent    => Out.println(event.debug)
-                    
-                      loop(more)
+                    case Keypress.Control('C') #:: _ => ()
+                    case Update #:: more             => loop(more)
                     case _ => ()
 
                 loop:
-                  if params.Watch().absent then LazyList()
-                  else markdownFile.path.parent.vouch(using Unsafe).as[Directory].watch().stream.cluster(0.1*Second).multiplexWith(terminal.events)
+                  if params.Watch().absent then LazyList() else
+                    val path = markdownFile.path
+                    val changes = path.parent.vouch(using Unsafe).as[Directory].watch().stream
+                    val fileChanges = changes.cluster(0.1*Second).map(_.map(_.path.fullname).to(Set)).filter(_.contains(path.fullname)).map(Update.waive)
+                    fileChanges.multiplexWith(terminal.events)
 
               ExitStatus.Ok
           
@@ -164,3 +164,4 @@ def main(): Unit =
             execute:
               Out.println(t"Unknown command")
               ExitStatus.Fail(1)
+object Update
