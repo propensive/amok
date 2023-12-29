@@ -146,6 +146,7 @@ def main(): Unit =
 
                   stream match
                     case (Keypress.Control('C') | Keypress.Escape) #:: _ => ()
+                    case LazyList()                                      => ()
                     case Update #:: more                                 => loop(more, false)
                     case _ #:: more                                      => loop(more, true)
 
