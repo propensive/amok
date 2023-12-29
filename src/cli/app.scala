@@ -36,6 +36,7 @@ import iridescence.*
 import anticipation.*, fileApi.galileiApi, timeApi.aviationApi
 import fulminate.*
 import perforate.*
+import harlequin.*
 import punctuation.*
 import hellenism.*
 import galilei.*, filesystemOptions.{doNotCreateNonexistent, dereferenceSymlinks}
@@ -102,6 +103,26 @@ def main(): Unit =
                       fragment -> codl.body.foldLeft(t"")(_ + _.show)
 
                 val allCode: Text = fragments.map(_(1)).join
+                val highlighted: Output =
+                  ScalaSyntax.highlight(allCode).map: line =>
+                    line.map:
+                      case Token.Unparsed(text)     => text.display
+                      case Token.Markup(markup)     => e""
+                      case Token.Newline            => e"\n"
+                      case Token.Code(code, accent) => accent match
+                        case Accent.Type     => e"${colors.YellowGreen}($code)"
+                        case Accent.Term     => e"${colors.CadetBlue}($code)"
+                        case Accent.Symbol   => e"${colors.Turquoise}($code)"
+                        case Accent.Keyword  => e"${colors.DarkOrange}($code)"
+                        case Accent.Modifier => e"${colors.Chocolate}($code)"
+                        case Accent.Ident    => e"${colors.BurlyWood}($code)"
+                        case Accent.Error    => e"${colors.OrangeRed}($code)"
+                        case Accent.Number   => e"${colors.Gold}($code)"
+                        case Accent.String   => e"${colors.Plum}($code)"
+                        case accent          => e"$code"
+                    .join
+                  .join(e"\n")
+
                 val errors = Scalac(Map(t"fragments" -> allCode), classpath, workingDirectory, List())()
 
                 def assign(codeSize: Int, todo: List[(Fragment, Text)]): Unit = todo match
@@ -109,11 +130,14 @@ def main(): Unit =
                     ()
                   
                   case (fragment, code) :: more =>
-                    val errors2 = errors.filter { diagnostic => diagnostic.pos.end > codeSize && diagnostic.pos.start < codeSize+code.length }
+                    val errors2 = errors.filter: diagnostic =>
+                      diagnostic.pos.end > codeSize && diagnostic.pos.start < codeSize+code.length
                     
                     if errors2.length > 0 then
-                      code.cut(t"\n").init.map { line => Out.println(e"${Bg(colors.Crimson)}( ) $line") }
+                      val code2: Output = highlighted.slice(codeSize, codeSize + code.length)
+                      code2.cut(t"\n").init.map { line => Out.println(e"${Bg(colors.Crimson)}( ) $line") }
                       Out.println(e"${colors.Crimson}(│)")
+                      
                       errors2.zipWithIndex.foreach: (diagnostic, index) =>
                         diagnostic.message.tt.trim.cut(t"\n").foreach: line =>
                           Out.println(e"${colors.Crimson}(│)$Italic(${colors.Silver}( ${line}))")
@@ -136,8 +160,8 @@ def main(): Unit =
                 Out.println(e"$Italic(Checked ${fragments.length} fragments, $errorCount)")
               
               terminal:
-                def loop(stream: LazyList[TerminalEvent | Update.type], skip: Boolean): Unit =
-                  if !skip then
+                def loop(stream: LazyList[TerminalEvent | Update.type], noChange: Boolean): Unit =
+                  if !noChange then
                     recompile()
                     Out.println(e"Waiting for changes...")
                   
