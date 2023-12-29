@@ -44,6 +44,8 @@ import serpentine.*, hierarchies.unix
 import hieroglyph.*, charDecoders.utf8, badEncodingHandlers.strict
 import ambience.*, environments.jvm, homeDirectories.default, systemProperties.jvm
 
+import dotty.tools.dotc.reporting.Diagnostic
+
 given (using Cli): WorkingDirectory = workingDirectories.daemonClient 
 
 case class AmokError(details: Message) extends Error(details)
@@ -135,7 +137,19 @@ def main(): Unit =
                     
                     if errors2.length > 0 then
                       val code2: Output = highlighted.slice(codeSize, codeSize + code.length)
-                      code2.cut(t"\n").init.map { line => Out.println(e"${Bg(colors.Crimson)}( ) $line") }
+                      
+                      def markup(code: Output, todo: List[Diagnostic]): Output = todo match
+                        case Nil => code
+                        
+                        case diagnostic :: more =>
+                          val before = code.take(diagnostic.pos.start - codeSize)
+                          val erroneous = code.slice(diagnostic.pos.start - codeSize, diagnostic.pos.end - codeSize)
+                          val after = code.drop(diagnostic.pos.end - codeSize)
+                          markup(e"$before${Bg(colors.DarkRed)}($erroneous)$after", more)
+                      
+                      val code4 = markup(code2, errors2)
+
+                      code4.cut(t"\n").init.map { line => Out.println(e"${Bg(colors.Crimson)}( ) $line") }
                       Out.println(e"${colors.Crimson}(│)")
                       
                       errors2.zipWithIndex.foreach: (diagnostic, index) =>
