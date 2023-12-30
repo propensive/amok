@@ -42,7 +42,7 @@ import hellenism.*
 import galilei.*, filesystemOptions.{doNotCreateNonexistent, dereferenceSymlinks}
 import serpentine.*, hierarchies.unix
 import hieroglyph.*, charDecoders.utf8, badEncodingHandlers.strict
-import ambience.*, environments.jvm, homeDirectories.default, systemProperties.jvm
+import ambience.*, environments.virtualMachine, homeDirectories.default, systemProperties.virtualMachine
 
 import dotty.tools.dotc.reporting.Diagnostic
 

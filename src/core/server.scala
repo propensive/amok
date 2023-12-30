@@ -30,7 +30,7 @@ import rudiments.*
 import scintillate.*
 import serpentine.*, hierarchies.simple
 import spectacular.*
-import turbulence.*, stdioSources.jvm
+import turbulence.*, stdioSources.virtualMachine
 
 import unsafeExceptions.canThrowAny
 
