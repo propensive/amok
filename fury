@@ -31,7 +31,7 @@ project amok
 
   module cli
     compiler  scala
-    include   amok/model spectral/core exoskeleton/completions exoskeleton/core escapade/core punctuation/core jacinta/core cellulose/core anthology/core surveillance/core aviation/core harlequin/core
+    include   amok/model spectral/core exoskeleton/completions exoskeleton/core escapade/core punctuation/core jacinta/core cellulose/core anthology/scala surveillance/core aviation/core harlequin/core
     main      amok.main
     sources   src/cli
     artifact  amok
