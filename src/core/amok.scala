@@ -122,26 +122,26 @@ object Amok:
         def walk(ast: Tree, path: Path): Unit = ast match
           case pc@PackageClause(id@Ident(name), body) =>
             db((path / name.show).asTerm) = Info(name.show, icon(Icons.Entity.Package, pc.symbol.flags))
-            body.foreach(walk(_, (path / name.show).asTerm))
+            body.each(walk(_, (path / name.show).asTerm))
             
           case valDef@ValDef(name, rtn, body) if !(valDef.symbol.flags.is(Synthetic) || valDef.symbol.flags.is(Private) || name == "_") =>
             val termName = if valDef.symbol.flags.is(Given) && (name.startsWith("given_") || name.startsWith("evidence$")) then showType(rtn.tpe) else name.show
             db((path / termName).asTerm) = Info(termName, icon(Icons.Entity.Val, valDef.symbol.flags))
-            body.foreach(walk(_, (path / termName).asTerm))
+            body.each(walk(_, (path / termName).asTerm))
 
           case classDef@ClassDef(name, defDef, _, companion, body) =>
-            if name.endsWith("$package$") then body.foreach(walk(_, path))
+            if name.endsWith("$package$") then body.each(walk(_, path))
             else
               val className = if name.endsWith("$") then name.show.drop(1, Rtl) else name.show
               db((path / className).asType) = Info(className, icon(if companion.isEmpty then Icons.Entity.Class else Icons.Entity.Cclass, classDef.symbol.flags))
               //walk(defDef, (path / className).asType)
-              companion.foreach(walk(_, (path / className).asTerm))
-              body.foreach(walk(_, (path / className).asType))
+              companion.each(walk(_, (path / className).asTerm))
+              body.each(walk(_, (path / className).asType))
 
           case term@DefDef(name, params, rtn, body) if !term.symbol.flags.is(Synthetic) && !term.symbol.flags.is(Private) && !name.contains("$default$") =>
             val termName = if term.symbol.flags.is(Given) && name.startsWith("given_") then showType(rtn.tpe) else name.show
             db((path / termName).asType) = Info(termName, icon(Icons.Entity.Def, term.symbol.flags))
-            params.flatMap(_.params).foreach(walk(_, (path / termName).asTerm))
+            params.flatMap(_.params).each(walk(_, (path / termName).asTerm))
             
           case typeDef@TypeDef(name, a) if name != "MirroredMonoType" =>
             db((path / name.show).asType) = Info(name.show, icon(Icons.Entity.Type, typeDef.symbol.flags))
@@ -152,7 +152,7 @@ object Amok:
           case other =>
             ()
             
-        tastys.foreach: tasty =>
+        tastys.each: tasty =>
           walk(tasty.ast, Path.Root)
       
       //def apply(): Docs = rootDocs

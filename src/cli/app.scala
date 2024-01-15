@@ -48,8 +48,15 @@ import dotty.tools.dotc.reporting.Diagnostic
 
 given (using Cli): WorkingDirectory = workingDirectories.daemonClient 
 
+enum Errors:
+  case Fail, Ignore, Highlight, Show
+
 case class AmokError(details: Message) extends Error(details)
-case class Fragment(id: Text, language: Language, follows: Optional[Text] = Unset)
+case class Fragment
+    (id: Optional[Text],
+        language: Optional[Language],
+        errors: Optional[Errors] = Unset,
+        follows: Optional[Text] = Unset)
 case class Language(compiler: Text, version: Text)
 
 @main
@@ -101,7 +108,15 @@ def main(): Unit =
 
                     case Markdown.Ast.Block.FencedCode(t"amok", meta, code) =>
                       val codl: CodlDoc = Codl.parse(code)
-                      val fragment = safely(codl.as[Fragment]).or(Fragment(t"id", Language(t"unknown", t"0.0")))
+                      val fragment =
+                        mitigate:
+                          case EnumCaseError(enumCase)  => AmokError(msg"Bad enum case")
+                          case CodlError(line, _, _, _) => AmokError(msg"Could not parse the CoDL at $line")
+                        .within:
+                          Codl.read[Fragment](code)
+                          
+
+                      Out.println(fragment.debug)
                       fragment -> codl.body.foldLeft(t"")(_ + _.show)
 
                 val allCode: Text = fragments.map(_(1)).join
@@ -152,8 +167,8 @@ def main(): Unit =
                       code4.cut(t"\n").init.map { line => Out.println(e"${Bg(colors.Crimson)}( ) $line") }
                       Out.println(e"${colors.Crimson}(│)")
                       
-                      errors2.zipWithIndex.foreach: (diagnostic, index) =>
-                        diagnostic.message.tt.trim.cut(t"\n").foreach: line =>
+                      errors2.zipWithIndex.each: (diagnostic, index) =>
+                        diagnostic.message.tt.trim.cut(t"\n").each: line =>
                           Out.println(e"${colors.Crimson}(│)$Italic(${colors.Silver}( ${line}))")
                         Out.println(e"${colors.Crimson}(${if index < errors2.length - 1 then t"├" else t"└"})")
                       
