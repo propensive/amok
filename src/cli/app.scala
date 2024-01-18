@@ -28,6 +28,7 @@ import anthology.*
 import profanity.*
 import quantitative.*
 import turbulence.*
+import gastronomy.*
 import spectacular.*
 import gossamer.*
 import cellulose.*, codlPrinters.standard
@@ -38,7 +39,8 @@ import fulminate.*
 import perforate.*
 import harlequin.*
 import punctuation.*
-import hellenism.*
+import hallucination.*
+import hellenism.*, classloaders.threadContext
 import galilei.*, filesystemOptions.{doNotCreateNonexistent, dereferenceSymlinks}
 import serpentine.*, hierarchies.unix
 import hieroglyph.*, charDecoders.utf8, badEncodingHandlers.strict
@@ -47,6 +49,15 @@ import ambience.*, environments.virtualMachine, homeDirectories.default, systemP
 import dotty.tools.dotc.reporting.Diagnostic
 
 given (using Cli): WorkingDirectory = workingDirectories.daemonClient 
+
+object Errors:
+  given decoder: Decoder[Errors] =
+    case t"fail"      => Errors.Fail
+    case t"ignore"    => Errors.Ignore
+    case t"highlight" => Errors.Highlight
+    case t"show"      => Errors.Show
+
+  given encoder: Encoder[Errors] = _.toString.tt.lower
 
 enum Errors:
   case Fail, Ignore, Highlight, Show
@@ -71,6 +82,7 @@ def main(): Unit =
         val Watch = Switch(t"watch", false, List('w'), t"watch for changes")
         val Install = Subcommand(t"install", t"install the application")
         val Check = Subcommand(t"check", t"check a markdown file")
+        val About = Subcommand(t"about", t"information about this release of Amok")
         val Shutdown = Subcommand(t"shutdown", t"stop Amok running as a background process")
 
       daemon:
@@ -81,6 +93,16 @@ def main(): Unit =
               Out.println(TabCompletions.install(force = true).communicate)
               ExitStatus.Ok
           
+          case params.About() =>
+            execute:
+              Out.println(Image((Classpath / p"logo.png")()).render)
+              
+              t"ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICDila3ilIDilIDila4KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICDilIIgIOKUggogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIOKUgiAg4pSCCuKVreKUgOKUgOKUgOKUgOKUgOKUgOKUgOKVruKVreKUgOKUgOKVruKUgOKUgOKUgOKUgOKVruKUgOKUgOKUgOKUgOKVruKVreKUgOKUgOKUgOKUgOKUgOKUgOKUgOKVruKUgiAg4pSC4pWt4pSA4pSA4pWuCuKUgiAg4pWt4pSA4pWuICDilILilIIgIOKVreKUgOKVriAg4pWt4pSA4pWuICDilILilIIgIOKVreKUgOKVriAg4pSC4pSCICDilbDila8gLuKVrwrilIIgIOKUgiDilIIgIOKUguKUgiAg4pSCIOKUgiAg4pSCIOKUgiAg4pSC4pSCICDilIIg4pSCICDilILilIIgIOKVreKVriDilbDila4K4pSCICDilbDilIDila8gIOKUguKUgiAg4pSCIOKUgiAg4pSCIOKUgiAg4pSC4pSCICDilbDilIDila8gIOKUguKUgiAg4pSC4pSCICDilIIK4pWw4pSA4pSA4pSA4pSA4pWv4pSA4pSA4pWv4pWw4pSA4pSA4pWvIOKVsOKUgOKUgOKVryDilbDilIDilIDila/ilbDilIDilIDilIDilIDilIDilIDilIDila/ilbDilIDilIDila/ilbDilIDilIDila8K".decode[Base64].uString.cut(t"\n").each: line =>
+                Out.print(t" "*18)
+                Out.println(line)
+              
+              ExitStatus.Ok
+
           case params.Check() =>
             params.Classpath()
             params.File()
@@ -108,7 +130,7 @@ def main(): Unit =
 
                     case Markdown.Ast.Block.FencedCode(t"amok", meta, code) =>
                       val codl: CodlDoc = Codl.parse(code)
-                      val fragment =
+                      val fragment: Fragment =
                         mitigate:
                           case EnumCaseError(enumCase)  => AmokError(msg"Bad enum case")
                           case CodlError(line, _, _, _) => AmokError(msg"Could not parse the CoDL at $line")
@@ -223,3 +245,4 @@ def main(): Unit =
               Out.println(t"Unknown command")
               ExitStatus.Fail(1)
 object Update
+
