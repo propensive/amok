@@ -76,4 +76,4 @@ enum Path:
     case Name(path, id)            => t"${path.text}.$id"
   
   @targetName("child")
-  def /(id: Text): Name = Name(this, id)
+  infix def / (id: Text): Name = Name(this, id)
