@@ -18,7 +18,7 @@ package amok
 
 import escapade.*
 import parasite.*
-import spectral.*
+import ethereal.*
 import aviation.*
 import rudiments.*
 import surveillance.*
