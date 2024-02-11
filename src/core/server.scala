@@ -25,7 +25,7 @@ import galilei.*, filesystemOptions.{dereferenceSymlinks, createNonexistent, cre
 import gossamer.*
 import hieroglyph.*, charEncoders.utf8
 import parasite.*
-import perforate.*, errorHandlers.throwUnsafely
+import contingency.*, errorHandlers.throwUnsafely
 import rudiments.*
 import scintillate.*
 import serpentine.*, hierarchies.simple

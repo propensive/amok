@@ -20,7 +20,7 @@ import turbulence.*
 import hieroglyph.*, charEncoders.utf8, charDecoders.utf8, badEncodingHandlers.strict
 import galilei.*
 import rudiments.*
-import perforate.*
+import contingency.*
 import anticipation.*
 import serpentine.*
 import digression.*
