@@ -19,7 +19,6 @@ package amok
 import escapade.*
 import parasite.*
 import ethereal.*
-import aviation.*
 import rudiments.*
 import surveillance.*
 import exoskeleton.*, executives.completions, unhandledErrors.stackTrace, parameterInterpretation.posix
@@ -31,7 +30,7 @@ import turbulence.*
 import gastronomy.*
 import spectacular.*
 import gossamer.*
-import cellulose.*, codlPrinters.standard
+import cellulose.*
 import vacuous.*
 import iridescence.*
 import anticipation.*, fileApi.galileiApi, timeApi.aviationApi
@@ -51,11 +50,12 @@ import dotty.tools.dotc.reporting.Diagnostic
 given (using Cli): WorkingDirectory = workingDirectories.daemonClient 
 
 object Errors:
-  given decoder: Decoder[Errors] =
+  given decoder(using Raises[EnumCaseError]): Decoder[Errors] =
     case t"fail"      => Errors.Fail
     case t"ignore"    => Errors.Ignore
     case t"highlight" => Errors.Highlight
     case t"show"      => Errors.Show
+    case other        => raise(EnumCaseError(other))(Errors.Ignore)
 
   given encoder: Encoder[Errors] = _.toString.tt.lower
 
@@ -131,12 +131,13 @@ def main(): Unit =
                     case Markdown.Ast.Block.FencedCode(t"amok", meta, code) =>
                       val codl: CodlDoc = Codl.parse(code)
                       val fragment: Fragment =
-                        mitigate:
-                          case EnumCaseError(enumCase)  => AmokError(msg"Bad enum case")
+                        given (AmokError fixes EnumCaseError) =
+                          case EnumCaseError(enumCase) => AmokError(msg"Bad enum case: $enumCase")
+
+                        given (AmokError fixes CodlError) =
                           case CodlError(line, _, _, _) => AmokError(msg"Could not parse the CoDL at $line")
-                        .within:
-                          Codl.read[Fragment](code)
-                          
+
+                        Codl.read[Fragment](code)
 
                       Out.println(fragment.debug)
                       fragment -> codl.body.foldLeft(t"")(_ + _.show)
@@ -221,9 +222,9 @@ def main(): Unit =
 
                   stream match
                     case (Keypress.Control('C') | Keypress.Escape) #:: _ => ()
-                    case LazyList()                                      => ()
                     case Update #:: more                                 => loop(more, false)
                     case _ #:: more                                      => loop(more, true)
+                    case _                                               => ()
 
                 if params.Watch().absent then loop(LazyList(), false) else
                   val path = markdownFile.path
