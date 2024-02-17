@@ -33,7 +33,7 @@ import gossamer.*
 import cellulose.*
 import vacuous.*
 import iridescence.*
-import anticipation.*, filesystemInterfaces.galileiApi, timeApi.aviationApi
+import anticipation.*, filesystemInterfaces.galileiApi, timeInterfaces.aviationApi
 import fulminate.*
 import contingency.*
 import harlequin.*
