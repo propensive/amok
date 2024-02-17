@@ -16,7 +16,7 @@
 
 package amok
 
-import anticipation.*, fileApi.galileiApi
+import anticipation.*, filesystemInterfaces.galileiApi
 import cataclysm.*
 import cellulose.*
 import digression.*
