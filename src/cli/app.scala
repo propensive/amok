@@ -17,7 +17,7 @@
 package amok
 
 import escapade.*
-import parasite.*
+import parasite.*, threadModels.virtual
 import ethereal.*
 import rudiments.*
 import surveillance.*
@@ -163,7 +163,7 @@ def main(): Unit =
                     .join
                   .join(e"\n")
 
-                val errors = Scalac(Map(t"fragments" -> allCode), classpath, workingDirectory, List())()
+                val errors = Scalac(List())(classpath)(Map(t"fragments" -> allCode), workingDirectory)
 
                 def assign(codeSize: Int, todo: List[(Fragment, Text)]): Unit = todo match
                   case Nil =>
