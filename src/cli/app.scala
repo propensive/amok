@@ -74,7 +74,7 @@ case class Language(compiler: Text, version: Text)
 def main(): Unit =
   unsafely:
     supervise:
-      given Log[Output] = logging.silent[Output]
+      given Log[Display] = logging.silent[Display]
       
       object params:
         val Classpath = Flag[Text](t"classpath", false, List('c'), t"specify the classpath")
@@ -143,7 +143,7 @@ def main(): Unit =
                       fragment -> codl.body.foldLeft(t"")(_ + _.show)
 
                 val allCode: Text = fragments.map(_(1)).join
-                val highlighted: Output =
+                val highlighted: Display =
                   ScalaSyntax.highlight(allCode).map: line =>
                     line.map:
                       case Token.Unparsed(text)     => text.display
@@ -174,9 +174,9 @@ def main(): Unit =
                       diagnostic.pos.end > codeSize && diagnostic.pos.start < codeSize+code.length
                     
                     if errors2.length > 0 then
-                      val code2: Output = highlighted.slice(codeSize, codeSize + code.length)
+                      val code2: Display = highlighted.slice(codeSize, codeSize + code.length)
                       
-                      def markup(code: Output, todo: List[Diagnostic]): Output = todo match
+                      def markup(code: Display, todo: List[Diagnostic]): Display = todo match
                         case Nil => code
                         
                         case diagnostic :: more =>
@@ -201,7 +201,7 @@ def main(): Unit =
                 
                 assign(0, fragments.to(List))
 
-                val errorCount: Output = errors.length match
+                val errorCount: Display = errors.length match
                   case 0 => e"no errors"
                   case 1 => e"$Bold(one) error"
                   case 2 => e"$Bold(two) errors"
