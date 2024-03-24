@@ -85,7 +85,7 @@ def main(): Unit =
         val About = Subcommand(t"about", t"information about this release of Amok")
         val Shutdown = Subcommand(t"shutdown", t"stop Amok running as a background process")
 
-      daemon:
+      cliService:
         safely(arguments.head) match
           case params.Install() =>
             execute:
@@ -112,7 +112,7 @@ def main(): Unit =
               val file = params.File().or(abort(AmokError(msg"The file has not been specified")))
               
               val classpath: LocalClasspath = LocalClasspath:
-                params.Classpath().or(abort(AmokError(msg"The classpath has not been specified"))).cut(t":").map: path =>
+                params.Classpath().or(abort(AmokError(msg"The classpath has not been specified"))).cut(t":").to(List).map: path =>
                   val path2 = safely(path.decodeAs[Unix.Path]).or(path.decodeAs[Unix.Link].inWorkingDirectory)
                   if path2.is[Directory] then ClasspathEntry.Directory(path2.show)
                   else ClasspathEntry.Jarfile(path2.show)
@@ -163,37 +163,37 @@ def main(): Unit =
                     .join
                   .join(e"\n")
 
-                val errors = Scalac(List())(classpath)(Map(t"fragments" -> allCode), workingDirectory)
+                val notices = Scalac[3.4](List())(classpath)(Map(t"fragments" -> allCode), workingDirectory).notices
 
                 def assign(codeSize: Int, todo: List[(Fragment, Text)]): Unit = todo match
                   case Nil =>
                     ()
                   
                   case (fragment, code) :: more =>
-                    val errors2 = errors.filter: diagnostic =>
-                      diagnostic.pos.end > codeSize && diagnostic.pos.start < codeSize+code.length
+                    val notices2 = notices.filter: notice =>
+                      notice.pos.end > codeSize && notice.pos.start < codeSize+code.length
                     
-                    if errors2.length > 0 then
+                    if notices2.length > 0 then
                       val code2: Display = highlighted.slice(codeSize, codeSize + code.length)
                       
                       def markup(code: Display, todo: List[Diagnostic]): Display = todo match
                         case Nil => code
                         
-                        case diagnostic :: more =>
-                          val before = code.take(diagnostic.pos.start - codeSize)
-                          val erroneous = code.slice(diagnostic.pos.start - codeSize, diagnostic.pos.end - codeSize)
-                          val after = code.drop(diagnostic.pos.end - codeSize)
+                        case notice :: more =>
+                          val before = code.take(notice.pos.start - codeSize)
+                          val erroneous = code.slice(notice.pos.start - codeSize, notice.pos.end - codeSize)
+                          val after = code.drop(notice.pos.end - codeSize)
                           markup(e"$before${Bg(colors.DarkRed)}($erroneous)$after", more)
                       
-                      val code4 = markup(code2, errors2)
+                      val code4 = markup(code2, notices2)
 
                       code4.cut(t"\n").init.map { line => Out.println(e"${Bg(colors.Crimson)}( ) $line") }
                       Out.println(e"${colors.Crimson}(│)")
                       
-                      errors2.zipWithIndex.each: (diagnostic, index) =>
-                        diagnostic.message.tt.trim.cut(t"\n").each: line =>
+                      notices2.zipWithIndex.each: (notice, index) =>
+                        notice.message.tt.trim.cut(t"\n").each: line =>
                           Out.println(e"${colors.Crimson}(│)$Italic(${colors.Silver}( ${line}))")
-                        Out.println(e"${colors.Crimson}(${if index < errors2.length - 1 then t"├" else t"└"})")
+                        Out.println(e"${colors.Crimson}(${if index < notices2.length - 1 then t"├" else t"└"})")
                       
                       Out.println(t"")
 
@@ -201,7 +201,7 @@ def main(): Unit =
                 
                 assign(0, fragments.to(List))
 
-                val errorCount: Display = errors.length match
+                val errorCount: Display = notices2.length match
                   case 0 => e"no errors"
                   case 1 => e"$Bold(one) error"
                   case 2 => e"$Bold(two) errors"
@@ -221,7 +221,7 @@ def main(): Unit =
                     then Out.println(e"$Italic[(Press $Bold[Ctrl+C] or $Bold[Esc] to exit)]")
 
                   stream match
-                    case (Keypress.Control('C') | Keypress.Escape) #:: _ => ()
+                    case (Keypress.Ctrl('C') | Keypress.Escape) #:: _ => ()
                     case Update #:: more                                 => loop(more, false)
                     case _ #:: more                                      => loop(more, true)
                     case _                                               => ()
