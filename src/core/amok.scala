@@ -18,7 +18,7 @@ package amok
 
 //import Docs.Dictionary
 
-import eucalyptus.*
+import fulminate.*
 import anticipation.*
 import gossamer.*
 import spectacular.*

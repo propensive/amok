@@ -100,11 +100,11 @@ object styles:
           backgroundSize = 1.3.em, overflowX = Overflow.Hidden,
           padding = (0.em, 0.em, 0.em, 5.5.em)),
     
-    select(Nav >> Li && has(Div)):
+    select(Nav >> Li && pseudo.has(Div)):
       Css(backgroundImage = % / p"images" / p"more.svg", backgroundSize = 1.3.em,
           backgroundRepeat = BackgroundRepeat.NoRepeat, backgroundPosition = (-0.35.em, -0.1.em)),
     
-    select(Nav >> Li && has(Div) && has(Input&&checked)):
+    select(Nav >> Li && pseudo.has(Div) && pseudo.has(Input&&checked)):
       Css(backgroundImage = % / p"images" / p"less.svg", backgroundSize = 1.3.em,
           backgroundRepeat = BackgroundRepeat.NoRepeat, backgroundPosition = (-0.35.em, -0.1.em)),
     
