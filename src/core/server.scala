@@ -23,8 +23,9 @@ import digression.*
 import eucalyptus.*, logging.silent
 import galilei.*, filesystemOptions.{dereferenceSymlinks, createNonexistent, createNonexistentParents}
 import gossamer.*
+import gesticulate.*
 import hieroglyph.*, charEncoders.utf8
-import parasite.*
+import parasite.*, threadModels.virtual
 import contingency.*, errorHandlers.throwUnsafely
 import rudiments.*
 import scintillate.*
@@ -49,8 +50,8 @@ def run(classpath: Text): Unit = supervise:
     lazy val server: HttpService = HttpServer(8080).listen:
       request.path match
         case % / p"styles" / p"amok.css" => Response(styles.main)
-        case % / p"fonts" / name         => Response(Ttf(data.font(PathName(name.render))))
-        case % / p"images" / name        => Response(Svg(data.image(PathName(name.render))))
+        case % / p"fonts" / name         => Response(Content(media"font/ttf", LazyList(data.font(PathName(name.render)))))
+        case % / p"images" / name        => Response(Content(media"image/svg+xml", LazyList(data.image(PathName(name.render)).bytes)))
         case % / p"info" / path          => Response(pages.info(db, Name.fromUrl(path.render)))
         case _                           => Response(pages.main(db))
     
