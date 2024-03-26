@@ -54,9 +54,21 @@ project amok
     include   anthology/scala
     include   surveillance/core
     include   aviation/core
-    include   harlequin/core
+    include   harlequin/ansi
     include   hallucination/core
     include   gastronomy/core
+
+  artifact executable
+    basis       tools
+    path        dist/amok
+    main        amok.main
+    counter     res/build.id
+    prefix      etc/prefix1
+    prefix      res/build.id
+    prefix      etc/prefix2
+    executable  yes
+    resource    res/logo.png  logo.png
+    include     amok/cli
 
 ##
 

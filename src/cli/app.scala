@@ -36,7 +36,7 @@ import iridescence.*
 import anticipation.*, filesystemInterfaces.galileiApi, timeInterfaces.aviationApi
 import fulminate.*
 import contingency.*
-import harlequin.*
+import harlequin.*, syntaxHighlighting.numbered
 import punctuation.*
 import hallucination.*
 import hellenism.*, classloaders.threadContext
@@ -143,26 +143,7 @@ def main(): Unit =
                       fragment -> codl.body.foldLeft(t"")(_ + _.show)
 
                 val allCode: Text = fragments.map(_(1)).join
-                val highlighted: Display =
-                  ScalaSyntax.highlight(allCode).map: line =>
-                    line.map:
-                      case Token.Unparsed(text)     => text.display
-                      case Token.Markup(markup)     => e""
-                      case Token.Newline            => e"\n"
-                      case Token.Code(code, accent) => accent match
-                        case Accent.Type     => e"${colors.YellowGreen}($code)"
-                        case Accent.Term     => e"${colors.CadetBlue}($code)"
-                        case Accent.Symbol   => e"${colors.Turquoise}($code)"
-                        case Accent.Keyword  => e"${colors.DarkOrange}($code)"
-                        case Accent.Modifier => e"${colors.Chocolate}($code)"
-                        case Accent.Ident    => e"${colors.BurlyWood}($code)"
-                        case Accent.Error    => e"${colors.OrangeRed}($code)"
-                        case Accent.Number   => e"${colors.Gold}($code)"
-                        case Accent.String   => e"${colors.Plum}($code)"
-                        case accent          => e"$code"
-                    .join
-                  .join(e"\n")
-
+                val highlighted: ScalaSource = ScalaSource.highlight(allCode)
                 val notices = Scalac[3.4](List())(classpath)(Map(t"fragments" -> allCode), workingDirectory).notices
 
                 def assign(codeSize: Int, todo: List[(Fragment, Text)]): Unit = todo match
@@ -170,38 +151,17 @@ def main(): Unit =
                     ()
                   
                   case (fragment, code) :: more =>
-                    val notices2 = notices.filter: notice =>
-                      notice.pos.end > codeSize && notice.pos.start < codeSize+code.length
-                    
-                    if notices2.length > 0 then
-                      val code2: Display = highlighted.slice(codeSize, codeSize + code.length)
-                      
-                      def markup(code: Display, todo: List[Diagnostic]): Display = todo match
-                        case Nil => code
-                        
-                        case notice :: more =>
-                          val before = code.take(notice.pos.start - codeSize)
-                          val erroneous = code.slice(notice.pos.start - codeSize, notice.pos.end - codeSize)
-                          val after = code.drop(notice.pos.end - codeSize)
-                          markup(e"$before${Bg(colors.DarkRed)}($erroneous)$after", more)
-                      
-                      val code4 = markup(code2, notices2)
 
-                      code4.cut(t"\n").init.map { line => Out.println(e"${Bg(colors.Crimson)}( ) $line") }
-                      Out.println(e"${colors.Crimson}(│)")
-                      
-                      notices2.zipWithIndex.each: (notice, index) =>
-                        notice.message.tt.trim.cut(t"\n").each: line =>
-                          Out.println(e"${colors.Crimson}(│)$Italic(${colors.Silver}( ${line}))")
-                        Out.println(e"${colors.Crimson}(${if index < notices2.length - 1 then t"├" else t"└"})")
-                      
-                      Out.println(t"")
+                    notices.each: notice =>
+                      notice.codeRange.let: codeRange =>
+                        Out.println(codeRange.of(highlighted).display)
+                        Out.println(notice.message)
 
                     assign(codeSize+code.length, more)
                 
                 assign(0, fragments.to(List))
 
-                val errorCount: Display = notices2.length match
+                val errorCount: Display = notices.length match
                   case 0 => e"no errors"
                   case 1 => e"$Bold(one) error"
                   case 2 => e"$Bold(two) errors"
@@ -228,11 +188,11 @@ def main(): Unit =
 
                 if params.Watch().absent then loop(LazyList(), false) else
                   val path = markdownFile.path
-                  val changes = path.parent.vouch(using Unsafe).as[Directory].watch().stream
-                  val fileChanges = changes.cluster(0.1*Second).map(_.map(_.path.fullname).to(Set))
-                  val relevantChanges = fileChanges.filter(_.contains(path.fullname)).map(Update.waive)
-                    
-                  loop(relevantChanges.multiplexWith(terminal.events), false)
+                  
+                  path.parent.vouch(using Unsafe).watch: changes =>
+                    val fileChanges = changes.stream.cluster(0.1*Second).map(_.map(_.path.fullname).to(Set))
+                    val relevantChanges = fileChanges.filter(_.contains(path.fullname)).map(Update.waive)
+                    loop(relevantChanges.multiplexWith(terminal.eventStream()), false)
 
               ExitStatus.Ok
           
