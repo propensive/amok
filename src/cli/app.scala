@@ -17,7 +17,7 @@
 package amok
 
 import escapade.*
-import parasite.*, threadModels.virtual
+import parasite.*, threadModels.virtual, asyncOptions.{waitForOrphans, escalateExceptions}
 import ethereal.*
 import rudiments.*
 import surveillance.*
