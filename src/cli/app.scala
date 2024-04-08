@@ -32,7 +32,6 @@ import spectacular.*
 import gossamer.*
 import cellulose.*
 import vacuous.*
-import iridescence.*
 import anticipation.*, filesystemInterfaces.galileiApi, timeInterfaces.aviationApi
 import fulminate.*
 import contingency.*
@@ -44,8 +43,6 @@ import galilei.*, filesystemOptions.{doNotCreateNonexistent, dereferenceSymlinks
 import serpentine.*, hierarchies.unix
 import hieroglyph.*, charDecoders.utf8, badEncodingHandlers.strict
 import ambience.*, environments.virtualMachine, homeDirectories.default, systemProperties.virtualMachine
-
-import dotty.tools.dotc.reporting.Diagnostic
 
 given (using Cli): WorkingDirectory = workingDirectories.daemonClient 
 
@@ -134,8 +131,8 @@ def main(): Unit =
                         given (AmokError fixes EnumCaseError) =
                           case EnumCaseError(enumCase) => AmokError(msg"Bad enum case: $enumCase")
 
-                        given (AmokError fixes CodlError) =
-                          case CodlError(line, _, _, _) => AmokError(msg"Could not parse the CoDL at $line")
+                        /*given (AmokError fixes CodlError) =
+                          case CodlError(line, _, _, _) => AmokError(msg"Could not parse the CoDL at $line")*/
 
                         Codl.read[Fragment](code)
 
