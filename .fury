@@ -16,6 +16,7 @@ default cli
 project amok
   name         Amok
   website      https://github.com/propensive/amok
+  license      apache-2
   description  A comprehensive API documentation system
 
   module model
