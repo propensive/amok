@@ -47,7 +47,7 @@ import ambience.*, environments.virtualMachine, homeDirectories.default, systemP
 given (using Cli): WorkingDirectory = workingDirectories.daemonClient 
 
 object Errors:
-  given decoder(using Raises[EnumCaseError]): Decoder[Errors] =
+  given decoder(using Errant[EnumCaseError]): Decoder[Errors] =
     case t"fail"      => Errors.Fail
     case t"ignore"    => Errors.Ignore
     case t"highlight" => Errors.Highlight
