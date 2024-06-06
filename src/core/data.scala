@@ -30,5 +30,5 @@ object data:
   def font(name: PathName[ClasspathRef.Forbidden])(using Errant[ClasspathError]): Bytes =
     (Classpath / p"amok" / p"fonts" / name)().readAs[Bytes]
   
-  def image(name: PathName[ClasspathRef.Forbidden])(using Errant[ClasspathError], Errant[UndecodableCharError]): Text =
+  def image(name: PathName[ClasspathRef.Forbidden])(using Errant[ClasspathError], Errant[CharDecodeError]): Text =
     (Classpath / p"amok" / p"images" / name)().readAs[Text]
