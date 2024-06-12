@@ -128,13 +128,9 @@ def main(): Unit =
                     case Markdown.Ast.Block.FencedCode(t"amok", meta, code) =>
                       val codl: CodlDoc = Codl.parse(code)
                       val fragment: Fragment =
-                        given (AmokError fixes EnumCaseError) =
-                          case EnumCaseError(enumCase) => AmokError(msg"Bad enum case: $enumCase")
-
-                        /*given (AmokError fixes CodlError) =
-                          case CodlError(line, _, _, _) => AmokError(msg"Could not parse the CoDL at $line")*/
-
-                        Codl.read[Fragment](code)
+                        tend(Codl.read[Fragment](code)).remedy:
+                          case _: AggregateError[?]    => abort(AmokError(msg"Could not read fragment"))
+                          case EnumCaseError(enumCase) => abort(AmokError(msg"Bad enum case: $enumCase"))
 
                       Out.println(fragment.debug)
                       fragment -> codl.body.foldLeft(t"")(_ + _.show)
