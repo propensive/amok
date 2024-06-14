@@ -32,7 +32,7 @@ import spectacular.*
 import gossamer.*
 import cellulose.*
 import vacuous.*
-import anticipation.*, filesystemInterfaces.galileiApi, timeInterfaces.aviationApi
+import anticipation.*, filesystemApi.galileiPath, durationApi.aviationDuration, instantApi.aviationInstant
 import fulminate.*
 import contingency.*
 import harlequin.*, syntaxHighlighting.numbered
@@ -41,10 +41,10 @@ import hallucination.*
 import hellenism.*, classloaders.threadContext
 import galilei.*, filesystemOptions.{doNotCreateNonexistent, dereferenceSymlinks}
 import serpentine.*, hierarchies.unix
-import hieroglyph.*, charDecoders.utf8, badEncodingHandlers.strict
+import hieroglyph.*, charDecoders.utf8, encodingMitigation.strict
 import ambience.*, environments.virtualMachine, homeDirectories.default, systemProperties.virtualMachine
 
-given (using Cli): WorkingDirectory = workingDirectories.daemonClient 
+given (using Cli): WorkingDirectory = workingDirectories.daemonClient
 
 object Errors:
   given decoder(using Errant[EnumCaseError]): Decoder[Errors] =
@@ -61,18 +61,17 @@ enum Errors:
 
 case class AmokError(details: Message) extends Error(details)
 case class Fragment
-    (id: Optional[Text],
-        language: Optional[Language],
-        errors: Optional[Errors] = Unset,
-        follows: Optional[Text] = Unset)
+    (id:       Optional[Text],
+     language: Optional[Language],
+     errors:   Optional[Errors]   = Unset,
+     follows:  Optional[Text]     = Unset)
 case class Language(compiler: Text, version: Text)
 
 @main
 def main(): Unit =
   unsafely:
     supervise:
-      given Log[Display] = logging.silent[Display]
-      
+
       object params:
         val Classpath = Flag[Text](t"classpath", false, List('c'), t"specify the classpath")
         val File = Flag[Text](t"file", false, List('f'), t"specify a file to check")
@@ -89,15 +88,15 @@ def main(): Unit =
               Out.println(Installer.install().communicate)
               Out.println(TabCompletions.install(force = true).communicate)
               ExitStatus.Ok
-          
+
           case params.About() =>
             execute:
               Out.println(Image((Classpath / p"logo.png")()).render)
-              
+
               t"ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICDila3ilIDilIDila4KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICDilIIgIOKUggogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIOKUgiAg4pSCCuKVreKUgOKUgOKUgOKUgOKUgOKUgOKUgOKVruKVreKUgOKUgOKVruKUgOKUgOKUgOKUgOKVruKUgOKUgOKUgOKUgOKVruKVreKUgOKUgOKUgOKUgOKUgOKUgOKUgOKVruKUgiAg4pSC4pWt4pSA4pSA4pWuCuKUgiAg4pWt4pSA4pWuICDilILilIIgIOKVreKUgOKVriAg4pWt4pSA4pWuICDilILilIIgIOKVreKUgOKVriAg4pSC4pSCICDilbDila8gLuKVrwrilIIgIOKUgiDilIIgIOKUguKUgiAg4pSCIOKUgiAg4pSCIOKUgiAg4pSC4pSCICDilIIg4pSCICDilILilIIgIOKVreKVriDilbDila4K4pSCICDilbDilIDila8gIOKUguKUgiAg4pSCIOKUgiAg4pSCIOKUgiAg4pSC4pSCICDilbDilIDila8gIOKUguKUgiAg4pSC4pSCICDilIIK4pWw4pSA4pSA4pSA4pSA4pWv4pSA4pSA4pWv4pWw4pSA4pSA4pWvIOKVsOKUgOKUgOKVryDilbDilIDilIDila/ilbDilIDilIDilIDilIDilIDilIDilIDila/ilbDilIDilIDila/ilbDilIDilIDila8K".decode[Base64].utf8.cut(t"\n").each: line =>
                 Out.print(t" "*18)
                 Out.println(line)
-              
+
               ExitStatus.Ok
 
           case params.Check() =>
@@ -107,7 +106,7 @@ def main(): Unit =
 
             execute:
               val file = params.File().or(abort(AmokError(msg"The file has not been specified")))
-              
+
               val classpath: LocalClasspath = LocalClasspath:
                 params.Classpath().or(abort(AmokError(msg"The classpath has not been specified"))).cut(t":").to(List).map: path =>
                   val path2 = safely(path.decodeAs[Unix.Path]).or(path.decodeAs[Unix.Link].inWorkingDirectory)
@@ -115,10 +114,10 @@ def main(): Unit =
                   else ClasspathEntry.Jarfile(path2.show)
 
               val markdownFile = safely(file.decodeAs[Path]).or(file.decodeAs[Unix.Link].inWorkingDirectory).as[File]
-              
+
               def recompile(): Unit =
                 val markdown = markdownFile.readAs[Text]
-                
+
                 val fragments: Seq[(Fragment, Text)] =
                   Markdown.parse(markdown).nodes.collect:
                     case Markdown.Ast.Block.FencedCode(t"scala", meta, code) =>
@@ -142,7 +141,7 @@ def main(): Unit =
                 def assign(codeSize: Int, todo: List[(Fragment, Text)]): Unit = todo match
                   case Nil =>
                     ()
-                  
+
                   case (fragment, code) :: more =>
 
                     notices.each: notice =>
@@ -151,7 +150,7 @@ def main(): Unit =
                         Out.println(notice.message)
 
                     assign(codeSize+code.length, more)
-                
+
                 assign(0, fragments.to(List))
 
                 val errorCount: Display = notices.length match
@@ -163,13 +162,13 @@ def main(): Unit =
                   case n => e"$Bold($n) errors"
 
                 Out.println(e"$Italic(Checked ${fragments.length} fragments, $errorCount)")
-              
+
               terminal:
                 def loop(stream: LazyList[TerminalEvent | Update.type], noChange: Boolean): Unit =
                   if !noChange then
                     recompile()
                     Out.println(e"Waiting for changes...")
-                  
+
                     if params.Watch().present
                     then Out.println(e"$Italic[(Press $Bold[Ctrl+C] or $Bold[Esc] to exit)]")
 
@@ -181,14 +180,14 @@ def main(): Unit =
 
                 if params.Watch().absent then loop(LazyList(), false) else
                   val path = markdownFile.path
-                  
+
                   path.parent.vouch(using Unsafe).watch: changes =>
                     val fileChanges = changes.stream.cluster(0.1*Second).map(_.map(_.path.fullname).to(Set))
                     val relevantChanges = fileChanges.filter(_.contains(path.fullname)).map(Update.waive)
                     loop(relevantChanges.multiplexWith(terminal.eventStream()), false)
 
               ExitStatus.Ok
-          
+
           case params.Shutdown() =>
             execute:
               service.shutdown()
@@ -199,4 +198,3 @@ def main(): Unit =
               Out.println(t"Unknown command")
               ExitStatus.Fail(1)
 object Update
-
