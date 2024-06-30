@@ -33,7 +33,7 @@ import gossamer.*
 import symbolism.*
 import cellulose.*
 import vacuous.*
-import anticipation.*, filesystemApi.galileiPath, durationApi.aviationDuration, instantApi.aviationInstant
+import anticipation.*, filesystemApi.galileiPath, durationApi.aviationDuration
 import fulminate.*
 import contingency.*
 import harlequin.*, syntaxHighlighting.numbered
@@ -46,7 +46,7 @@ import hieroglyph.*//, charDecoders.utf8, encodingMitigation.strict
 import ambience.*, environments.virtualMachine, homeDirectories.default, systemProperties.virtualMachine
 
 given (using Cli): WorkingDirectory = workingDirectories.daemonClient
-given [EventType: Communicable] => EventType is Transcribable into Message = _.communicate
+given [EventType: Communicable] => Message transcribes EventType = _.communicate
 given Message is Loggable = Log.silent[Message]
 
 object Errors:
