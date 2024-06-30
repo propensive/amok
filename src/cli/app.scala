@@ -27,9 +27,10 @@ import anthology.*
 import profanity.*
 import quantitative.*
 import turbulence.*
-import gastronomy.*
+import monotonous.*, alphabets.base64.unpadded
 import spectacular.*
 import gossamer.*
+import symbolism.*
 import cellulose.*
 import vacuous.*
 import anticipation.*, filesystemApi.galileiPath, durationApi.aviationDuration, instantApi.aviationInstant
@@ -41,10 +42,12 @@ import hallucination.*
 import hellenism.*, classloaders.threadContext
 import galilei.*, filesystemOptions.{doNotCreateNonexistent, dereferenceSymlinks}
 import serpentine.*, hierarchies.unix
-import hieroglyph.*, charDecoders.utf8, encodingMitigation.strict
+import hieroglyph.*//, charDecoders.utf8, encodingMitigation.strict
 import ambience.*, environments.virtualMachine, homeDirectories.default, systemProperties.virtualMachine
 
 given (using Cli): WorkingDirectory = workingDirectories.daemonClient
+given [EventType: Communicable] => EventType is Recordable into Message = _.communicate
+given Message is Loggable = Log.silent[Message]
 
 object Errors:
   given decoder(using Errant[EnumCaseError]): Decoder[Errors] =
@@ -67,11 +70,11 @@ case class Fragment
      follows:  Optional[Text]     = Unset)
 case class Language(compiler: Text, version: Text)
 
+
 @main
 def main(): Unit =
   unsafely:
     supervise:
-
       object params:
         val Classpath = Flag[Text](t"classpath", false, List('c'), t"specify the classpath")
         val File = Flag[Text](t"file", false, List('f'), t"specify a file to check")
@@ -93,7 +96,7 @@ def main(): Unit =
             execute:
               Out.println(Image((Classpath / p"logo.png")()).render)
 
-              t"ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICDila3ilIDilIDila4KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICDilIIgIOKUggogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIOKUgiAg4pSCCuKVreKUgOKUgOKUgOKUgOKUgOKUgOKUgOKVruKVreKUgOKUgOKVruKUgOKUgOKUgOKUgOKVruKUgOKUgOKUgOKUgOKVruKVreKUgOKUgOKUgOKUgOKUgOKUgOKUgOKVruKUgiAg4pSC4pWt4pSA4pSA4pWuCuKUgiAg4pWt4pSA4pWuICDilILilIIgIOKVreKUgOKVriAg4pWt4pSA4pWuICDilILilIIgIOKVreKUgOKVriAg4pSC4pSCICDilbDila8gLuKVrwrilIIgIOKUgiDilIIgIOKUguKUgiAg4pSCIOKUgiAg4pSCIOKUgiAg4pSC4pSCICDilIIg4pSCICDilILilIIgIOKVreKVriDilbDila4K4pSCICDilbDilIDila8gIOKUguKUgiAg4pSCIOKUgiAg4pSCIOKUgiAg4pSC4pSCICDilbDilIDila8gIOKUguKUgiAg4pSC4pSCICDilIIK4pWw4pSA4pSA4pSA4pSA4pWv4pSA4pSA4pWv4pWw4pSA4pSA4pWvIOKVsOKUgOKUgOKVryDilbDilIDilIDila/ilbDilIDilIDilIDilIDilIDilIDilIDila/ilbDilIDilIDila/ilbDilIDilIDila8K".decode[Base64].utf8.cut(t"\n").each: line =>
+              t"ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICDila3ilIDilIDila4KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICDilIIgIOKUggogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIOKUgiAg4pSCCuKVreKUgOKUgOKUgOKUgOKUgOKUgOKUgOKVruKVreKUgOKUgOKVruKUgOKUgOKUgOKUgOKVruKUgOKUgOKUgOKUgOKVruKVreKUgOKUgOKUgOKUgOKUgOKUgOKUgOKVruKUgiAg4pSC4pWt4pSA4pSA4pWuCuKUgiAg4pWt4pSA4pWuICDilILilIIgIOKVreKUgOKVriAg4pWt4pSA4pWuICDilILilIIgIOKVreKUgOKVriAg4pSC4pSCICDilbDila8gLuKVrwrilIIgIOKUgiDilIIgIOKUguKUgiAg4pSCIOKUgiAg4pSCIOKUgiAg4pSC4pSCICDilIIg4pSCICDilILilIIgIOKVreKVriDilbDila4K4pSCICDilbDilIDila8gIOKUguKUgiAg4pSCIOKUgiAg4pSCIOKUgiAg4pSC4pSCICDilbDilIDila8gIOKUguKUgiAg4pSC4pSCICDilIIK4pWw4pSA4pSA4pSA4pSA4pWv4pSA4pSA4pWv4pWw4pSA4pSA4pWvIOKVsOKUgOKUgOKVryDilbDilIDilIDila/ilbDilIDilIDilIDilIDilIDilIDilIDila/ilbDilIDilIDila/ilbDilIDilIDila8K".deserialize[Base64].utf8.cut(t"\n").each: line =>
                 Out.print(t" "*18)
                 Out.println(line)
 
@@ -116,6 +119,7 @@ def main(): Unit =
               val markdownFile = safely(file.decodeAs[Path]).or(file.decodeAs[Unix.Link].inWorkingDirectory).as[File]
 
               def recompile(): Unit =
+                import charDecoders.utf8, encodingMitigation.strict
                 val markdown = markdownFile.readAs[Text]
 
                 val fragments: Seq[(Fragment, Text)] =
@@ -126,10 +130,14 @@ def main(): Unit =
 
                     case Markdown.Ast.Block.FencedCode(t"amok", meta, code) =>
                       val codl: CodlDoc = Codl.parse(code)
-                      val fragment: Fragment =
-                        tend(Codl.read[Fragment](code)).remedy:
-                          case _: AggregateError[?]    => abort(AmokError(msg"Could not read fragment"))
-                          case EnumCaseError(enumCase) => abort(AmokError(msg"Bad enum case: $enumCase"))
+
+                      given AmokError mitigates EnumCaseError =
+                        case EnumCaseError(enumCase) => AmokError(msg"Bad enum case: $enumCase")
+
+                      given AmokError mitigates AggregateError[?] = error =>
+                        AmokError(msg"Could not read fragment")
+
+                      val fragment: Fragment = Codl.read[Fragment](code)
 
                       Out.println(fragment.debug)
                       fragment -> codl.body.foldLeft(t"")(_ + _.show)
@@ -146,14 +154,14 @@ def main(): Unit =
 
                     notices.each: notice =>
                       notice.codeRange.let: codeRange =>
-                        Out.println(codeRange.of(highlighted).display)
+                        Out.println(codeRange.of(highlighted).teletype)
                         Out.println(notice.message)
 
                     assign(codeSize+code.length, more)
 
                 assign(0, fragments.to(List))
 
-                val errorCount: Display = notices.length match
+                val errorCount: Teletype = notices.length match
                   case 0 => e"no errors"
                   case 1 => e"$Bold(one) error"
                   case 2 => e"$Bold(two) errors"
@@ -197,4 +205,6 @@ def main(): Unit =
             execute:
               Out.println(t"Unknown command")
               ExitStatus.Fail(1)
+
+
 object Update
