@@ -12,6 +12,7 @@ repo propensive/acyclicity
 repo propensive/hallucination
 repo propensive/anthology
 repo propensive/guillotine
+repo propensive/gastronomy
 repo propensive/cellulose
 repo propensive/cataclysm
 repo propensive/jacinta
@@ -32,7 +33,7 @@ project amok
 
   module cli
     compiler  scala
-    include   amok/model ethereal/core exoskeleton/completions exoskeleton/core escapade/core punctuation/core jacinta/core cellulose/core anthology/scala surveillance/core aviation/core harlequin/ansi hallucination/core gastronomy/core quantitative/units
+    include   amok/model ethereal/core exoskeleton/completions exoskeleton/core escapade/core punctuation/core jacinta/core cellulose/core anthology/scala surveillance/core aviation/core harlequin/ansi hallucination/core gastronomy/core quantitative/units monotonous/core gastronomy/core
     main      amok.main
     sources   src/cli
     artifact  amok
