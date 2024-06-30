@@ -46,7 +46,7 @@ import hieroglyph.*//, charDecoders.utf8, encodingMitigation.strict
 import ambience.*, environments.virtualMachine, homeDirectories.default, systemProperties.virtualMachine
 
 given (using Cli): WorkingDirectory = workingDirectories.daemonClient
-given [EventType: Communicable] => EventType is Recordable into Message = _.communicate
+given [EventType: Communicable] => EventType is Transcribable into Message = _.communicate
 given Message is Loggable = Log.silent[Message]
 
 object Errors:
