@@ -120,7 +120,7 @@ def main(): Unit =
 
               def recompile(): Unit =
                 import charDecoders.utf8, encodingMitigation.strict
-                val markdown = markdownFile.readAs[Text]
+                val markdown = markdownFile.read[Text]
 
                 val fragments: Seq[(Fragment, Text)] =
                   Markdown.parse(markdown).nodes.collect:
