@@ -139,7 +139,7 @@ def main(): Unit =
 
                       val fragment: Fragment = Codl.read[Fragment](code)
 
-                      Out.println(fragment.debug)
+                      Out.println(fragment.inspect)
                       fragment -> codl.body.foldLeft(t"")(_ + _.show)
 
                 val allCode: Text = fragments.map(_(1)).join
