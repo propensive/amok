@@ -108,10 +108,10 @@ def main(): Unit =
             params.Watch()
 
             execute:
-              val file = params.File().or(abort(AmokError(msg"The file has not been specified")))
+              val file = params.File().or(abort(AmokError(m"The file has not been specified")))
 
               val classpath: LocalClasspath = LocalClasspath:
-                params.Classpath().or(abort(AmokError(msg"The classpath has not been specified"))).cut(t":").to(List).map: path =>
+                params.Classpath().or(abort(AmokError(m"The classpath has not been specified"))).cut(t":").to(List).map: path =>
                   val path2 = safely(path.decodeAs[Unix.Path]).or(path.decodeAs[Unix.Link].inWorkingDirectory)
                   if path2.is[Directory] then ClasspathEntry.Directory(path2.show)
                   else ClasspathEntry.Jarfile(path2.show)
@@ -132,10 +132,10 @@ def main(): Unit =
                       val codl: CodlDoc = Codl.parse(code)
 
                       given AmokError mitigates EnumCaseError =
-                        case EnumCaseError(enumCase) => AmokError(msg"Bad enum case: $enumCase")
+                        case EnumCaseError(enumCase) => AmokError(m"Bad enum case: $enumCase")
 
                       given AmokError mitigates AggregateError[?] = error =>
-                        AmokError(msg"Could not read fragment")
+                        AmokError(m"Could not read fragment")
 
                       val fragment: Fragment = Codl.read[Fragment](code)
 
