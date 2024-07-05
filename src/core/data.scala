@@ -27,8 +27,8 @@ import digression.*
 import hellenism.*, classloaders.threadContext
 
 object data:
-  def font(name: PathName[ClasspathRef.Forbidden])(using Errant[ClasspathError]): Bytes =
+  def font(name: PathName[ClasspathRef.Forbidden])(using Tactic[ClasspathError]): Bytes =
     (Classpath / p"amok" / p"fonts" / name)().read[Bytes]
 
-  def image(name: PathName[ClasspathRef.Forbidden])(using Errant[ClasspathError], Errant[CharDecodeError]): Text =
+  def image(name: PathName[ClasspathRef.Forbidden])(using Tactic[ClasspathError], Tactic[CharDecodeError]): Text =
     (Classpath / p"amok" / p"images" / name)().read[Text]

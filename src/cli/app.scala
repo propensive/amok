@@ -50,12 +50,12 @@ given [EventType: Communicable] => Message transcribes EventType = _.communicate
 given Message is Loggable = Log.silent[Message]
 
 object Errors:
-  given decoder(using Errant[EnumCaseError]): Decoder[Errors] =
+  given decoder(using Tactic[EnumCaseError]): Decoder[Errors] =
     case t"fail"      => Errors.Fail
     case t"ignore"    => Errors.Ignore
     case t"highlight" => Errors.Highlight
     case t"show"      => Errors.Show
-    case other        => raise(EnumCaseError(other))(Errors.Ignore)
+    case other        => raise(EnumCaseError(other), Errors.Ignore)
 
   given encoder: Encoder[Errors] = _.toString.tt.lower
 
@@ -119,7 +119,7 @@ def main(): Unit =
               val markdownFile = safely(file.decodeAs[Path]).or(file.decodeAs[Unix.Link].inWorkingDirectory).as[File]
 
               def recompile(): Unit =
-                import charDecoders.utf8, encodingMitigation.strict
+                import charDecoders.utf8, encodingMitigation.skip
                 val markdown = markdownFile.read[Text]
 
                 val fragments: Seq[(Fragment, Text)] =

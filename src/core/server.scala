@@ -26,7 +26,7 @@ import gossamer.*
 import gesticulate.*
 import hieroglyph.*, charEncoders.utf8
 import parasite.*, threadModels.virtual
-import contingency.*, errorHandlers.throwUnsafely
+import contingency.*, strategies.throwUnsafely
 import rudiments.*
 import scintillate.*
 import serpentine.*, hierarchies.simple
@@ -40,10 +40,10 @@ def run(classpath: Text): Unit = supervise:
   try
     val db = unsafely:
       val dirs = classpath.cut(t":").filter(_ != t"").map(_.decodeAs[Path].as[Directory])
-      
+
       val tastyFiles: List[File] =
         dirs.flatMap(_.descendants.filter(_.is[File]).filter(_.name.ends(t".tasty"))).map(_.as[File]).to(List)
-      
+
       import hierarchies.unix
       Amok.inspect(tastyFiles)
 
@@ -54,8 +54,8 @@ def run(classpath: Text): Unit = supervise:
         case % / p"images" / name        => Response(Content(media"image/svg+xml", LazyList(data.image(PathName(name.render)).bytes)))
         case % / p"info" / path          => Response(pages.info(db, Name.fromUrl(path.render)))
         case _                           => Response(pages.main(db))
-    
+
     server.async.await()
-    
+
   catch case err: Throwable =>
     println(err.toString+" at "+err.getStackTrace().nn.to(List).mkString("\n"))
