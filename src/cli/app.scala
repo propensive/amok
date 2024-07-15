@@ -42,7 +42,7 @@ import hallucination.*
 import hellenism.*, classloaders.threadContext
 import galilei.*, filesystemOptions.{doNotCreateNonexistent, dereferenceSymlinks}
 import serpentine.*, hierarchies.unix
-import hieroglyph.*//, charDecoders.utf8, sanitization.strict
+import hieroglyph.*//, charDecoders.utf8, textSanitizers.strict
 import ambience.*, environments.virtualMachine, homeDirectories.default, systemProperties.virtualMachine
 
 given (using Cli): WorkingDirectory = workingDirectories.daemonClient
@@ -119,7 +119,7 @@ def main(): Unit =
               val markdownFile = safely(file.decodeAs[Path]).or(file.decodeAs[Unix.Link].inWorkingDirectory).as[File]
 
               def recompile(): Unit =
-                import charDecoders.utf8, sanitization.skip
+                import charDecoders.utf8, textSanitizers.skip
                 val markdown = markdownFile.read[Text]
 
                 val fragments: Seq[(Fragment, Text)] =
