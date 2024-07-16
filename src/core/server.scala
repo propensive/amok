@@ -29,7 +29,7 @@ import parasite.*, threadModels.virtual
 import contingency.*, strategies.throwUnsafely
 import rudiments.*
 import scintillate.*
-import serpentine.*, hierarchies.simple
+import serpentine.*, pathHierarchies.simple
 import spectacular.*
 import turbulence.*, stdioSources.virtualMachine
 
@@ -44,7 +44,7 @@ def run(classpath: Text): Unit = supervise:
       val tastyFiles: List[File] =
         dirs.flatMap(_.descendants.filter(_.is[File]).filter(_.name.ends(t".tasty"))).map(_.as[File]).to(List)
 
-      import hierarchies.unix
+      import pathHierarchies.unix
       Amok.inspect(tastyFiles)
 
     lazy val server: HttpService = HttpServer(8080).listen:

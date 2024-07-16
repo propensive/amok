@@ -41,7 +41,7 @@ import punctuation.*
 import hallucination.*
 import hellenism.*, classloaders.threadContext
 import galilei.*, filesystemOptions.{doNotCreateNonexistent, dereferenceSymlinks}
-import serpentine.*, hierarchies.unix
+import serpentine.*, pathHierarchies.unix
 import hieroglyph.*//, charDecoders.utf8, textSanitizers.strict
 import ambience.*, environments.virtualMachine, homeDirectories.default, systemProperties.virtualMachine
 

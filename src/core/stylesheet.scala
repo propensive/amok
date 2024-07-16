@@ -23,7 +23,7 @@ import anticipation.*
 import iridescence.*
 import spectacular.*
 import rudiments.*
-import serpentine.*, hierarchies.simple
+import serpentine.*, pathHierarchies.simple
 
 object styles:
   

@@ -24,7 +24,7 @@ import vacuous.*
 import honeycomb.*
 import contingency.*
 import rudiments.*
-import serpentine.*, hierarchies.simple
+import serpentine.*, pathHierarchies.simple
 import cataclysm.*
 
 object pages:
