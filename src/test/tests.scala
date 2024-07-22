@@ -27,30 +27,30 @@ object Tests extends Suite(t"Amok Tests"):
     test(t"root package"):
       Path.Root.text
     .assert(_ == t"_root_")
-    
+
     test(t"package name"):
       Path.Term(Path.Root, t"escritoire").text
     .assert(_ == t"escritoire")
-    
+
     test(t"class name"):
       Path.Type(Path.Term(Path.Root, t"escritoire"), t"Column").text
     .assert(_ == t"escritoire.Column")
-    
+
     test(t"class method name"):
       Path.Term(Path.Type(Path.Term(Path.Root, t"escritoire"), t"Column"), t"apply").text
     .assert(_ == t"escritoire.Column#apply")
 
     test(t"Read simple name"):
-      Name(t"escritoire.Column")
-    .assert(_ == Name(Path.Term(Path.Root, t"escritoire"), t"Column"))
-    
+      Identifier(t"escritoire.Column")
+    .assert(_ == Identifier(Path.Term(Path.Root, t"escritoire"), t"Column"))
+
     test(t"Read class method"):
-      Name(t"escritoire.Column#width")
-    .assert(_ == Name(Path.Type(Path.Term(Path.Root, t"escritoire"), t"Column"), t"width"))
+      Identifier(t"escritoire.Column#width")
+    .assert(_ == Identifier(Path.Type(Path.Term(Path.Root, t"escritoire"), t"Column"), t"width"))
 
     val examples = List(t"escritoire.Column#apply", t"escritoire.Column.width", t"Column#Cell#width",
         t"Column#Cell.apply")
-    
+
     for eg <- examples do test(t"Roundtrip test: $eg"):
-      Name(eg).text
+      Identifier(eg).text
     .assert(_ == eg)

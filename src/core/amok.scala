@@ -49,19 +49,19 @@ case class Info(name: Text, icon: Icons.Icon)
 object Amok:
   def inspect[FileType: GenericFile](tastyFiles: Seq[FileType]): Db =
     val db: Db = Db()
-    
+
     case class DocInspector() extends Inspector:
 
       def inspect(using Quotes)(tastys: List[Tasty[quotes.type]]): Unit =
         import quotes.reflect.*
         import Flags.*
-        
+
         val retainsSym = TypeRepr.of[annotation.retains].typeSymbol
-        
+
         def pname(term: Term, xs: List[Text] = Nil): List[Text] = term match
           case Ident(base)        => base.show :: xs
           case Select(parent, id) => pname(parent, id.show :: xs)
-          
+
         def showType(using scope: Scope)(repr: quotes.reflect.TypeRepr, parens: Boolean = false): Text =
           repr.asMatchable match
             case AppliedType(base, args)           =>
@@ -78,13 +78,13 @@ object Amok:
             case TermRef(prefix, name)             => t"$name.type"
             case TypeLambda(from, to, tpe)         => t"[${from.mkString(", ")}] =>> ${showType(tpe, true)}"
             case TypeBounds(lb, ub)                => t"? >: ${showType(lb, true)} <: ${showType(ub, true)}}" // FIXME: hide Any/Nothing
-            
+
             case ref: dotty.tools.dotc.core.Types.TypeParamRef =>
               ref.binder match { case TypeLambda(params, _, _) => params(ref.paramNum).show }
-        
+
             case other =>
               t"???"
-        
+
         def captures(using scope: Scope)(term: quotes.reflect.Term): Text =
           term match
             case Apply(Select(New(focus), _), List(Typed(Repeated(values, _), _))) if focus.tpe.typeSymbol == retainsSym =>
@@ -107,12 +107,12 @@ object Amok:
           else
             if flags.is(Flags.Module) then entity = Entity.Object
           //if flags.is(Flags.Final) then qualifiers += Qualifier.Final
-          
+
           if flags.is(Flags.Lazy) then qualifiers += Qualifier.Lazy
           if flags.is(Flags.Open) || flags.is(Flags.Opaque) then qualifiers += Qualifier.OpaqueOrOpen
           if flags.is(Flags.ExtensionMethod) then qualifiers += Qualifier.Extension
           if flags.is(Flags.Param) then qualifiers += Qualifier.Param
-          
+
           if flags.is(Flags.Inline) then qualifiers += Qualifier.Inline
           if flags.is(Flags.Transparent) then qualifiers += Qualifier.Transparent
           if flags.is(Flags.Case) then qualifiers += Qualifier.Case
@@ -123,7 +123,7 @@ object Amok:
           case pc@PackageClause(id@Ident(name), body) =>
             db((path / name.show).asTerm) = Info(name.show, icon(Icons.Entity.Package, pc.symbol.flags))
             body.each(walk(_, (path / name.show).asTerm))
-            
+
           case valDef@ValDef(name, rtn, body) if !(valDef.symbol.flags.is(Synthetic) || valDef.symbol.flags.is(Private) || name == "_") =>
             val termName = if valDef.symbol.flags.is(Given) && (name.startsWith("given_") || name.startsWith("evidence$")) then showType(rtn.tpe) else name.show
             db((path / termName).asTerm) = Info(termName, icon(Icons.Entity.Val, valDef.symbol.flags))
@@ -142,24 +142,24 @@ object Amok:
             val termName = if term.symbol.flags.is(Given) && name.startsWith("given_") then showType(rtn.tpe) else name.show
             db((path / termName).asType) = Info(termName, icon(Icons.Entity.Def, term.symbol.flags))
             params.flatMap(_.params).each(walk(_, (path / termName).asTerm))
-            
+
           case typeDef@TypeDef(name, a) if name != "MirroredMonoType" =>
             db((path / name.show).asType) = Info(name.show, icon(Icons.Entity.Type, typeDef.symbol.flags))
 
           case Export(_, _) =>
             ()
-          
+
           case other =>
             ()
-            
+
         tastys.each: tasty =>
           walk(tasty.ast, Path.Root)
-      
+
       //def apply(): Docs = rootDocs
-    
+
     val inspector = DocInspector()
     val files = tastyFiles.to(List).map(_.fileText)
-    
+
     for file <- files do
       try TastyInspector.inspectTastyFiles(List(file.s))(inspector)
       catch case err: Exception =>
@@ -171,7 +171,7 @@ object Amok:
 
 class Db():
   private object data:
-    val info: scm.Map[Name, Info] = scm.HashMap()
+    val info: scm.Map[Identifier, Info] = scm.HashMap()
     val types: scm.Map[Path, scm.ListBuffer[Path.Type]] = scm.HashMap()
     val terms: scm.Map[Path, scm.ListBuffer[Path.Term]] = scm.HashMap()
 
@@ -179,15 +179,15 @@ class Db():
     path match
       case path@Path.Type(parent, id) => data.types.getOrElseUpdate(parent, scm.ListBuffer()).append(path)
       case path@Path.Term(parent, id) => data.terms.getOrElseUpdate(parent, scm.ListBuffer()).append(path)
-    
+
     path match
-      case Name(name) => data.info(name) = info
-      case _               => ()
-  
+      case Identifier(name) => data.info(name) = info
+      case _                => ()
+
   def types(path: Path): List[Path.Type] = data.types.get(path).map(_.to(List)).getOrElse(Nil)
   def terms(path: Path): List[Path.Term] = data.terms.get(path).map(_.to(List)).getOrElse(Nil)
 
-  def children(path: Path): List[Name] =
-    (types(path) ++ terms(path)).to(Set).collect { case Name(name) => name }.to(List).sortBy(_.id)
+  def children(path: Path): List[Identifier] =
+    (types(path) ++ terms(path)).to(Set).collect { case Identifier(name) => name }.to(List).sortBy(_.id)
 
-  def info(name: Name): Info = data.info(name)
+  def info(name: Identifier): Info = data.info(name)

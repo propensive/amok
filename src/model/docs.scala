@@ -23,38 +23,38 @@ import spectacular.*
 
 import language.dynamics
 
-object Name:
-  def apply(name: Text): Name =
+object Identifier:
+  def apply(name: Text): Identifier =
     val str: String = name.s
 
-    def recur(start: Int = 0, path: Path = Path.Root): Name =
+    def recur(start: Int = 0, path: Path = Path.Root): Identifier =
       val dot = str.indexOf('.', start)
       val hash = str.indexOf('#', start)
 
-      if dot == hash then Name(path, str.substring(start).nn.show)
+      if dot == hash then Identifier(path, str.substring(start).nn.show)
       else if dot < hash && dot != -1 || hash == -1 then recur(dot + 1, Path.Term(path, str.substring(start, dot).nn.show))
       else recur(hash + 1, Path.Type(path, str.substring(start, hash).nn.show))
 
     recur()
 
-  def unapply(path: Path): Option[Name] = path match
-    case Path.Type(path, id) => Some(Name(path, id))
-    case Path.Term(path, id) => Some(Name(path, id))
+  def unapply(path: Path): Option[Identifier] = path match
+    case Path.Type(path, id) => Some(Identifier(path, id))
+    case Path.Term(path, id) => Some(Identifier(path, id))
     case Path.Root           => None
-  
-  def fromUrl(url: Text): Name = apply:
+
+  def fromUrl(url: Text): Identifier = apply:
     url.mapChars:
       case ':' => '#'
       case '(' => '['
       case ')' => ']'
       case ch  => ch
 
-case class Name(path: Path, id: Text):
+case class Identifier(path: Path, id: Text):
   def text: Text = path match
     case Path.Term(_, _) => t"${path.text}.$id"
     case Path.Type(_, _) => t"${path.text}#$id"
     case Path.Root       => id
-  
+
   def asType: Path.Type = Path.Type(path, id)
   def asTerm: Path.Term = Path.Term(path, id)
 
@@ -63,7 +63,7 @@ case class Name(path: Path, id: Text):
     case '[' => '('
     case ']' => ')'
     case ch  => ch
-  
+
 enum Path:
   case Term(path: Path, id: Text)
   case Type(path: Path, id: Text)
@@ -71,9 +71,9 @@ enum Path:
 
   lazy val text: Text = this match
     case Root => t"_root_"
-    case Name(Root, id)            => id
-    case Name(path@Type(_, _), id) => t"${path.text}#$id"
-    case Name(path, id)            => t"${path.text}.$id"
-  
+    case Identifier(Root, id)            => id
+    case Identifier(path@Type(_, _), id) => t"${path.text}#$id"
+    case Identifier(path, id)            => t"${path.text}.$id"
+
   @targetName("child")
-  infix def / (id: Text): Name = Name(this, id)
+  infix def / (id: Text): Identifier = Identifier(this, id)

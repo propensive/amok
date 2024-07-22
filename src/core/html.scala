@@ -83,8 +83,8 @@ object pages:
       )
     )
   )
-  
-  def info(db: Db, path: Name): HtmlDoc =
+
+  def info(db: Db, path: Identifier): HtmlDoc =
     db.info(path).option match
       case None =>
         HtmlDoc(

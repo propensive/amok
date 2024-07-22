@@ -16,16 +16,17 @@
 
 package amok
 
-import anticipation.*, filesystemInterfaces.galileiApi
+import anticipation.*, filesystemApi.galileiPath
 import cataclysm.*
 import cellulose.*
 import digression.*
-import eucalyptus.*, logging.silent
+import eucalyptus.*
 import galilei.*, filesystemOptions.{dereferenceSymlinks, createNonexistent, createNonexistentParents}
 import gossamer.*
 import gesticulate.*
+import fulminate.*
 import hieroglyph.*, charEncoders.utf8
-import parasite.*, threadModels.virtual
+import parasite.*, threadModels.virtual, orphanDisposal.await
 import contingency.*, strategies.throwUnsafely
 import rudiments.*
 import scintillate.*
@@ -34,6 +35,8 @@ import spectacular.*
 import turbulence.*, stdioSources.virtualMachine
 
 import unsafeExceptions.canThrowAny
+
+given Message is Loggable = Log.silent[Message]
 
 @main
 def run(classpath: Text): Unit = supervise:
@@ -49,11 +52,11 @@ def run(classpath: Text): Unit = supervise:
 
     lazy val server: HttpService = HttpServer(8080).listen:
       request.path match
-        case % / p"styles" / p"amok.css" => Response(styles.main)
-        case % / p"fonts" / name         => Response(Content(media"font/ttf", LazyList(data.font(PathName(name.render)))))
-        case % / p"images" / name        => Response(Content(media"image/svg+xml", LazyList(data.image(PathName(name.render)).bytes)))
-        case % / p"info" / path          => Response(pages.info(db, Name.fromUrl(path.render)))
-        case _                           => Response(pages.main(db))
+        case % / p"styles" / p"amok.css" => HttpResponse(styles.main)
+        case % / p"fonts" / name         => HttpResponse(Content(media"font/ttf", LazyList(data.font(Name(name.render)))))
+        case % / p"images" / name        => HttpResponse(Content(media"image/svg+xml", LazyList(data.image(Name(name.render)).bytes)))
+        case % / p"info" / path          => HttpResponse(pages.info(db, Identifier.fromUrl(path.render)))
+        case _                           => HttpResponse(pages.main(db))
 
     server.async.await()
 

@@ -17,7 +17,7 @@
 package amok
 
 import turbulence.*
-import hieroglyph.*, charEncoders.utf8, charDecoders.utf8, badEncodingHandlers.strict
+import hieroglyph.*, charEncoders.utf8, charDecoders.utf8, textSanitizers.strict
 import galilei.*
 import rudiments.*
 import contingency.*
@@ -27,8 +27,10 @@ import digression.*
 import hellenism.*, classloaders.threadContext
 
 object data:
-  def font(name: PathName[ClasspathRef.Forbidden])(using Tactic[ClasspathError]): Bytes =
+  def font(name: Name[ClasspathRef.Forbidden])(using Tactic[ClasspathError]): Bytes =
     (Classpath / p"amok" / p"fonts" / name)().read[Bytes]
 
-  def image(name: PathName[ClasspathRef.Forbidden])(using Tactic[ClasspathError], Tactic[CharDecodeError]): Text =
+  def image(name: Name[ClasspathRef.Forbidden])
+      (using Tactic[ClasspathError], Tactic[CharDecodeError])
+          : Text =
     (Classpath / p"amok" / p"images" / name)().read[Text]
