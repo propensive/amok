@@ -116,16 +116,22 @@ def main(): Unit =
                   if path2.is[Directory] then ClasspathEntry.Directory(path2.show)
                   else ClasspathEntry.Jarfile(path2.show)
 
-              val markdownFile = safely(file.decodeAs[Path]).or(file.decodeAs[Unix.Link].inWorkingDirectory).as[File]
+              val markdownFile: File =
+                safely(file.decodeAs[Path]).or(file.decodeAs[Unix.Link].inWorkingDirectory).as[File]
 
               def recompile(): Unit =
                 import charDecoders.utf8, textSanitizers.skip
-                val markdown = markdownFile.read[Text]
+                val markdown =
+                  tend:
+                    case IoError(_)     => AmokError(m"The markdown file could not be read")
+                    case StreamError(_) => AmokError(m"Reading the markdown file was interrupted")
+                  .within:
+                    markdownFile.read[Text]
 
                 val fragments: Seq[(Fragment, Text)] =
                   Markdown.parse(markdown).nodes.collect:
                     case Markdown.Ast.Block.FencedCode(t"scala", meta, code) =>
-                      val fragment = Fragment(t"id", Language(t"scala", t"3.3"))
+                      val fragment = Fragment(t"id", Language(t"scala", t"3.4"))
                       fragment -> code
 
                     case Markdown.Ast.Block.FencedCode(t"amok", meta, code) =>
@@ -143,7 +149,7 @@ def main(): Unit =
                       fragment -> codl.body.foldLeft(t"")(_ + _.show)
 
                 val allCode: Text = fragments.map(_(1)).join
-                val highlighted: ScalaSource = ScalaSource.highlight(allCode)
+                val highlighted: SourceCode = Scala.highlight(allCode)
                 val notices = Scalac[3.4](List())(classpath)(Map(t"fragments" -> allCode), workingDirectory).notices
 
                 def assign(codeSize: Int, todo: List[(Fragment, Text)]): Unit = todo match
