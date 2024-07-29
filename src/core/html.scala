@@ -39,7 +39,7 @@ object pages:
         Label(`for` = t"$prefix-$idx", style = Css(backgroundImage = unsafely(% / p"images" /- info.icon.filename)))(
           A(href = unsafely(% / p"info" /- item.url), target = t"main")(if italic then Em(item.id) else B(item.id))
         ),
-        Input(id = t"$prefix-$idx", htype = HType.Checkbox),
+        Input(id = t"$prefix-$idx", `type` = Type.Checkbox),
         if typeChildren.isEmpty && termChildren.isEmpty then Nil else List(Div(
           List(
             if typeChildren.isEmpty then Nil else List(Ul(typeChildren)),
