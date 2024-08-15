@@ -13,9 +13,11 @@ import punctuation.*
 import rudiments.*
 import spectacular.*
 import vacuous.*
+import denominative.*
+
+given Decimalizer = Decimalizer(1)
 
 val count = Counter(0)
-
 case class Replacement
     (`match`:     Selection,
      replacement: Optional[Text],
@@ -25,11 +27,12 @@ case class Replacement
 
   def apply(text: Text): Text = `match`.findIn(text).lay(text): (start, end) =>
     if delete.present then t"${text.s.substring(0, start).nn}${text.s.substring(end).nn}" else
-      val text2 = t"${prefix.or(t"")}${replacement.or(text.slice(start, end))}${suffix.or(t"")}"
+      val text2 = t"${prefix.or(t"")}${replacement.or(text.slice(Ordinal.zerary(start) ~ Ordinal.natural(end)))}${suffix.or(t"")}"
       t"${text.s.substring(0, start).nn}$text2${text.s.substring(end).nn}"
 
 case class Transform
   (replace: List[Replacement], before:  Optional[Text], after: Optional[Text])
+
 
 case class Preamble
     (syntax:    Text,
@@ -67,7 +70,6 @@ object Note:
   export Style.*
 
 case class Note(tokens: List[SourceToken], style: Note.Style, caption: Optional[Text])
-
 
 object AmokRenderer extends Renderer(t"amok"):
   def render(meta: Optional[Text], content: Text): Seq[Html[Flow]] =
@@ -144,7 +146,7 @@ object AmokRenderer extends Renderer(t"amok"):
           val captionSpan =
             caption.lay(Nil): text =>
               val textLines = text.cut(t"\n")
-              val height = textLines.length*2
+              val height = textLines.length*1.5
               val width = textLines.map(_.length).max + 1
               List(Span.caption(style = t"width:${width}ch;height:${height}em")(Span(text)))
 
@@ -168,26 +170,25 @@ object AmokRenderer extends Renderer(t"amok"):
          (ranges.compact.sortBy(_.start),
           Scala.highlight(text).lines.to(List).flatMap(SourceToken.Newline :: _))).init.tail
 
+
     preamble.transform.lay(List(Div.amok(style(code)))): transform =>
       val code2 = transform.replace.foldLeft(code) { (acc, transform) => transform(acc) }
       val differences = diff(Scala.highlight(code).lines, Scala.highlight(code2).lines)
 
-      import ScalaRenderer.className
-
-      val output = differences.rdiff(_ == _).changes.map:
+      val output = differences.rdiff({ (left, right) => diff(left.to(Vector), right.to(Vector)).size < 5 }, 5).changes.map:
         case Par(_, _, line) => Span.line:
           line.or(Nil).map { token => ScalaRenderer.element(token.accent, token.text) }
 
         case Sub(_, _, left, right) => Span.line:
           diff(left.or(Nil).to(Vector), right.or(Nil).to(Vector)).edits.map:
             case Par(_, _, SourceToken(text, accent)) =>
-              Code(`class` = className(accent))(text)
+              Code(`class` = ScalaRenderer.className(accent))(text)
 
             case Ins(_, SourceToken(text, accent)) =>
-              Code(`class` = t"${className(accent)} two", style = t"width: ${text.length}ch")(text)
+              Code(`class` = t"${ScalaRenderer.className(accent)} two", style = t"width: ${text.length}ch")(text)
 
             case Del(_, SourceToken(text, accent)) =>
-              Code(`class` = t"${className(accent)} one", style = t"width: ${text.length}ch")(text)
+              Code(`class` = t"${ScalaRenderer.className(accent)} one", style = t"width: ${text.length}ch")(text)
 
             case _ =>
               throw Panic(m"Should never have an unset edit")
@@ -201,8 +202,8 @@ object AmokRenderer extends Renderer(t"amok"):
       val id = count()
 
       List(Div.amok
-       (Input.before(`type` = Type.Radio, name = t"radiogroup_$id", id = t"before_$id", checked = true),
+       (Input.fore(`type` = Type.Radio, name = t"radiogroup_$id", id = t"before_$id", checked = true),
         Label(`for` = t"before_$id")(transform.before.or(t"Before")),
-        Input.after(`type` = Type.Radio, name = t"radiogroup_$id", id = t"after_$id"),
+        Input.aft(`type` = Type.Radio, name = t"radiogroup_$id", id = t"after_$id"),
         Label(`for` = t"after_$id")(transform.after.or(t"After")),
         Pre(output.init)))

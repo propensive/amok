@@ -62,3 +62,4 @@ def run(classpath: Text): Unit = supervise:
 
   catch case err: Throwable =>
     println(err.toString+" at "+err.getStackTrace().nn.to(List).mkString("\n"))
+
