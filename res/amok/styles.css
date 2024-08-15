@@ -1,4 +1,19 @@
 @import url('https://fonts.googleapis.com/css2?family=Sono:wght,MONO@200..800,0..1&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100..800&display=swap');
+
+pre code {
+  font-family: Sono;
+  font-variation-settings: "MONO" 1;
+  font-weight: 300;
+  font-size: 0.75em;
+  line-height: 1;
+}
+.mono pre {
+  font-family: monospace;
+  font-weight: 100;
+  font-size: 0.76em !important;
+  line-height: 1.25em !important;
+}
 
 .amok {
   background-color: #023;
@@ -9,14 +24,14 @@
     font-variation-settings: "MONO" 1;
     padding: 0.8em 1em;
     margin: 0;
-    line-height: 1em;
     overflow-x: auto;
-    font-size: 1rem;
+    scrollbar-color: #fff3 transparent;
+    scrollbar-width: thin;
     &>.line {
       padding: 0.05em 0;
       display: block;
-      height: 1em;
-      overflow: scroll;
+      height: 1.25em;
+      line-height: 1.25em;
       &>.hi { --caption-color: 187, 187, 255; }
       &>.err { --caption-color: 255, 0, 68; }
       &>.warn { --caption-color: 255, 170, 0; }
@@ -25,15 +40,9 @@
         white-space: pre;
         border-bottom: solid 1px rgba(var(--caption-color), 0.5);
         background-color: rgba(var(--caption-color), 0.25);
-        font-family: Sono;
-        font-variation-settings: "MONO" 1;
-        font-weight: 300;
-        font-size: 0.75em;
         display: inline-block;
-        overflow: hidden;
         margin: 0;
         padding: 0;
-        line-heeight: 1em;
         vertical-align: middle; }
       &>span:hover {
         &>.caption {
@@ -61,6 +70,7 @@
           font-size: 0.55em;
           color: white;
           padding: 0;
+          line-height: 1.5em;
           background-color: rgba(var(--caption-color), 0.25);
           border-bottom: dotted 1px rgba(var(--caption-color), 0.5);
           &::after {
@@ -78,8 +88,7 @@
             display: inline-block;
             margin: 0 0.5ch; } } } } }
   & input[type=radio] { display: none; }
-
-  & .before:checked ~ pre {
+  & .fore:checked ~ pre {
     & .one {
       opacity: 1;
       transition: height ease 1s 1s, width ease 1s 1s, opacity ease 1s 2s; }
@@ -88,7 +97,7 @@
       transition: height ease 1s 1s, width ease 1s 1s, opacity ease 1s; }
     &>.two { height: 0; }
     &>.line>.two { width: 0 !important; } }
-  & .after:checked ~ pre {
+  & .aft:checked ~ pre {
     & .one {
       opacity: 0;
       transition: height ease 1s 1s, width ease 1s 1s, opacity ease 1s; }
@@ -97,13 +106,13 @@
       transition: height ease 1s 1s, width ease 1s 1s, opacity ease 1s 2s; }
     &>.one { height: 0; }
     &>.line>.one { width: 0 !important; } }
-  & .before:checked + label::after {
+  & .fore:checked + label::after {
     background-color: #fc3;
     color: black; }
-  & .after:checked + label::before {
+  & .aft:checked + label::before {
     background-color: #fc3;
     color: black; }
-  & .before + label {
+  & .fore + label {
     width: 50%;
     text-align: right; }
   & label {
