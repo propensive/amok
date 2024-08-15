@@ -1,4 +1,4 @@
-target amok/cli
+target amok/web
 
 repo propensive/xylophone
 repo propensive/profanity
@@ -25,6 +25,10 @@ project amok
   module model
     sources src/model
     include gossamer/core serpentine/core hellenism/core
+
+  module web
+    sources src/web
+    include punctuation/html honeycomb/core harlequin/md cellulose/core
 
   module core
     sources src/core
