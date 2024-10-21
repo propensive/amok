@@ -89,7 +89,6 @@ case class Note(tokens: List[SourceToken], style: Note.Style, caption: Optional[
 
 object AmokRenderer extends Renderer(t"amok"):
   def render(meta: Optional[Text], content: Text): Seq[Html[Flow]] =
-    erased given AggregateError[CodlError] is Unchecked = ###
     erased given CodlReadError is Unchecked = ###
     val preamble = Codl.read[Preamble](content)
     val code: Text = content.cut(t"\n").to(List).dropWhile(_ != t"##").tail.join(t"\n")

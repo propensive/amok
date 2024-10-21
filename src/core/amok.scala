@@ -132,7 +132,7 @@ object Amok:
           case classDef@ClassDef(name, defDef, _, companion, body) =>
             if name.endsWith("$package$") then body.each(walk(_, path))
             else
-              val className = if name.endsWith("$") then name.show.drop(1, Rtl) else name.show
+              val className = if name.endsWith("$") then name.show.skip(1, Rtl) else name.show
               db((path / className).asType) = Info(className, icon(if companion.isEmpty then Icons.Entity.Class else Icons.Entity.Cclass, classDef.symbol.flags))
               //walk(defDef, (path / className).asType)
               companion.each(walk(_, (path / className).asTerm))

@@ -23,7 +23,7 @@ import anticipation.*
 import iridescence.*
 import spectacular.*
 import rudiments.*
-import serpentine.*, pathHierarchies.simple
+import serpentine.*
 
 object styles:
 
@@ -182,4 +182,4 @@ object Icons:
       val entityName = t"${entity.toString.show.lower}.svg"
 
       if qualifiers.isEmpty then entityName
-      else t"${qualifiers.sortBy(_.ordinal).map(_.toString.show.take(1)).join.lower}-$entityName"
+      else t"${qualifiers.sortBy(_.ordinal).map(_.toString.show.keep(1)).join.lower}-$entityName"

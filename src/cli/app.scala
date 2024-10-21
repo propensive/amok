@@ -90,7 +90,7 @@ def main(): Unit =
             execute:
               Out.println(Installer.install().communicate)
               Out.println(TabCompletions.install(force = true).communicate)
-              ExitStatus.Ok
+              Exit.Ok
 
           case params.About() =>
             execute:
@@ -100,7 +100,7 @@ def main(): Unit =
                 Out.print(t" "*18)
                 Out.println(line)
 
-              ExitStatus.Ok
+              Exit.Ok
 
           case params.Check() =>
             params.Classpath()
@@ -112,12 +112,12 @@ def main(): Unit =
 
               val classpath: LocalClasspath = LocalClasspath:
                 params.Classpath().or(abort(AmokError(m"The classpath has not been specified"))).cut(t":").to(List).map: path =>
-                  val path2 = safely(path.decodeAs[Unix.Path]).or(path.decodeAs[Unix.Link].inWorkingDirectory)
+                  val path2 = safely(path.decode[Unix.Path]).or(path.decode[Unix.Link].inWorkingDirectory)
                   if path2.is[Directory] then ClasspathEntry.Directory(path2.show)
-                  else ClasspathEntry.Jarfile(path2.show)
+                  else ClasspathEntry.Jar(path2.show)
 
               val markdownFile: File =
-                safely(file.decodeAs[Path]).or(file.decodeAs[Unix.Link].inWorkingDirectory).as[File]
+                safely(file.decode[Path]).or(file.decode[Unix.Link].inWorkingDirectory).as[File]
 
               def recompile(): Unit =
                 import charDecoders.utf8, textSanitizers.skip
@@ -200,17 +200,17 @@ def main(): Unit =
                     val relevantChanges = fileChanges.filter(_.contains(path.fullname)).map(Update.waive)
                     loop(relevantChanges.multiplexWith(terminal.eventStream()), false)
 
-              ExitStatus.Ok
+              Exit.Ok
 
           case params.Shutdown() =>
             execute:
               service.shutdown()
-              ExitStatus.Ok
+              Exit.Ok
 
           case _ =>
             execute:
               Out.println(t"Unknown command")
-              ExitStatus.Fail(1)
+              Exit.Fail(1)
 
 
 object Update

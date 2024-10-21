@@ -32,6 +32,7 @@ import rudiments.*
 import scintillate.*
 import serpentine.*, pathHierarchies.simple
 import spectacular.*
+import nomenclature.*
 import turbulence.*, stdioSources.virtualMachine
 
 import unsafeExceptions.canThrowAny
@@ -42,7 +43,7 @@ given Message is Loggable = Log.silent[Message]
 def run(classpath: Text): Unit = supervise:
   try
     val db = unsafely:
-      val dirs = classpath.cut(t":").filter(_ != t"").map(_.decodeAs[Path].as[Directory])
+      val dirs = classpath.cut(t":").filter(_ != t"").map(_.decode[Path].as[Directory])
 
       val tastyFiles: List[File] =
         dirs.flatMap(_.descendants.filter(_.is[File]).filter(_.name.ends(t".tasty"))).map(_.as[File]).to(List)
@@ -52,14 +53,13 @@ def run(classpath: Text): Unit = supervise:
 
     lazy val server: HttpService = HttpServer(8080).listen:
       request.path match
-        case % / p"styles" / p"amok.css" => HttpResponse(styles.main)
-        case % / p"fonts" / name         => HttpResponse(Content(media"font/ttf", LazyList(data.font(Name(name.render)))))
-        case % / p"images" / name        => HttpResponse(Content(media"image/svg+xml", LazyList(data.image(Name(name.render)).bytes)))
-        case % / p"info" / path          => HttpResponse(pages.info(db, Identifier.fromUrl(path.render)))
+        case % / n"styles" / n"amok.css" => HttpResponse(styles.main)
+        case % / n"fonts" / name         => HttpResponse(Content(media"font/ttf", LazyList(data.font(Name(name.render)))))
+        case % / n"images" / name        => HttpResponse(Content(media"image/svg+xml", LazyList(data.image(Name(name.render)).bytes)))
+        case % / n"info" / path          => HttpResponse(pages.info(db, Identifier.fromUrl(path.render)))
         case _                           => HttpResponse(pages.main(db))
 
     server.async.await()
 
   catch case err: Throwable =>
     println(err.toString+" at "+err.getStackTrace().nn.to(List).mkString("\n"))
-
