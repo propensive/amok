@@ -43,7 +43,7 @@ case class Replacement
 
   def apply(text: Text): Text = `match`.findIn(text).lay(text): (start, end) =>
     if delete.present then t"${text.s.substring(0, start).nn}${text.s.substring(end).nn}" else
-      val text2 = t"${prefix.or(t"")}${replacement.or(text.slice(Ordinal.zerary(start) ~ Ordinal.natural(end)))}${suffix.or(t"")}"
+      val text2 = t"${prefix.or(t"")}${replacement.or(text.segment(Ordinal.zerary(start) ~ Ordinal.natural(end)))}${suffix.or(t"")}"
       t"${text.s.substring(0, start).nn}$text2${text.s.substring(end).nn}"
 
 case class Transform
@@ -87,9 +87,8 @@ object Note:
 
 case class Note(tokens: List[SourceToken], style: Note.Style, caption: Optional[Text])
 
-object AmokRenderer extends Renderer(t"amok"):
+class AmokRenderer()(using Tactic[CodlError], Tactic[CodlReadError]) extends Renderer(t"amok"):
   def render(meta: Optional[Text], content: Text): Seq[Html[Flow]] =
-    erased given CodlReadError is Unchecked = ###
     val preamble = Codl.read[Preamble](content)
     val code: Text = content.cut(t"\n").to(List).dropWhile(_ != t"##").tail.join(t"\n")
 
