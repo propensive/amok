@@ -35,11 +35,11 @@ given Decimalizer = Decimalizer(1)
 
 val count = Counter(0)
 case class Replacement
-    (`match`:     Selection,
-     replacement: Optional[Text],
-     delete:      Optional[Unit],
-     prefix:      Optional[Text],
-     suffix:      Optional[Text]):
+   (`match`:     Selection,
+    replacement: Optional[Text],
+    delete:      Optional[Unit],
+    prefix:      Optional[Text],
+    suffix:      Optional[Text]):
 
   def apply(text: Text): Text = `match`.findIn(text).lay(text): (start, end) =>
     if delete.present then t"${text.s.substring(0, start).nn}${text.s.substring(end).nn}" else
@@ -51,12 +51,12 @@ case class Transform
 
 
 case class Preamble
-    (syntax:    Text,
-     highlight: List[Highlight],
-     error:     List[Highlight],
-     caution:   List[Highlight],
-     param:     List[Highlight],
-     transform: Optional[Transform])
+   (syntax:    Text,
+    highlight: List[Highlight],
+    error:     List[Highlight],
+    caution:   List[Highlight],
+    param:     List[Highlight],
+    transform: Optional[Transform])
 
 case class Selection(start: Text, end: Optional[Text]):
   def findIn(text: Text): Optional[(Int, Int)] =
@@ -99,10 +99,10 @@ class AmokRenderer()(using Tactic[CodlError], Tactic[CodlReadError]) extends Ren
 
     @tailrec
     def selections
-        (ranges0:    List[Range],
-         tokens0:    List[SourceToken],
-         tokenStart: Int = -1,
-         result:     List[SourceToken | Note] = Nil)
+       (ranges0:    List[Range],
+        tokens0:    List[SourceToken],
+        tokenStart: Int = -1,
+        result:     List[SourceToken | Note] = Nil)
             : List[SourceToken | Note] =
       ranges0 match
         case Nil =>
@@ -148,9 +148,9 @@ class AmokRenderer()(using Tactic[CodlError], Tactic[CodlReadError]) extends Ren
                 else throw Panic(m"Should not happen: range.end=${range.end}, tokenStart=$tokenStart")
 
     def lines
-        (markup: List[SourceToken | Note],
-         line: List[Element[Phrasing]] = Nil,
-         done: List[Element[Phrasing]] = Nil)
+       (markup: List[SourceToken | Note],
+        line: List[Element[Phrasing]] = Nil,
+        done: List[Element[Phrasing]] = Nil)
             : List[Element[Phrasing]] =
       def render(token: SourceToken | Note): Element[Phrasing] = token match
         case SourceToken(text, accent) =>

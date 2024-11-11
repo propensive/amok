@@ -31,6 +31,6 @@ object data:
     (Classpath / n"amok" / n"fonts" / name)().read[Bytes]
 
   def image(name: Name[ClasspathRef.Forbidden])
-      (using Tactic[ClasspathError], Tactic[CharDecodeError])
+     (using Tactic[ClasspathError], Tactic[CharDecodeError])
           : Text =
     (Classpath / n"amok" / n"images" / name)().read[Text]

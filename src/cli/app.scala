@@ -64,10 +64,10 @@ enum Errors:
 
 case class AmokError(details: Message) extends Error(details)
 case class Fragment
-    (id:       Optional[Text],
-     language: Optional[Language],
-     errors:   Optional[Errors]   = Unset,
-     follows:  Optional[Text]     = Unset)
+   (id:       Optional[Text],
+    language: Optional[Language],
+    errors:   Optional[Errors]   = Unset,
+    follows:  Optional[Text]     = Unset)
 case class Language(compiler: Text, version: Text)
 
 
