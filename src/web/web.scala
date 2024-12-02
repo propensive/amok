@@ -189,12 +189,12 @@ class AmokRenderer()(using Tactic[CodlError], Tactic[CodlReadError]) extends Ren
       val code2 = transform.replace.foldLeft(code) { (acc, transform) => transform(acc) }
       val differences = diff(Scala.highlight(code).lines, Scala.highlight(code2).lines)
 
-      val output = differences.rdiff({ (left, right) => diff(left.to(Vector), right.to(Vector)).size < 5 }, 5).changes.map:
+      val output = differences.rdiff({ (left, right) => diff(left.to(Trie), right.to(Trie)).size < 5 }, 5).changes.map:
         case Par(_, _, line) => Span.line:
           line.or(Nil).map { token => ScalaRenderer.element(token.accent, token.text) }
 
         case Sub(_, _, left, right) => Span.line:
-          diff(left.or(Nil).to(Vector), right.or(Nil).to(Vector)).edits.map:
+          diff(left.or(Nil).to(Trie), right.or(Nil).to(Trie)).edits.map:
             case Par(_, _, SourceToken(text, accent)) =>
               Code(`class` = ScalaRenderer.className(accent))(text)
 
