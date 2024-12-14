@@ -16,9 +16,9 @@
 
 package amok
 
-import rudiments.*
 import gossamer.*
 import probably.*
+import rudiments.*
 
 import unsafeExceptions.canThrowAny
 

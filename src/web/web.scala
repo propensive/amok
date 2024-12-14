@@ -19,6 +19,7 @@ package amok
 import anticipation.*
 import cellulose.{Meta as _, *}
 import contingency.*
+import denominative.*
 import dissonance.*
 import fulminate.*
 import gossamer.*
@@ -29,7 +30,6 @@ import punctuation.*
 import rudiments.*
 import spectacular.*
 import vacuous.*
-import denominative.*
 
 given Decimalizer = Decimalizer(1)
 
@@ -145,7 +145,7 @@ class AmokRenderer()(using Tactic[CodlError], Tactic[CodlReadError]) extends Ren
               else
                 if range.end >= tokenStart
                 then selections(ranges, tokens0, tokenStart, result)
-                else throw Panic(m"Should not happen: range.end=${range.end}, tokenStart=$tokenStart")
+                else panic(m"Should not happen: range.end=${range.end}, tokenStart=$tokenStart")
 
     def lines
        (markup: List[SourceToken | Note],
@@ -205,7 +205,7 @@ class AmokRenderer()(using Tactic[CodlError], Tactic[CodlReadError]) extends Ren
               Code(`class` = t"${ScalaRenderer.className(accent)} one", style = t"width: ${text.length}ch")(text)
 
             case _ =>
-              throw Panic(m"Should never have an unset edit")
+              panic(m"Should never have an unset edit")
 
         case Del(_, line) => Span(`class` = t"line one"):
           line.or(Nil).map { token => ScalaRenderer.element(token.accent, token.text) }

@@ -16,16 +16,16 @@
 
 package amok
 
+import anticipation.*
+import cataclysm.*
+import contingency.*
 import digression.*
 import gesticulate.*
 import gossamer.*
-import anticipation.*
-import vacuous.*
 import honeycomb.*
-import contingency.*
 import rudiments.*
 import serpentine.*, pathHierarchies.simple
-import cataclysm.*
+import vacuous.*
 
 object pages:
   val count: Counter = Counter(0)

@@ -16,14 +16,14 @@
 
 package amok
 
-import cataclysm.*, pseudo.*
-import honeycomb.*
-import gossamer.*
 import anticipation.*
+import cataclysm.*, pseudo.*
+import gossamer.*
+import honeycomb.*
 import iridescence.*
-import spectacular.*
 import rudiments.*
 import serpentine.*
+import spectacular.*
 
 object styles:
 

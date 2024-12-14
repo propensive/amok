@@ -18,11 +18,11 @@ package amok
 
 //import Docs.Dictionary
 
-import fulminate.*
 import anticipation.*
+import fulminate.*
 import gossamer.*
-import spectacular.*
 import rudiments.{Cursor as _, is as _, *}
+import spectacular.*
 
 import scala.quoted.*
 import scala.tasty.inspector.*
@@ -91,7 +91,9 @@ object Amok:
               values.map:
                 case Select(prefix, name) => t"${scope.prefix(pname(prefix))}${name}"
                 case Ident(name)          => t"${name}"
-              .join(t"{", t", ", t"} ")
+
+              . join(t"{", t", ", t"} ")
+
             case other => t""
 
         def icon(entityType: Icons.Entity, flags: Flags): Icons.Icon =

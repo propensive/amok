@@ -19,20 +19,20 @@ package amok
 import anticipation.*, filesystemApi.galileiPath
 import cataclysm.*
 import cellulose.*
+import contingency.*, strategies.throwUnsafely
 import digression.*
 import eucalyptus.*
-import galilei.*, filesystemOptions.{dereferenceSymlinks, createNonexistent, createNonexistentParents}
-import gossamer.*
-import gesticulate.*
 import fulminate.*
+import galilei.*, filesystemOptions.{dereferenceSymlinks, createNonexistent, createNonexistentParents}
+import gesticulate.*
+import gossamer.*
 import hieroglyph.*, charEncoders.utf8
+import nomenclature.*
 import parasite.*, threadModels.virtual, orphanDisposal.await
-import contingency.*, strategies.throwUnsafely
 import rudiments.*
 import scintillate.*
 import serpentine.*, pathHierarchies.simple
 import spectacular.*
-import nomenclature.*
 import turbulence.*, stdioSources.virtualMachine
 
 import unsafeExceptions.canThrowAny

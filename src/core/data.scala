@@ -16,15 +16,15 @@
 
 package amok
 
-import turbulence.*
-import hieroglyph.*, charEncoders.utf8, charDecoders.utf8, textSanitizers.strict
-import galilei.*
-import rudiments.*
-import contingency.*
 import anticipation.*
-import serpentine.*
+import contingency.*
 import digression.*
+import galilei.*
 import hellenism.*, classloaders.threadContext
+import hieroglyph.*, charEncoders.utf8, charDecoders.utf8, textSanitizers.strict
+import rudiments.*
+import serpentine.*
+import turbulence.*
 
 object data:
   def font(name: Name[Classpath])(using Tactic[ClasspathError]): Bytes =

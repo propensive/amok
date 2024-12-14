@@ -16,9 +16,9 @@
 
 package amok
 
-import rudiments.*
-import gossamer.*
 import anticipation.*
+import gossamer.*
+import rudiments.*
 import spectacular.*
 
 import language.dynamics

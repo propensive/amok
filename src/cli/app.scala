@@ -16,34 +16,34 @@
 
 package amok
 
-import escapade.*
-import parasite.*, threadModels.virtual, orphanDisposal.await
-import ethereal.*
-import rudiments.*
-import surveillance.*
-import exoskeleton.*, executives.completions, unhandledErrors.stackTrace, parameterInterpretation.posix
-import eucalyptus.*
-import anthology.*
-import profanity.*
-import quantitative.*
-import turbulence.*
-import monotonous.*, alphabets.base64.unpadded
-import spectacular.*
-import gossamer.*
-import symbolism.*
-import cellulose.*
-import vacuous.*
-import anticipation.*, filesystemApi.galileiPath, durationApi.aviationDuration
-import fulminate.*
-import contingency.*
-import harlequin.*, syntaxHighlighting.numbered
-import punctuation.*
-import hallucination.*
-import hellenism.*, classloaders.threadContext
-import galilei.*, filesystemOptions.{doNotCreateNonexistent, dereferenceSymlinks}
-import serpentine.*, pathHierarchies.unix
-import hieroglyph.*//, charDecoders.utf8, textSanitizers.strict
 import ambience.*, environments.virtualMachine, homeDirectories.default, systemProperties.virtualMachine
+import anthology.*
+import anticipation.*, filesystemApi.galileiPath, durationApi.aviationDuration
+import cellulose.*
+import contingency.*
+import escapade.*
+import ethereal.*
+import eucalyptus.*
+import exoskeleton.*, executives.completions, unhandledErrors.stackTrace, parameterInterpretation.posix
+import fulminate.*
+import galilei.*, filesystemOptions.{doNotCreateNonexistent, dereferenceSymlinks}
+import gossamer.*
+import hallucination.*
+import harlequin.*, syntaxHighlighting.numbered
+import hellenism.*, classloaders.threadContext
+import hieroglyph.*//, charDecoders.utf8, textSanitizers.strict
+import monotonous.*, alphabets.base64.unpadded
+import parasite.*, threadModels.virtual, orphanDisposal.await
+import profanity.*
+import punctuation.*
+import quantitative.*
+import rudiments.*
+import serpentine.*, pathHierarchies.unix
+import spectacular.*
+import surveillance.*
+import symbolism.*
+import turbulence.*
+import vacuous.*
 
 given (using Cli): WorkingDirectory = workingDirectories.daemonClient
 given [EventType: Communicable] => Message transcribes EventType = _.communicate
@@ -125,8 +125,8 @@ def main(): Unit =
                   tend:
                     case IoError(_)     => AmokError(m"The markdown file could not be read")
                     case StreamError(_) => AmokError(m"Reading the markdown file was interrupted")
-                  .within:
-                    markdownFile.read[Text]
+                  . within:
+                      markdownFile.read[Text]
 
                 val fragments: Seq[(Fragment, Text)] =
                   Markdown.parse(markdown).nodes.collect:
