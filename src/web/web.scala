@@ -199,25 +199,25 @@ class AmokRenderer()(using Tactic[CodlError], Tactic[CodlReadError]) extends Ren
               Code(`class` = ScalaRenderer.className(accent))(text)
 
             case Ins(_, SourceToken(text, accent)) =>
-              Code(`class` = t"${ScalaRenderer.className(accent)} two", style = t"width: ${text.length}ch")(text)
+              Code(`class` = CssClass(t"two") :: ScalaRenderer.className(accent), style = t"width: ${text.length}ch")(text)
 
             case Del(_, SourceToken(text, accent)) =>
-              Code(`class` = t"${ScalaRenderer.className(accent)} one", style = t"width: ${text.length}ch")(text)
+              Code(`class` = CssClass(t"one") :: ScalaRenderer.className(accent), style = t"width: ${text.length}ch")(text)
 
             case _ =>
               panic(m"Should never have an unset edit")
 
-        case Del(_, line) => Span(`class` = t"line one"):
+        case Del(_, line) => Span(`class` = List(CssClass(t"line"), CssClass(t"one"))):
           line.or(Nil).map { token => ScalaRenderer.element(token.accent, token.text) }
 
-        case Ins(_, line) => Span(`class` = t"line two"):
+        case Ins(_, line) => Span(`class` = List(CssClass(t"line"), CssClass(t"one"))):
           line.map { token => ScalaRenderer.element(token.accent, token.text) }
 
       val id = count()
 
       List(Div.amok
-       (Input.fore(`type` = Type.Radio, name = t"radiogroup_$id", id = t"before_$id", checked = true),
-        Label(`for` = t"before_$id")(transform.before.or(t"Before")),
-        Input.aft(`type` = Type.Radio, name = t"radiogroup_$id", id = t"after_$id"),
-        Label(`for` = t"after_$id")(transform.after.or(t"After")),
+        (Input.Radio.fore(name = t"radiogroup_$id", id = DomId(t"before_$id"), checked = true),
+        Label(`for` = DomId(t"before_$id"))(transform.before.or(t"Before")),
+        Input.Radio.aft(name = t"radiogroup_$id", id = DomId(t"after_$id")),
+        Label(`for` = DomId(t"after_$id"))(transform.after.or(t"After")),
         Pre(output.init)))
