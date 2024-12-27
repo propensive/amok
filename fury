@@ -1,4 +1,4 @@
-target amok/web
+target amok/cli
 
 repo propensive/xylophone
 repo propensive/profanity

@@ -16,7 +16,8 @@
 
 package amok
 
-import ambience.*, environments.virtualMachine, homeDirectories.default, systemProperties.virtualMachine
+import ambience.*, environments.virtualMachine
+import rudiments.*, homeDirectories.default, systemProperties.virtualMachine
 import anthology.*
 import anticipation.*, filesystemApi.galileiPath, durationApi.aviationDuration
 import cellulose.*
@@ -37,7 +38,6 @@ import parasite.*, threadModels.virtual, orphanDisposal.await
 import profanity.*
 import punctuation.*
 import quantitative.*
-import rudiments.*
 import serpentine.*, pathHierarchies.unix
 import spectacular.*
 import surveillance.*
