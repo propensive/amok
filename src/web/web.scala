@@ -24,7 +24,7 @@ import dissonance.*
 import fulminate.*
 import gossamer.*
 import harlequin.*
-import honeycomb.{Sub as _, Del as _, Ins as _, *}
+import honeycomb.*
 import kaleidoscope.*
 import punctuation.*
 import rudiments.*
@@ -152,6 +152,7 @@ class AmokRenderer()(using Tactic[CodlError], Tactic[CodlReadError]) extends Ren
         line: List[Element[Phrasing]] = Nil,
         done: List[Element[Phrasing]] = Nil)
             : List[Element[Phrasing]] =
+      import html5.*
       def render(token: SourceToken | Note): Element[Phrasing] = token match
         case SourceToken(text, accent) =>
           ScalaRenderer.element(accent, text)
@@ -178,6 +179,7 @@ class AmokRenderer()(using Tactic[CodlError], Tactic[CodlReadError]) extends Ren
         case other :: tail               => lines(tail, render(other) :: line, done)
 
     def style(text: Text): Element[Flow] =
+      import html5.*
       val ranges = errorRanges ++ cautionRanges ++ highlightRanges ++ paramRanges
       Pre:
         lines(selections
@@ -185,35 +187,37 @@ class AmokRenderer()(using Tactic[CodlError], Tactic[CodlReadError]) extends Ren
           Scala.highlight(text).lines.to(List).flatMap(SourceToken.Newline :: _))).init.tail
 
 
-    preamble.transform.lay(List(Div.amok(style(code)))): transform =>
+    preamble.transform.lay(List(html5.Div.amok(style(code)))): transform =>
       val code2 = transform.replace.foldLeft(code) { (acc, transform) => transform(acc) }
       val differences = diff(Scala.highlight(code).lines, Scala.highlight(code2).lines)
 
       val output = differences.rdiff({ (left, right) => diff(left.to(Trie), right.to(Trie)).size < 5 }, 5).changes.map:
-        case Par(_, _, line) => Span.line:
+        case Par(_, _, line) => html5.Span.line:
           line.or(Nil).map { token => ScalaRenderer.element(token.accent, token.text) }
 
-        case Sub(_, _, left, right) => Span.line:
+        case Sub(_, _, left, right) => html5.Span.line:
           diff(left.or(Nil).to(Trie), right.or(Nil).to(Trie)).edits.map:
             case Par(_, _, SourceToken(text, accent)) =>
-              Code(`class` = ScalaRenderer.className(accent))(text)
+              html5.Code(`class` = ScalaRenderer.className(accent))(text)
 
             case Ins(_, SourceToken(text, accent)) =>
-              Code(`class` = CssClass(t"two") :: ScalaRenderer.className(accent), style = t"width: ${text.length}ch")(text)
+              html5.Code(`class` = CssClass(t"two") :: ScalaRenderer.className(accent), style = t"width: ${text.length}ch")(text)
 
             case Del(_, SourceToken(text, accent)) =>
-              Code(`class` = CssClass(t"one") :: ScalaRenderer.className(accent), style = t"width: ${text.length}ch")(text)
+              html5.Code(`class` = CssClass(t"one") :: ScalaRenderer.className(accent), style = t"width: ${text.length}ch")(text)
 
             case _ =>
               panic(m"Should never have an unset edit")
 
-        case Del(_, line) => Span(`class` = List(CssClass(t"line"), CssClass(t"one"))):
+        case Del(_, line) => html5.Span(`class` = List(CssClass(t"line"), CssClass(t"one"))):
           line.or(Nil).map { token => ScalaRenderer.element(token.accent, token.text) }
 
-        case Ins(_, line) => Span(`class` = List(CssClass(t"line"), CssClass(t"one"))):
+        case Ins(_, line) => html5.Span(`class` = List(CssClass(t"line"), CssClass(t"one"))):
           line.map { token => ScalaRenderer.element(token.accent, token.text) }
 
       val id = count()
+
+      import html5.*
 
       List(Div.amok
         (Input.Radio.fore(name = t"radiogroup_$id", id = DomId(t"before_$id"), checked = true),
