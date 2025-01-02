@@ -22,6 +22,7 @@ TBC
 
 
 
+
 ## Getting Started
 
 TBC
@@ -131,6 +132,6 @@ language.
 
 ## License
 
-Amok is copyright &copy; 2024 Jon Pretty & Propensive O&Uuml;, and
+Amok is copyright &copy; 2025 Jon Pretty & Propensive O&Uuml;, and
 is made available under the [Apache 2.0 License](/license.md).
 

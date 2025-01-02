@@ -1,5 +1,5 @@
 /*
-    Amok, version [unreleased]. Copyright 2024 Jon Pretty, Propensive OÜ.
+    Amok, version [unreleased]. Copyright 2025 Jon Pretty, Propensive OÜ.
 
     The primary distribution site is: https://propensive.com/
 
