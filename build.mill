@@ -36,8 +36,18 @@ trait ProjectModule extends Module {
   def millSourcePath = super.millSourcePath / "src"
 }
 
-trait Submodule extends ScalaModule {
+trait Submodule extends ScalaModule with PublishModule {
   override def scalaVersion = settings.scalaVersion
+  def publishVersion: T[String] = T { "0.1.0" }
+  def pomSettings = T(PomSettings(
+    description = "Amok",
+    organization = "dev.soundness",
+    url = "https://www.propensive.com/",
+    licenses = Seq(License.`Apache-2.0`),
+    versionControl = VersionControl.github("propensive", "amok"),
+    developers = Seq(Developer("propensive", "Jon Pretty", "https://github.com/propensive"))
+  ))
+
   override def scalacOptions = settings.scalaOptions
   def consoleScalacOptions = scalacOptions()
   def resources = Task(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "res")))

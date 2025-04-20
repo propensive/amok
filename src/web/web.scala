@@ -36,7 +36,6 @@ case class Replacement
 case class Transform
   (replace: List[Replacement], before:  Optional[Text], after: Optional[Text])
 
-
 case class Preamble
    (syntax:    Text,
     highlight: List[Highlight],
