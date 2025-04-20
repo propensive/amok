@@ -18,61 +18,6 @@ package amok
 
 import soundness.*
 
-given Decimalizer = Decimalizer(1)
-
-val count = Counter(0)
-case class Replacement
-   (`match`:     Selection,
-    replacement: Optional[Text],
-    delete:      Optional[Unit],
-    prefix:      Optional[Text],
-    suffix:      Optional[Text]):
-
-  def apply(text: Text): Text = `match`.findIn(text).lay(text): (start, end) =>
-    if delete.present then t"${text.s.substring(0, start).nn}${text.s.substring(end).nn}" else
-      val text2 = t"${prefix.or(t"")}${replacement.or(text.segment(Ordinal.zerary(start) ~ Ordinal.natural(end)))}${suffix.or(t"")}"
-      t"${text.s.substring(0, start).nn}$text2${text.s.substring(end).nn}"
-
-case class Transform
-  (replace: List[Replacement], before:  Optional[Text], after: Optional[Text])
-
-case class Preamble
-   (syntax:    Text,
-    highlight: List[Highlight],
-    error:     List[Highlight],
-    caution:   List[Highlight],
-    param:     List[Highlight],
-    transform: Optional[Transform])
-
-case class Selection(start: Text, end: Optional[Text]):
-  def findIn(text: Text): Optional[(Int, Int)] =
-    val startIndex = text.s.indexOf(start.s)
-
-    if startIndex < 0 then Unset else
-      end.lay((startIndex, startIndex + start.length)): rangeEnd =>
-        val endIndex = text.s.indexOf(rangeEnd.s, startIndex + start.length)
-        if endIndex < 0 then Unset else (startIndex, endIndex + rangeEnd.length)
-
-object Selection:
-  given Selection is Decodable in Text =
-    case r"$start(.*)\.\.$end(.*)" => Selection(start, end)
-    case other                     => Selection(other, Unset)
-
-case class Highlight(selection: Selection, caption: Optional[Text]):
-  def rangeIn(text: Text, style: Note.Style): Optional[Range] =
-    selection.findIn(text).let { case (start, end) => Range(start, end, style, caption) }
-
-case class Range(start: Int, end: Int, style: Note.Style, caption: Optional[Text]):
-  def length: Int = end - start
-
-object Note:
-  enum Style:
-    case Erroneous, Highlight, Caution, Param
-
-  export Style.*
-
-case class Note(tokens: List[SourceToken], style: Note.Style, caption: Optional[Text])
-
 class AmokRenderer()(using Tactic[CodlError], Tactic[CodlReadError]) extends Renderer(t"amok"):
   def render(meta: Optional[Text], content: Text): Seq[Html[Flow]] =
     val preamble = Codl.read[Preamble](content)
@@ -85,11 +30,11 @@ class AmokRenderer()(using Tactic[CodlError], Tactic[CodlReadError]) extends Ren
 
     @tailrec
     def selections
-       (ranges0:    List[Range],
-        tokens0:    List[SourceToken],
-        tokenStart: Int = -1,
-        result:     List[SourceToken | Note] = Nil)
-            : List[SourceToken | Note] =
+         (ranges0:    List[Range],
+          tokens0:    List[SourceToken],
+          tokenStart: Int = -1,
+          result:     List[SourceToken | Note] = Nil)
+    :     List[SourceToken | Note] =
       ranges0 match
         case Nil =>
           result.unwind(tokens0)
@@ -201,7 +146,7 @@ class AmokRenderer()(using Tactic[CodlError], Tactic[CodlReadError]) extends Ren
         case Ins(_, line) => html5.Span(`class` = List(CssClass(t"line"), CssClass(t"one"))):
           line.map { token => ScalaRenderer.element(token.accent, token.text) }
 
-      val id = count()
+      val id = counter()
 
       import html5.*
 
