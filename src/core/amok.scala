@@ -21,7 +21,7 @@ package amok
 import anticipation.*
 import fulminate.*
 import gossamer.*
-import rudiments.{Cursor as _, is as _, *}
+import rudiments.{is as _, *}
 import spectacular.*
 
 import scala.quoted.*

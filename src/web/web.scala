@@ -16,20 +16,7 @@
 
 package amok
 
-import anticipation.*
-import cellulose.{Meta as _, *}
-import contingency.*
-import denominative.*
-import dissonance.*
-import fulminate.*
-import gossamer.*
-import harlequin.*
-import honeycomb.*
-import kaleidoscope.*
-import punctuation.*
-import rudiments.*
-import spectacular.*
-import vacuous.*
+import soundness.*
 
 given Decimalizer = Decimalizer(1)
 
@@ -68,7 +55,7 @@ case class Selection(start: Text, end: Optional[Text]):
         if endIndex < 0 then Unset else (startIndex, endIndex + rangeEnd.length)
 
 object Selection:
-  given Decoder[Selection] =
+  given Selection is Decodable in Text =
     case r"$start(.*)\.\.$end(.*)" => Selection(start, end)
     case other                     => Selection(other, Unset)
 
