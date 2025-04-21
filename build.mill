@@ -76,4 +76,10 @@ object amok extends ProjectModule {
     def sources = Task.Sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "src" / "cli")))
     def moduleDeps = Seq(model)
   }
+
+  object test extends Submodule {
+    def sources = Task.Sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "src" / "test")))
+    def moduleDeps = Seq(web)
+  }
+
 }
