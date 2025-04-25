@@ -166,7 +166,7 @@ def main(): Unit =
 
                 val allCode: Text = fragments.map(_(1)).join
                 val highlighted: SourceCode = Scala.highlight(allCode)
-                val notices = Scalac[3.4](List())(classpath)(Map(t"fragments" -> allCode), workingDirectory).notices
+                val notices = Scalac(List())(classpath)(Map(t"fragments" -> allCode), workingDirectory).notices
 
                 def assign(codeSize: Int, todo: List[(Fragment, Text)]): Unit = todo match
                   case Nil =>

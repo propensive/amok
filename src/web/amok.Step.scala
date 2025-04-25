@@ -34,11 +34,4 @@ package amok
 
 import soundness.*
 
-case class Preamble
-   (syntax:     Text,
-    highlight:  List[Highlight],
-    error:      List[Highlight],
-    caution:    List[Highlight],
-    param:      List[Highlight],
-    transform:  Optional[Transformation],
-    step:       List[Step])
+case class Step(content: Text)
