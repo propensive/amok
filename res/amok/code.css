@@ -1,0 +1,161 @@
+@import url('https://fonts.googleapis.com/css2?family=Cousine:ital,wght@0,400;0,700;1,400;1,700&family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&family=Roboto+Mono:ital,wght@0,100..700;1,100..700&display=swap');
+
+.s0:checked ~ pre .line code:not(.v0),
+.s1:checked ~ pre .line code:not(.v1),
+.s2:checked ~ pre .line code:not(.v2),
+.s3:checked ~ pre .line code:not(.v3),
+.s4:checked ~ pre .line code:not(.v4),
+.s5:checked ~ pre .line code:not(.v5),
+.s6:checked ~ pre .line code:not(.v6),
+.s7:checked ~ pre .line code:not(.v7),
+.s8:checked ~ pre .line code:not(.v8),
+.s9:checked ~ pre .line code:not(.v9),
+.s10:checked ~ pre .line code:not(.v10),
+.s11:checked ~ pre .line code:not(.v11),
+.s12:checked ~ pre .line code:not(.v12),
+.s13:checked ~ pre .line code:not(.v13),
+.s14:checked ~ pre .line code:not(.v14),
+.s15:checked ~ pre .line code:not(.v15),
+.s16:checked ~ pre .line code:not(.v16),
+.s17:checked ~ pre .line code:not(.v17),
+.s18:checked ~ pre .line code:not(.v18),
+.s19:checked ~ pre .line code:not(.v19),
+.s20:checked ~ pre .line code:not(.v20),
+.s21:checked ~ pre .line code:not(.v21),
+.s22:checked ~ pre .line code:not(.v22),
+.s23:checked ~ pre .line code:not(.v23),
+.s24:checked ~ pre .line code:not(.v24),
+.s25:checked ~ pre .line code:not(.v25),
+.s26:checked ~ pre .line code:not(.v26),
+.s27:checked ~ pre .line code:not(.v27),
+.s28:checked ~ pre .line code:not(.v28),
+.s29:checked ~ pre .line code:not(.v29),
+.s30:checked ~ pre .line code:not(.v30),
+.s31:checked ~ pre .line code:not(.v31),
+.s32:checked ~ pre .line code:not(.v32),
+.s33:checked ~ pre .line code:not(.v33),
+.s34:checked ~ pre .line code:not(.v34),
+.s35:checked ~ pre .line code:not(.v35),
+.s36:checked ~ pre .line code:not(.v36),
+.s37:checked ~ pre .line code:not(.v37),
+.s38:checked ~ pre .line code:not(.v38),
+.s39:checked ~ pre .line code:not(.v39),
+.s40:checked ~ pre .line code:not(.v40),
+.s41:checked ~ pre .line code:not(.v41),
+.s42:checked ~ pre .line code:not(.v42),
+.s43:checked ~ pre .line code:not(.v43),
+.s44:checked ~ pre .line code:not(.v44),
+.s45:checked ~ pre .line code:not(.v45),
+.s46:checked ~ pre .line code:not(.v46),
+.s47:checked ~ pre .line code:not(.v47),
+.s48:checked ~ pre .line code:not(.v48),
+.s49:checked ~ pre .line code:not(.v49),
+.s50:checked ~ pre .line code:not(.v50)
+ { opacity: 0; transition: width ease 1s 1s, opacity ease 1s 0s; width: 0 !important; }
+
+body { font-family: Fraunces; margin: 0; }
+h1 { font-size: 6vw; }
+h2 { font-size: 4vw; }
+h3 { font-size: 3vw; }
+h3 { font-size: 2vw; }
+h1, h2, h3, p { margin: 0.3em; }
+p, li { font-size: 2vw; }
+p { text-align: center; max-width: 80vw; }
+li p { text-align: left; }
+blockquote { font-style: italic; text-align: center; }
+
+code
+ { opacity:     1;
+   display:     inline-block;
+   font-family: "Cousine";
+   line-height: 1.3em;
+   min-height:  1.3em;
+   transition:  width ease 1s 1s, opacity ease 1s 2s;
+   &.line { display: block; } }
+
+input[type=radio]
+ { opacity: 0.3; width: 1.5vw; height: 1.5vw; margin: 0 1vw; cursor: pointer;
+   &:checked { opacity: 1; accent-color: #ffcc00; } }
+
+p, h1, h2, h3, h4, h5
+ { & code
+    { background-color: #33ccdd33;
+      font-size:        0.9em;
+      letter-spacing:   -0.05em;
+      padding:          0.1em 0.1em 0;
+      border-radius:    0.2em;
+      border:           solid 0.05em #33ccdd66; } }
+
+.amok
+ { border-radius:    1vw;
+   background-color: #100020;
+   padding:          1vw 2vw 0.5vw;
+   width:            60vw;
+   margin:           2vw auto;
+
+   & .error    { color: #cc0033; }
+   & .number   { color: #cc3366; }
+   & .modifier { color: #ff9966; }
+   & .keyword  { color: #ff6633; }
+   & .ident    { color: #ffcc99; }
+   & .term     { color: #ffcc33; }
+   & .typed    { color: #00cc99; }
+   & .string   { color: #99ddbb; }
+   & .parens   { color: #cc6699; }
+   & .symbol   { color: #cc3366; }
+   & .unparsed { color: #2288aa; font-style: italic; } }
+
+main
+ { height:           100vh;
+   overflow-y:       scroll;
+   scroll-snap-type: y mandatory;
+   scroll-behavior:  smooth; }
+
+section
+ { height:            100vh;
+   scroll-snap-align: start;
+   display:           flex;
+   flex-direction:    column;
+   align-items:       center;
+   justify-content:   center;
+   font-size:         3em;
+   border-bottom:     1px solid #ccc; }
+
+.hide { opacity: 0; }
+
+section::before
+ { content:          counter(slide);
+   background-color: black;
+   border-radius:    1.5vw;
+   position:         absolute;
+   text-align:       center;
+   line-height:      3vw;
+   top:              1vw;
+   left:             1vw;
+   font-size:        1.5vw;
+   color:            white;
+   display:          block;
+   width:            3vw;
+   height:           3vw;
+   font-weight:      bold; }
+
+section
+ { position: relative; counter-increment: slide; }
+
+ul { list-style-type: "➺ "; max-width: 60vw; }
+li { padding-left: 0.5em; transition: opacity ease 1s; }
+li::marker { color: #dd6633; }
+
+#overlay
+ { position: fixed;
+   top:            0;
+   left:           0;
+   width:          100vw;
+   height:         100vh;
+   background:     white;
+   opacity:        0;
+   pointer-events: none;
+   z-index:        9999;
+   transition:     opacity 0.3s ease 1s; }
+
+#overlay.visible { opacity: 1; pointer-events: auto; transition: opacity 0.3s ease 0s; }

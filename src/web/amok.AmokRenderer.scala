@@ -34,10 +34,40 @@ package amok
 
 import soundness.*
 
+object AmokEmbedding:
+  def formatCode(samples0: List[Text]): Html["div"] =
+    val samples: List[IArray[List[SourceToken]]] = samples0.map(Scala.highlight(_).lines)
+    val name = t"f${counter()}"
+    val lineCount = samples.head.length
+    val maxWidth = samples0.flatMap(_.cut(t"\n")).map(_.length).max
+    val fontSize = (97.5/maxWidth).min(3.0)
+    given Decimalizer(decimalPlaces = 3)
+
+    val radios =
+      (0 until samples.length).map: sample =>
+         html5.Input.Radio
+          (`class` = List(CssClass(t"s$sample")), name = name, checked = sample == 0)
+      . unless(samples.length <= 1)
+
+    html5.Div.amok(style = t"font-size: ${fontSize}vw")
+     (radios,
+      html5.Pre:
+        (0 until lineCount).map: lineNo =>
+          evolve(samples.map(_(lineNo))).sequence.map: atom =>
+            val classes = atom.presence.to(List).map { step => CssClass(t"v${step.n0}") }
+            html5.Code
+             (`class` = classes ::: ScalaEmbedding.className(atom.value.accent),
+              style = t"width: ${atom.value.text.length}ch")(atom.value.text)
+        . map: line =>
+            html5.Code.line(line))
+
 class AmokEmbedding()(using Tactic[CodlError], Tactic[CodlReadError]) extends Embedding(t"amok"):
-  def render(meta: Optional[Text], content: Text): Seq[Html[Flow]] =
+  def render(meta: Optional[Text], content: Text): Seq[Html["div"]] =
     val preamble = Codl.read[Preamble](content)
-    val code: Text = content.cut(t"\n").to(List).dropWhile(_ != t"##").tail.join(t"\n")
+
+    val code: Text =
+      val lines = content.cut(t"\n").to(List).dropWhile(_ != t"##")
+      if lines.length > 0 then lines.tail.join(t"\n") else t""
 
     val errorRanges = preamble.error.map(_.rangeIn(code, Note.Style.Erroneous))
     val cautionRanges = preamble.caution.map(_.rangeIn(code, Note.Style.Caution))
@@ -96,10 +126,10 @@ class AmokEmbedding()(using Tactic[CodlError], Tactic[CodlReadError]) extends Em
                 else panic(m"Should not happen: range.end=${range.end}, tokenStart=$tokenStart")
 
     def lines
-       (markup: List[SourceToken | Note],
-        line: List[Element[Phrasing]] = Nil,
-        done: List[Element[Phrasing]] = Nil)
-            : List[Element[Phrasing]] =
+         (markup: List[SourceToken | Note],
+          line:   List[Element[Phrasing]]  = Nil,
+          done:   List[Element[Phrasing]]  = Nil)
+    :     List[Element[Phrasing]] =
       import html5.*
       def render(token: SourceToken | Note): Element[Phrasing] = token match
         case SourceToken(text, accent) =>
@@ -140,57 +170,4 @@ class AmokEmbedding()(using Tactic[CodlError], Tactic[CodlReadError]) extends Em
         . init
         . tail
 
-
-    if preamble.step.isEmpty then
-      preamble.transform.lay(List(html5.Div.amok(style(code)))): transform =>
-        val code2 = transform.replace.foldLeft(code) { (acc, transform) => transform(acc) }
-        val differences = diff(Scala.highlight(code).lines, Scala.highlight(code2).lines)
-
-        val output =
-          differences
-          . rdiff({ (left, right) => diff(left.to(Trie), right.to(Trie)).size < 5 }, 5).changes.map:
-              case Par(_, _, line) => html5.Span.line:
-                line.or(Nil).map { token => ScalaEmbedding.element(token.accent, token.text) }
-
-              case Sub(_, _, left, right) => html5.Span.line:
-                diff(left.or(Nil).to(Trie), right.or(Nil).to(Trie)).edits.map:
-                  case Par(_, _, SourceToken(text, accent)) =>
-                    html5.Code(`class` = ScalaEmbedding.className(accent))(text)
-
-                  case Ins(_, SourceToken(text, accent)) =>
-                    html5.Code
-                     (`class` = CssClass(t"two") :: ScalaEmbedding.className(accent),
-                      style = t"width: ${text.length}ch")(text)
-
-                  case Del(_, SourceToken(text, accent)) =>
-                    html5.Code
-                     (`class` = CssClass(t"one") :: ScalaEmbedding.className(accent),
-                      style = t"width: ${text.length}ch")(text)
-
-                  case _ =>
-                    panic(m"Should never have an unset edit")
-
-              case Del(_, line) => html5.Span(`class` = List(CssClass(t"line"), CssClass(t"one"))):
-                line.or(Nil).map { token => ScalaEmbedding.element(token.accent, token.text) }
-
-              case Ins(_, line) => html5.Span(`class` = List(CssClass(t"line"), CssClass(t"one"))):
-                line.map { token => ScalaEmbedding.element(token.accent, token.text) }
-
-        val id = counter()
-
-        import html5.*
-
-        List
-         (Div.amok
-           (Input.Radio.fore(name = t"radiogroup_$id", id = DomId(t"before_$id"), checked = true),
-            Label(`for` = DomId(t"before_$id"))(transform.before.or(t"Before")),
-            Input.Radio.aft(name = t"radiogroup_$id", id = DomId(t"after_$id")),
-            Label(`for` = DomId(t"after_$id"))(transform.after.or(t"After")),
-            Pre(output.init)))
-    else
-      import html5.*
-      println:
-        (code :: preamble.step.map(_.content)).map(Scala.highlight(_).lines).sliding(2).to(List).map:
-          case List(left, right) => println(diff(left, right))
-
-      List(Div.amok(t"nothing"))
+    List(AmokEmbedding.formatCode(preamble.version.map(_.content)))

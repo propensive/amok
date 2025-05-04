@@ -34,4 +34,4 @@ package amok
 
 import soundness.*
 
-case class Step(content: Text)
+case class Version(content: Text)
