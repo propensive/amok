@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cousine:ital,wght@0,400;0,700;1,400;1,700&family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&family=Roboto+Mono:ital,wght@0,100..700;1,100..700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&family=Sono:wght,MONO@200..800,0..1&display=swap');
 
 .s0:checked ~ pre .line code:not(.v0),
 .s1:checked ~ pre .line code:not(.v1),
@@ -53,7 +53,8 @@
 .s50:checked ~ pre .line code:not(.v50)
  { opacity: 0; transition: width ease 1s 1s, opacity ease 1s 0s; width: 0 !important; }
 
-body { font-family: Fraunces; margin: 0; }
+body { font-family: Fraunces; margin: 0; font-variation-settings: "WONK" 0; }
+h1, h2, h3, h4 { font-variation-settings: "WONK" 1; }
 h1 { font-size: 6vw; }
 h2 { font-size: 4vw; }
 h3 { font-size: 3vw; }
@@ -67,24 +68,38 @@ blockquote { font-style: italic; text-align: center; }
 code
  { opacity:     1;
    display:     inline-block;
-   font-family: "Cousine";
+   font-family: Sono;
    line-height: 1.3em;
    min-height:  1.3em;
    transition:  width ease 1s 1s, opacity ease 1s 2s;
    &.line { display: block; } }
 
-input[type=radio]
- { opacity: 0.3; width: 1.5vw; height: 1.5vw; margin: 0 1vw; cursor: pointer;
-   &:checked { opacity: 1; accent-color: #ffcc00; } }
+
+input[type="radio"]
+ { appearance: none;
+   width:            0.75vw;
+   height:           0.75vw;
+   border:           none;
+   border-radius:    50%;
+   display:          inline-block;
+   vertical-align:   middle;
+   background-color: #ffffff55;
+   cursor:           pointer;
+   margin:           0 1vw;
+   position:         relative; }
+
+ /* Show yellow filled circle when checked */
+input[type="radio"]:checked { background-color: #ffcc33; box-shadow: 0 0 1vw #ffcc33; }
 
 p, h1, h2, h3, h4, h5
  { & code
     { background-color: #33ccdd33;
-      font-size:        0.9em;
-      letter-spacing:   -0.05em;
-      padding:          0.1em 0.1em 0;
-      border-radius:    0.2em;
-      border:           solid 0.05em #33ccdd66; } }
+      font-variation-settings: "MONO" 0.3;
+      padding:                 0 0.1em 0;
+      border-radius:           0.2em;
+      border:                  solid 0.05em #33ccdd66; } }
+
+h1, h2, h3, h4, h5 { & code { font-weight: 500; } }
 
 .amok
  { border-radius:    1vw;
@@ -114,6 +129,7 @@ main
 section
  { height:            100vh;
    scroll-snap-align: start;
+   overflow:          hidden;
    display:           flex;
    flex-direction:    column;
    align-items:       center;

@@ -5,12 +5,12 @@ var currentIndex = (match ? parseInt(match[1], 10) : 1) - 1;
 
 scrollToSlide(currentIndex + 1);
 
-(function() {
+(function poll() {
   const pollingUrl = '/update'; // Replace with your actual URL
 
-  fetch(pollingUrl, { method: 'GET' })
+  fetch(pollingUrl, { method: 'GET', redirect: 'manual' }) // Prevent automatic redirect handling
     .then(response => {
-      if (response.ok) {
+      if (response.status === 200) {
         const baseUrl = window.location.origin + window.location.pathname;
         const uniqueQuery = '?_ts=' + Date.now();
         const overlay = document.getElementById("overlay");
@@ -18,10 +18,13 @@ scrollToSlide(currentIndex + 1);
         setTimeout(() => {
           window.location.replace(baseUrl + uniqueQuery + "#slide" + (currentIndex + 1));
         }, 300);
+      } else {
+        setTimeout(poll, 1); // adjust interval as needed
       }
     })
     .catch(err => {
       console.error('Polling request failed:', err);
+      setTimeout(poll, 5000); // retry on failure after a longer delay
     });
 })();
 
@@ -54,9 +57,6 @@ function scrollToSlide(index) {
   currentIndex = index;
   var slide = slides[currentIndex];
   slide.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  if (slide.id) {
-    history.replaceState(null, '', '#' + slide.id);
-  }
 }
 
 function getVisibleRadioGroup(slide) {

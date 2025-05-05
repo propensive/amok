@@ -108,7 +108,7 @@ def amok(): Unit = cli:
           else workingDirectory[Path on Linux] + Relative.parse(filename)
 
         def load(): (doc: AmokDoc, content: List[Html["section"]]) = synchronized:
-          Out.println(m"Loading presentation...")
+          Out.println(m"Loading $filename...")
           val fileText = file.open(_.read[Text])
           val stripped = fileText.cut(t"\n").dropWhile(_ != t"##").tail.join(t"\n")
           val doc = Codl.read[AmokDoc](fileText)
@@ -134,13 +134,16 @@ def amok(): Unit = cli:
             case t"/update" =>
               val promise: Promise[Unit] = Promise()
               promises += promise
-              promise.attend()
-              Out.println(t"Updating presentation")
-              Http.Response(t"Updated")
+
+              promise.attend(30*Second)
+              promises -= promise
+              if !promise.ready then Http.Response(Http.Found)(t"") else
+                Out.println(t"Updating presentation")
+                 Http.Response(t"Updated")
 
             case _ =>
               Out.println(t"Serving HTTP request for $filename")
-              Http.Response:
+              Http.Response(cacheControl = t"no-store, no-cache, must-revalidate, max-age=0"):
                 HtmlDoc:
                   Html
                    (Head
@@ -169,4 +172,5 @@ def amok(): Unit = cli:
                   Out.println(m"Press [q] to quit")
 
         server.cancel()
+        service.shutdown()
         Exit.Ok
