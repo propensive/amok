@@ -51,9 +51,16 @@
 .s48:checked ~ pre .line code:not(.v48),
 .s49:checked ~ pre .line code:not(.v49),
 .s50:checked ~ pre .line code:not(.v50)
- { opacity: 0; transition: width ease 1s 1s, opacity ease 1s 0s; width: 0 !important; }
+ { opacity:          0;
+   background-color: #fd35;
+   transition:       background-color  ease  1s  0s,
+                     opacity           ease  1s  1s,
+                     width             ease  1s  2s,
+                     height            ease  1s  2s;
+   width:            0 !important;
+   height:           0 !important }
 
-body { font-family: Fraunces; margin: 0; font-variation-settings: "WONK" 0; }
+body { font-family: Fraunces; margin: 0; font-variation-settings: "WONK" 0; cursor: none; }
 h1, h2, h3, h4 { font-variation-settings: "WONK" 1; }
 h1 { font-size: 6vw; }
 h2 { font-size: 4vw; }
@@ -61,19 +68,25 @@ h3 { font-size: 3vw; }
 h3 { font-size: 2vw; }
 h1, h2, h3, p { margin: 0.3em; }
 p, li { font-size: 2vw; }
-p { text-align: center; max-width: 80vw; }
+p { text-align: center; max-width: 80vw; widows: 2; orphans: 2; }
 li p { text-align: left; }
 blockquote { font-style: italic; text-align: center; }
 
-code
+pre code
  { opacity:     1;
    display:     inline-block;
-   font-family: Sono;
+   height:      1.3em;
    line-height: 1.3em;
-   min-height:  1.3em;
-   transition:  width ease 1s 1s, opacity ease 1s 2s;
-   &.line { display: block; } }
+   overflow:    hidden;
+   font-size:   2000%;
+   transition:  width             ease  1s  2s,
+                height            ease  1s  2s,
+                opacity           ease  1s  3s,
+                background-color  ease  1s  4s; }
 
+code { font-family: Sono; }
+
+span.line { display: block; line-height: 0; font-size: 5%; }
 
 input[type="radio"]
  { appearance: none;
@@ -85,11 +98,14 @@ input[type="radio"]
    vertical-align:   middle;
    background-color: #ffffff55;
    cursor:           pointer;
-   margin:           0 1vw;
-   position:         relative; }
+   margin:           0 2vw 0 0;
+   transition:       all 3s 1s; }
 
  /* Show yellow filled circle when checked */
-input[type="radio"]:checked { background-color: #ffcc33; box-shadow: 0 0 1vw #ffcc33; }
+input[type="radio"]:checked
+ { background-color: #ffcc33;
+   box-shadow:       0 0 1vw #ffcc33;
+   transition:       all 3s 0s; }
 
 p, h1, h2, h3, h4, h5
  { & code

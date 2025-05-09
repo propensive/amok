@@ -57,13 +57,13 @@ object amok extends ProjectModule {
   object model extends Submodule {
     def sources = Task.Sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "src" / "model")))
     def moduleDeps = Seq()
-    def ivyDeps = Agg(ivy"dev.soundness:soundness-all:0.27.0")
+    def ivyDeps = Agg(ivy"dev.soundness:soundness-all:0.28.0")
   }
 
   object web extends Submodule {
     def sources = Task.Sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "src" / "web")))
     def moduleDeps = Seq()
-    def ivyDeps = Agg(ivy"dev.soundness:soundness-all:0.27.0")
+    def ivyDeps = Agg(ivy"dev.soundness:soundness-all:0.28.0")
   }
 
   object runner extends Submodule {
