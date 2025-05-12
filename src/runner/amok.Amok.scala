@@ -40,7 +40,7 @@ import unhandledErrors.stackTrace
 import threadModels.platform
 import supervisors.global
 import asyncTermination.cancel
-import httpServers.stdlib
+import httpServers.stdlibPublic
 import logging.silent
 import charEncoders.utf8
 import charDecoders.utf8

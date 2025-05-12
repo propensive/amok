@@ -36,6 +36,7 @@ import soundness.*
 
 case class Preamble
    (syntax:     Optional[Text],
+    context:    Optional[Text],
     highlight:  List[Highlight],
     error:      List[Highlight],
     caution:    List[Highlight],

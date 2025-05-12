@@ -35,8 +35,10 @@ package amok
 import soundness.*
 
 object AmokEmbedding:
-  def formatCode(samples0: List[Text]): Html["div"] =
-    val samples: List[List[List[SourceToken]]] = samples0.map(Scala.highlight(_).lines.to(List))
+  def formatCode(samples0: List[Text], context: Optional[Scala.Context]): Html["div"] =
+    val samples: List[List[List[SourceToken]]] =
+      samples0.map(Scala.highlight(_, context).lines.to(List))
+
     val name = t"f${counter()}"
     val lineCount = samples.map(_.length).max
     val maxWidth = samples0.flatMap(_.cut(t"\n")).map(_.length).max
@@ -81,6 +83,11 @@ object AmokEmbedding:
 class AmokEmbedding()(using Tactic[CodlError], Tactic[CodlReadError]) extends Embedding(t"amok"):
   def render(meta: Optional[Text], content: Text): Seq[Html["div"]] =
     val preamble = Codl.read[Preamble](content)
+
+    val context = preamble.context match
+      case t"term" => Scala.Context.Term
+      case t"type" => Scala.Context.Type
+      case _       => Scala.Context.Top
 
     val code: Text =
       val lines = content.cut(t"\n").to(List).dropWhile(_ != t"##")
@@ -183,8 +190,8 @@ class AmokEmbedding()(using Tactic[CodlError], Tactic[CodlReadError]) extends Em
         lines
          (selections
            (ranges.compact.sortBy(_.start),
-            Scala.highlight(text).lines.to(List).flatMap(SourceToken.Newline :: _)))
+            Scala.highlight(text, context).lines.to(List).flatMap(SourceToken.Newline :: _)))
         . init
         . tail
 
-    List(AmokEmbedding.formatCode(preamble.version.map(_.content)))
+    List(AmokEmbedding.formatCode(preamble.version.map(_.content), context))
