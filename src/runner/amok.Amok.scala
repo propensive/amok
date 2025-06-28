@@ -47,8 +47,8 @@ import charDecoders.utf8
 import classloaders.threadContext
 import strategies.throwUnsafely
 import textSanitizers.skip
-import systemProperties.virtualMachine
-import workingDirectories.virtualMachine
+import systemProperties.jre
+import workingDirectories.systemProperties
 
 import html5.*
 
@@ -57,8 +57,6 @@ import filesystemOptions.writeAccess.disabled
 import filesystemOptions.dereferenceSymlinks.enabled
 import filesystemOptions.createNonexistent.enabled
 import filesystemOptions.createNonexistentParents.enabled
-
-import pathNavigation.linux
 
 given Tactic[CodlError] => Tactic[CodlReadError] => Translator =
   HtmlTranslator(AmokEmbedding(), ScalaEmbedding)
@@ -105,7 +103,7 @@ def amok(): Unit = cli:
         val filename = arguments.prim.let(_()).lest(AmokError()).sub(t"./", t"")
         val file =
           if filename.starts(t"/") then filename.decode[Path on Linux]
-          else workingDirectory[Path on Linux] + Relative.parse(filename)
+          else workingDirectory[Path on Linux] + filename.decode[Relative on Linux]
 
         def load(): (doc: AmokDoc, content: List[Html["section"]]) = synchronized:
           Out.println(m"Loading $filename...")
@@ -123,13 +121,13 @@ def amok(): Unit = cli:
         val server = tcp"8080".serve:
           request.target match
             case r"/$name([a-z]+).css" =>
-              Http.Response(Classpath / t"amok" / t"$name.css")
+              Http.Response(Classpath / "amok" / t"$name.css")
 
             case r"/favicon.ico" =>
               Http.Response(NotFound(t""))
 
             case r"/navigate.js" =>
-              Http.Response(Classpath / t"amok" / t"navigate.js")
+              Http.Response(Classpath / "amok" / "navigate.js")
 
             case t"/update" =>
               val promise: Promise[Unit] = Promise()
@@ -153,7 +151,7 @@ def amok(): Unit = cli:
                     Body(Div.visible(id = id"overlay"), Main(content(1)*)))
 
         file.watch: watch =>
-          terminal:
+          interactive:
             Out.println(m"Presentation is being served at http://localhost:8080/")
             Out.println(m"Press [q] to quit")
 

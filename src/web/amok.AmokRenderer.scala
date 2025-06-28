@@ -34,6 +34,8 @@ package amok
 
 import soundness.*
 
+import html5.*
+
 object AmokEmbedding:
   def formatCode(samples0: List[Text], context: Optional[Scala.Context]): Html["div"] =
     val samples: List[List[List[SourceToken]]] =
