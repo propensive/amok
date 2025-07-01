@@ -1,29 +1,32 @@
-@import url('https://fonts.googleapis.com/css2?family=Sono:wght,MONO@200..800,0..1&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100..800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:ital,wght@0,200..800;1,200..800&family=Atkinson+Hyperlegible+Next:ital,wght@0,200..800;1,200..800&display=swap');
 
-pre code {
-  font-family: Sono;
-  font-variation-settings: "MONO" 1;
+:root { --mono-font: "Atkinson Hyperlegible Mono"; --body-font: "Atkinson Hyperlegible Next"; }
+body {
+  font-family: var(--mono-font);
   font-weight: 300;
-  font-size: 0.75em;
-  line-height: 1;
-}
+  padding: 0 1em;
+  background-color: transparent; }
+
+h1 { font-weight: 100; font-size: 3em; margin: 0; }
+h1.pkg { font-size: 0.85em }
+h2 { font-size: 1.5em; margin: 0;}
+code { font-family: var(--mono-font); font-weight: 300; font-size: 0.85em; }
+pre code { line-height: 1; }
+
 .mono pre {
-  font-family: monospace;
+  font-family: var(--mono-font);
   font-weight: 100;
-  font-size: 0.76em !important;
-  line-height: 1.25em !important;
-}
+  line-height: 1.25em !important; }
 
 .amok {
-  background-color: #023;
-  margin: 0 -1em 0 -1em;
+  margin: 0 1.5em 0 -0.5em;
+  padding: 0.5em;
+  border-radius: 0.5em;
   &>pre {
-    background-color: #023;
     color: #cb8;
-    font-variation-settings: "MONO" 1;
-    padding: 0.8em 1em;
+    padding: 0.25em 0.75em;
     margin: 0;
+    border-radius: 0.5em;
     overflow-x: auto;
     scrollbar-color: #fff3 transparent;
     scrollbar-width: thin;
@@ -61,7 +64,7 @@ pre code {
         font-weight: 500;
         cursor: pointer;
         &>.caption {
-          font-family: Sono;
+          font-family: "Atkinson Hyperlegible Mono";
           backdrop-filter: blur(2px);
           position: absolute;
           transition: height ease 0.2s, width ease 0.2s 0.1s;
@@ -140,15 +143,43 @@ pre code {
       background-color: #fc3;
       color: black; }
     &:nth-of-type(1)::after { content: '1'; }
-    &:nth-of-type(2)::before { content: '2'; } }
-  & .error { color: #cc0033; }
-  & .number { color: #cc3366; }
-  & .modifier { color: #ff9966; }
-  & .keyword { color: #ff6633; }
-  & .ident { color: #ffcc99; }
-  & .term { color: #ffcc33; }
-  & .typed { color: #00cc99; }
-  & .string { color: #99ddbb; }
-  & .parens { color: #cc6699; }
-  & .symbol { color: #cc3366; }
-  & .unparsed { color: #2288aa; } } }
+    &:nth-of-type(2)::before { content: '2'; } } }
+
+.amok {
+  background: linear-gradient(135deg, #cdeedf40, #cfefdf50);
+  box-shadow: 0 0 0.5em #e0e0e0;
+  border: solid 1px #c0e0d0;
+  & .error { color: #990022; }
+  & .number { color: #992244; }
+  & .modifier { color: #b34700; }
+  & .keyword { color: #cc3300; }
+  & .ident { color: #996633; }
+  & .term { color: #996600; }
+  & .typed { color: #006655; }
+  & .string { color: #339966; }
+  & .parens { color: #993366; }
+  & .symbol { color: #992244; }
+  & .unparsed { color: #005577; }
+}
+
+.dark {
+  background-color: #012;
+  background: linear-gradient(135deg, #0d1e2f40, #0e1d250);
+  color: white;
+  .amok {
+    background-color: #023;
+    box-shadow: 0 0 0.5em #1f1f1f;
+    border: solid 1px #0f2f3f;
+    & .error { color: #cc0033; }
+    & .number { color: #cc3366; }
+    & .modifier { color: #ff9966; }
+    & .keyword { color: #ff6633; }
+    & .ident { color: #ffcc99; }
+    & .term { color: #ffcc33; }
+    & .typed { color: #00cc99; }
+    & .string { color: #99ddbb; }
+    & .parens { color: #cc6699; }
+    & .symbol { color: #cc3366; }
+    & .unparsed { color: #2288aa; }
+  }
+}

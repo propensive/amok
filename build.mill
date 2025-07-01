@@ -54,12 +54,6 @@ trait Submodule extends ScalaModule with PublishModule {
 }
 
 object amok extends ProjectModule {
-  object tool extends Submodule {
-    def sources = Task.Sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "src" / "tool")))
-    def moduleDeps = Seq()
-    def ivyDeps = Agg(ivy"org.scala-lang::scala3-tasty-inspector:3.7.1", ivy"dev.soundness:soundness-all:0.36.0")
-  }
-
   object model extends Submodule {
     def sources = Task.Sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "src" / "model")))
     def moduleDeps = Seq()
@@ -70,6 +64,12 @@ object amok extends ProjectModule {
     def sources = Task.Sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "src" / "web")))
     def moduleDeps = Seq()
     def ivyDeps = Agg(ivy"dev.soundness:soundness-all:0.36.0")
+  }
+
+  object tool extends Submodule {
+    def sources = Task.Sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "src" / "tool")))
+    def moduleDeps = Seq(web)
+    def ivyDeps = Agg(ivy"org.scala-lang::scala3-tasty-inspector:3.7.1", ivy"dev.soundness:soundness-all:0.36.0")
   }
 
   object runner extends Submodule {

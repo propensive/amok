@@ -27,7 +27,7 @@ import textSanitizers.skip
 import classloaders.threadContext
 
 given Tactic[CodlError] => Tactic[CodlReadError] => Translator =
-  HtmlTranslator(ScalaEmbedding)
+  HtmlTranslator(AmokEmbedding(), ScalaEmbedding)
 
 val About = Subcommand(t"about", e"find out about Amok")
 val Load = Subcommand(t"load", e"load definitions from a .jar or .amok file")
@@ -45,7 +45,13 @@ object AmokData:
     given decoder: Void => CodlDecoder[Entry] = CodlDecoder.derived
     given encoder: Void => CodlEncoder[Entry] = CodlEncoder.derived
 
-  case class Entry(name: Text, memo: Optional[Text], detail: Optional[Text], refer: List[Text], entry: List[Entry])
+  case class Entry
+              (name:   Text,
+               memo:   Optional[Text],
+               detail: Optional[Text],
+               hidden: Optional[Boolean],
+               refer:  List[Text],
+               entry:  List[Entry])
 
   def read(file: Path on Linux)(using Stdio): Base raises CodlError raises CodlReadError raises IoError raises StreamError =
     Out.println(m"File ${file.encode} exists? ${file.exists().toString}")
@@ -122,44 +128,52 @@ def application(): Unit = cli:
             request.location match
               case _ /: t"api.css"  => Http.Response(Classpath/"amok"/"api.css")
               case _ /: t"styles.css"  => Http.Response(Classpath/"amok"/"styles.css")
+              case _ /: t"utils.js"  => Http.Response(Classpath/"amok"/"utils.js")
               case _ /: t"logo.svg" => Http.Response(Classpath/"amok"/"logo.svg")
 
               case _ /: t"entity" /: (name: Text) =>
                 val (prefix, entity, item) = amokDb.resolve(name)
+
                 Http.Response:
                   import html5.*
-                  Page.simple
-                   (H2(t"trait"),
-                    H3(prefix),
-                    H1(entity),
-                    Div(safely(item.memo.let(Markdown.parse(_).html)).or(Nil)),
-                    Div(safely(item.detail.let(Markdown.parse(_).html)).or(Nil)))
+
+                  recover:
+                    case MarkdownError(_) =>
+                      Page.simple(H2(t"Error"), P(t"The page contained errors"))
+
+                    case CodlError(_, _, _, _) =>
+                      Page.simple(H2(t"Error"), P(t"The page contained errors"))
+
+                    case CodlReadError(_) =>
+                      Page.simple(H2(t"Error"), P(t"The page contained errors"))
+
+                  . within:
+
+                      val detail: Optional[Markdown[Markdown.Ast.Block]] =
+                        item.detail.let(Markdown.parse(_))
+
+                      Page.simple
+                       (H1.pkg(Code(prefix, entity)),
+                        H1(Code(entity)),
+                        item.typeKind.let: kind =>
+                          H2(Code(kind.signature, t" ", entity)),
+                        item.termKind.let: kind =>
+                          H2(Code(kind.signature, t" ", entity, item.returnType.lay(t"")(t": "+_))),
+                        detail.let: detail =>
+                          Div(detail.html))
+
 
               case _ /: t"package" /: (pkg: Text) =>
                 import html5.*
 
-                def tree(name: Text, item: Item, group: Text, path: Text): Element["details"] =
-                  val members = item.members
-
-                  // FIXME: This needs to be much clearer
-                  val location =
-                    (% / "entity" / path.asInstanceOf[Name[Rfc3986]]).on[Rfc3986]
-
-
-
-                  Details(name = group.urlEncode)
-                   (if members.isEmpty then Summary(A(href = location, target = id"main")(name))
-                    else Summary.full(A(href = location, target = id"main")(name)),
-                    Div.content:
-                      members.map: (member, item) =>
-                        tree(member.text, item, path, path+member.safe))
+                val rootLocation = (% / "entity" / pkg.asInstanceOf[Name[Rfc3986]]).on[Rfc3986]
 
                 Http.Response:
                   Page
-                   (Details(Summary(B(pkg))),
+                   (Details(Summary(B(A(target = id"main", href = rootLocation)(pkg)))),
                     Div.content:
-                      amokDb(pkg).members.map: (member, item) =>
-                        tree(member.text, item, pkg, pkg+member.safe))
+                      amokDb(pkg).members.filter(!_(1).hidden).map: (member, item) =>
+                        item.tree(member.text, pkg, pkg+member.safe))
 
               case _ =>
                 Http.Response(t"Hello")
@@ -176,13 +190,17 @@ object Page:
   def apply(nav: Html[Flow]*): HtmlDoc = HtmlDoc:
     Html
       (Head
-        (Link.Stylesheet(href = % / "api.css")),
+       (Script(src = % / "utils.js", defer = true), Link.Stylesheet(href = % / "api.css")),
       Body
-        (Header(Ul(Li(A(href = % / "docs")(t"docs")))),
+       (Header(Ul
+          (Li(A(href = % / "api")(t"API")),
+           Li(A(href = % / "tutorials")(t"TUTORIALS")),
+           Li(A(href = % / "glossary")(t"GLOSSARY")),
+           Li(Button(id = id"theme")))),
         Main
          (Nav(Div.menu(nav*)),
-          Article(Iframe(name = t"main", width = 640))),
-        Footer(t"Copyright 2025, Propensive OÜ")))
+          Article(Iframe(id = id"api", name = t"main", width = 700))),
+        Footer(t"© Copyright 2025, Propensive OÜ")))
 
   def simple(content: Html[Flow]*): HtmlDoc = HtmlDoc:
     Html(Head(Link.Stylesheet(href = % / "styles.css")), Body(content*))
@@ -190,8 +208,12 @@ object Page:
 class Item():
   val membersMap: scm.TreeMap[Member, Item] = scm.TreeMap()
   private var doc: Optional[Text] = Unset
+  var termKind: Optional[TermKind] = Unset
+  var typeKind: Optional[TypeKind] = Unset
   var memo: Optional[Text] = Unset
   var detail: Optional[Text] = Unset
+  var hidden: Boolean = false
+  var returnType: Optional[Text] = Unset
 
   def members: List[(Member, Item)] = membersMap.to(List)
 
@@ -200,6 +222,21 @@ class Item():
   def apply(member: Member): Item = membersMap.get(member).getOrElse:
     Item().tap: item =>
       membersMap(member) = item
+
+  def tree(name: Text, group: Text, path: Text): Element["details"] =
+    import html5.*
+    val members2 = members.filter(!_(1).hidden)
+
+    // FIXME: This needs to be much clearer
+    val location =
+      (% / "entity" / path.asInstanceOf[Name[Rfc3986]]).on[Rfc3986]
+
+    Details(name = group.urlEncode, id = DomId(t"menu_${path}"))
+      (if members2.isEmpty then Summary(A(href = location, target = id"main")(name))
+      else Summary.full(A(href = location, target = id"main")(name)),
+      Div.content:
+        members2.map: (member, item) =>
+          item.tree(member.text, path, path+member.safe))
 
 object Member:
   given ordering: Ordering[Member] = Ordering.by[Member, String]:
@@ -248,20 +285,21 @@ class AmokDb():
     def recur(prefix: Text, entries: List[AmokData.Entry], current: Item): Unit =
       entries.map: entry =>
         val part = entry.name.skip(1)
-        Out.println(t"On ${current.toString}, adding ${entry.name}")
         val next = entry.name.at(Prim) match
           case '.' => current(Member.OfTerm(part))
           case '#' => current(Member.OfType(part))
           case other   => Out.println(m"Unexpected: ${other.inspect}") yet Unset
-        Out.println(t"    Now on ${next.toString}")
-        Out.println()
 
         next.let: next =>
           next.memo = entry.memo
           next.detail = entry.detail
+          next.hidden = entry.hidden.or(false)
           recur(prefix+entry.name, entry.entry, next)
 
-    recur(base.base, base.entry, root(Member.OfTerm(base.base)))
+    val init = root(Member.OfTerm(base.base))
+    init.memo = base.memo
+    init.detail = base.detail
+    recur(base.base, base.entry, init)
 
   def load(path: Path on Linux)(using Stdio): Unit =
     val inspector = DocInspector()
@@ -348,13 +386,19 @@ class AmokDb():
         ast match
           case pc@PackageClause(id@Ident(name), body) =>
             val child = item(of(name))
+            item.termKind = TermKind.Package(Nil)
             body.each(walk(_, child, true))
 
           case valDef@ValDef(name, rtn, body) if !(valDef.symbol.flags.is(Private) || name == "_") =>
-            val termName = if valDef.symbol.flags.is(Given) && (name.startsWith("evidence$")) then showType(rtn.tpe) else name.show
+            val flags = valDef.symbol.flags
+            val termName = if flags.is(Given) && (name.startsWith("evidence$")) then showType(rtn.tpe) else name.show
             if termName.ends(t"$$package") then body.each(walk(_, item, true))
             else
               val child = item(of(termName))
+              if flags.is(Given) then child.termKind = TermKind.Given(flags.has(Modifier.Inline, Modifier.Transparent, Modifier.Erased))
+              else TermKind.Val(flags.has(Modifier.Override, Modifier.Private, Modifier.Erased, Modifier.Inline, Modifier.Final))
+
+              child.returnType = showType(rtn.tpe)
               body.each(walk(_, child, true))
 
           case classDef@ClassDef(name, defDef, _, selfType, body) =>
@@ -362,14 +406,42 @@ class AmokDb():
             if name.endsWith("$package") || name.endsWith("$package$") then
               body.each(walk(_, item, obj))
             else
-              val obj = name.endsWith("$")
               val className = if obj then name.show.skip(1, Rtl) else name.show
               val child = item(of(className))
+              val flags = classDef.symbol.flags
+
+              if obj && !(flags.is(Case) && flags.is(Enum))
+              then child.termKind = TermKind.Object(flags.has(Modifier.Private, Modifier.Case))
+              else if flags.is(Trait)
+              then child.typeKind = TypeKind.Trait
+                                     (flags.has
+                                       (Modifier.Private,
+                                        Modifier.Erased,
+                                        Modifier.Sealed,
+                                        Modifier.Transparent))
+              else if flags.is(Enum)
+              then
+                child.typeKind =
+                  if flags.is(Case) then TypeKind.EnumCase(flags.has(Modifier.Private))
+                  else TypeKind.Enum(flags.has(Modifier.Private))
+              else child.typeKind = TypeKind.Class
+                                     (flags.has
+                                       (Modifier.Private,
+                                        Modifier.Sealed,
+                                        Modifier.Transparent,
+                                        Modifier.Final,
+                                        Modifier.Erased,
+                                        Modifier.Case))
+
               body.each(walk(_, child, obj))
 
           case term@DefDef(name, params, rtn, body) if !term.symbol.flags.is(Synthetic) && !term.symbol.flags.is(Private) && !name.contains("$default$") =>
-            val termName = if term.symbol.flags.is(Given) && name.startsWith("given_") then showType(rtn.tpe) else name.show
+            val flags = term.symbol.flags
+            val isGiven = flags.is(Given)
+            val termName = name.show //if isGiven && name.tt.starts("given_") then showType(rtn.tpe) else name.show
             val child = item(of(termName))
+            child.termKind = if isGiven then TermKind.Given(flags.has(Modifier.Inline, Modifier.Transparent, Modifier.Erased)) else TermKind.Def(flags.has(Modifier.Override, Modifier.Private, Modifier.Erased, Modifier.Transparent, Modifier.Inline, Modifier.Final, Modifier.Infix))
+            child.returnType = showType(rtn.tpe)
             //params.flatMap(_.params).each(walk(_, child, true))
 
           case typeDef@TypeDef(name, a) if name != "MirroredMonoType" =>
@@ -389,3 +461,67 @@ class AmokDb():
           t"▪ "+member.text
       . strict
       . each(Out.println(_))
+
+enum Visibility:
+  case Private, Protected, Public
+
+enum TypeKind:
+  case Class(modifiers: List[Modifier], extensions: List[Text] = Nil, derivations: List[Text] = Nil)
+  case Trait(modifiers: List[Modifier], extensions: List[Text] = Nil)
+  case Enum(modifiers: List[Modifier], extensions: List[Text] = Nil, derivations: List[Text] = Nil)
+  case EnumCase(modifiers: List[Modifier])
+
+  def keyword: Text = this match
+    case _: Class => t"class"
+    case _: Trait => t"trait"
+    case _: Enum  => t"enum"
+    case _: EnumCase => t"case"
+
+  def modifiers: List[Modifier]
+  def signature = modifiers.map(_.keyword).join(t"", t" ", t" "+keyword)
+
+extension (using Quotes)(flags: quotes.reflect.Flags)
+  def modifier(modifier: Modifier): Boolean =
+    import quotes.reflect.*
+    modifier match
+      case Modifier.Private     => flags.is(Flags.Private)
+      case Modifier.Abstract    => flags.is(Flags.Abstract)
+      case Modifier.Open        => flags.is(Flags.Open)
+      case Modifier.Case        => flags.is(Flags.Case)
+      case Modifier.Final       => flags.is(Flags.Final)
+      case Modifier.Erased      => flags.is(Flags.Erased)
+      case Modifier.Transparent => flags.is(Flags.Transparent)
+      case Modifier.Inline      => flags.is(Flags.Inline)
+      case Modifier.Lazy        => flags.is(Flags.Lazy)
+      case Modifier.Sealed      => flags.is(Flags.Sealed)
+      case Modifier.Override    => flags.is(Flags.Override)
+      case Modifier.Infix       => flags.is(Flags.Infix)
+
+  def has(modifiers: Modifier*): List[Modifier] = modifiers.filter(flags.modifier(_)).to(List)
+
+object Modifier:
+  val all: List[Modifier] = values.to(List)
+
+enum Modifier:
+  case Private, Abstract, Open, Case, Final, Erased, Transparent, Inline, Lazy, Sealed, Override, Infix
+
+  def keyword: Text = this.toString.tt.lower
+
+enum TermKind:
+  case Package(modifiers: List[Modifier])
+  case Object(modifiers: List[Modifier])
+  case Def(modifiers: List[Modifier])
+  case Val(modifiers: List[Modifier])
+  case Var(modifiers: List[Modifier])
+  case Given(modifiers: List[Modifier])
+
+  def keyword: Text = this match
+    case _: Package  => t"package"
+    case _: Object   => t"object"
+    case _: Def      => t"def"
+    case _: Val      => t"val"
+    case _: Var      => t"var"
+    case _: Given    => t"given"
+
+  def modifiers: List[Modifier]
+  def signature = modifiers.map(_.keyword).join(t"", t" ", t" "+keyword)

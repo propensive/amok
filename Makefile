@@ -5,8 +5,8 @@ tool:
 	echo $$(( $$(<res/build.id) + 1 )) > res/build.id
 	jps | grep amok | cut -d' ' -f1 | xargs kill || echo Not running
 	#cat classpath | xargs java -cp out/amok/tool/assembly.dest/out.jar burdock.Bootstrapper
-	java -Dbuild.executable=amok -jar out/amok/tool/assembly.dest/out.jar
-	cp amok ~/.local/bin/amok
+	java -Dbuild.executable=tool -jar out/amok/tool/assembly.dest/out.jar
+	cp tool ~/.local/bin/amok
 
 build:
 	mill clean
