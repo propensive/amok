@@ -1,26 +1,25 @@
 @import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:ital,wght@0,200..800;1,200..800&family=Atkinson+Hyperlegible+Next:ital,wght@0,200..800;1,200..800&display=swap');
 
 :root { --mono-font: "Atkinson Hyperlegible Mono"; --body-font: "Atkinson Hyperlegible Next"; }
+
 body {
-  font-family: var(--mono-font);
-  font-weight: 300;
-  padding: 0 1em;
+  font-family: var(--body-font);
+  font-weight: 275;
   background-color: transparent; }
 
-h1 { font-weight: 100; font-size: 3em; margin: 0; }
-h1.pkg { font-size: 0.85em }
-h2 { font-size: 1.5em; margin: 0;}
-code { font-family: var(--mono-font); font-weight: 300; font-size: 0.85em; }
-pre code { line-height: 1; }
+h1, h2, h3, h4, h5, p { margin: 1em 3em 1em 0; line-height: 1.3em; letter-spacing: 0.05em; }
 
-.mono pre {
-  font-family: var(--mono-font);
-  font-weight: 100;
-  line-height: 1.25em !important; }
+h1 { font-weight: 100; font-size: 3em; margin: 0 0 0 -0.05em; }
+h1.pkg { font-size: 1em; }
+h2 { font-size: 1.35em; font-weight: 400; }
+h3 { font-size: 1.15em; font-weight: 500; }
+h4 { font-size: 1em; font-weight: 600; }
+code { font-family: var(--mono-font); font-weight: 300; font-size: 0.85em; }
+p { text-align: justify; }
 
 .amok {
-  margin: 0 1.5em 0 -0.5em;
-  padding: 0.5em;
+  margin: 0 2.5em 0 -0.5em;
+  padding: 1em 1em 1em 0.5em;
   border-radius: 0.5em;
   &>pre {
     color: #cb8;
@@ -163,9 +162,7 @@ pre code { line-height: 1; }
 }
 
 .dark {
-  background-color: #012;
   background: linear-gradient(135deg, #0d1e2f40, #0e1d250);
-  color: white;
   .amok {
     background-color: #023;
     box-shadow: 0 0 0.5em #1f1f1f;

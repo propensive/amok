@@ -1,6 +1,6 @@
 tool:
 	mill clean
-	rm -f amok
+	rm -f tool
 	mill amok.tool.assembly
 	echo $$(( $$(<res/build.id) + 1 )) > res/build.id
 	jps | grep amok | cut -d' ' -f1 | xargs kill || echo Not running

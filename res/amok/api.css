@@ -1,11 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:ital,wght@0,200..800;1,200..800&family=Atkinson+Hyperlegible+Next:ital,wght@0,200..800;1,200..800&display=swap');
-:root { --highlight: #b40049; }
+:root { --highlight: #b40049; --fg-color: #000c; -bg-color: #fff; }
+.dark { --fg-color: #fffc; --bg-color: #012; }
+
 * { margin: 0; padding: 0; }
-
 p { margin-top: 0.5em; margin-bottom: 0.5em; }
-
 ul { padding-left: 1em; }
-
 footer { background-color: #bb4253; color: white; padding-top: 1em; }
 
 header, footer
@@ -38,8 +37,9 @@ header
             & a { transition: all ease 0.3s; color: #666; }
             &:hover
               { border-bottom: solid 0.1em var(--highlight);
-                & a { color: black; } } } } }
+                & a { color: var(--fg-color); } } } } }
 
+.dark header { background-image: url('/logo2.svg'); }
 
 body
   { font-family:   "Atkinson Hyperlegible Next";
@@ -47,8 +47,7 @@ body
     line-height:   1;
     display:       grid;
     height:        100vh;
-    align-content: start;
-    &.dark { color: white; background-color: #012; } }
+    align-content: start; }
 
 main
   { display:    flex;
@@ -59,9 +58,8 @@ main
     height:     calc(100vh - 8em); }
 
 a
-  { color:          black;
+  { color:           var(--fg-color);
     text-decoration: none;
-
     &:hover, &:active { color: var(--highlight); } }
 
 h1 { font-weight: normal; }

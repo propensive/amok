@@ -54,25 +54,25 @@ trait Submodule extends ScalaModule with PublishModule {
 }
 
 object amok extends ProjectModule {
-  object model extends Submodule {
+  /*object model extends Submodule {
     def sources = Task.Sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "src" / "model")))
     def moduleDeps = Seq()
-    def ivyDeps = Agg(ivy"dev.soundness:soundness-all:0.36.0")
-  }
+    def ivyDeps = Agg(ivy"dev.soundness:soundness-all:0.37.0")
+  }*/
 
   object web extends Submodule {
     def sources = Task.Sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "src" / "web")))
     def moduleDeps = Seq()
-    def ivyDeps = Agg(ivy"dev.soundness:soundness-all:0.36.0")
+    def ivyDeps = Agg(ivy"dev.soundness:soundness-all:0.37.0")
   }
 
   object tool extends Submodule {
     def sources = Task.Sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "src" / "tool")))
     def moduleDeps = Seq(web)
-    def ivyDeps = Agg(ivy"org.scala-lang::scala3-tasty-inspector:3.7.1", ivy"dev.soundness:soundness-all:0.36.0")
+    def ivyDeps = Agg(ivy"org.scala-lang::scala3-tasty-inspector:3.7.1", ivy"dev.soundness:soundness-all:0.37.0")
   }
 
-  object runner extends Submodule {
+  /*object runner extends Submodule {
     def sources = Task.Sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "src" / "runner")))
     def moduleDeps = Seq(web)
   }
@@ -91,6 +91,6 @@ object amok extends ProjectModule {
   object test extends Submodule {
     def sources = Task.Sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "src" / "test")))
     def moduleDeps = Seq(web)
-  }
+  }*/
 
 }
