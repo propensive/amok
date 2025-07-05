@@ -37,52 +37,56 @@ import soundness.*
 import html5.*
 
 object AmokEmbedding:
-  def formatCode(samples0: List[Text], context: Optional[Scala.Context]): Html["div"] =
-    val samples: List[List[List[SourceToken]]] =
-      samples0.map(Scala.highlight(_, context).lines.to(List))
+  def formatCode(samples0: List[Text], context: Optional[Scala.Context], autoScale: Boolean)
+  : Html["div"] =
 
-    val name = t"f${counter()}"
-    val lineCount = samples.map(_.length).max
-    val maxWidth = samples0.flatMap(_.cut(t"\n")).map(_.length).max
-    val fontSize = (97.5/maxWidth).min(3.0)
-    given Decimalizer(decimalPlaces = 3)
+      val samples: List[List[List[SourceToken]]] =
+        samples0.map(Scala.highlight(_, context).lines.to(List))
 
-    def similar(xs0: List[SourceToken], ys0: List[SourceToken]): Boolean =
-      val xs = xs0.filter(_.accent != Accent.Unparsed)
-      val ys = ys0.filter(_.accent != Accent.Unparsed)
-      xs.length > 0 && ys.length > 0
-      && (xs.sliding(ys.length).contains(ys) || ys.sliding(xs.length).contains(xs))
-      || diff(IArray.from(xs), IArray.from(ys)).size.toDouble/(xs.length + ys.length) < 0.5
+      val name = t"f${counter()}"
+      val lineCount = samples.map(_.length).max
+      val maxWidth = samples0.flatMap(_.cut(t"\n")).map(_.length).max
+      val fontSize = (97.5/maxWidth).min(3.0)
+      given Decimalizer(decimalPlaces = 3)
 
-    val iterators: IArray[Iterator[List[SourceToken]]] = IArray.from(samples.map(_.iterator))
+      def similar(xs0: List[SourceToken], ys0: List[SourceToken]): Boolean =
+        val xs = xs0.filter(_.accent != Accent.Unparsed)
+        val ys = ys0.filter(_.accent != Accent.Unparsed)
+        xs.length > 0 && ys.length > 0
+        && (xs.sliding(ys.length).contains(ys) || ys.sliding(xs.length).contains(xs))
+        || diff(IArray.from(xs), IArray.from(ys)).size.toDouble/(xs.length + ys.length) < 0.5
 
-    val lines: List[List[List[SourceToken]]] = evolve(samples, similar).sequence.map: atom =>
-      (0 until samples.length).to(List).map: lineNo =>
-        if !atom.presence.contains(lineNo.z) then Nil else
-          val line = iterators(lineNo).next()
-          if line.all(_.text.s.forall(_.isWhitespace)) then List(SourceToken(t" ", Accent.Unparsed))
-          else line
+      val iterators: IArray[Iterator[List[SourceToken]]] = IArray.from(samples.map(_.iterator))
 
-    val radios =
-      (0 until samples.length).map: sample =>
-         html5.Input.Radio
-          (`class` = List(CssClass(t"s$sample")), name = name, checked = sample == 0)
-      . unless(samples.length <= 1)
+      val lines: List[List[List[SourceToken]]] = evolve(samples, similar).sequence.map: atom =>
+        (0 until samples.length).to(List).map: lineNo =>
+          if !atom.presence.contains(lineNo.z) then Nil else
+            val line = iterators(lineNo).next()
+            if line.all(_.text.s.forall(_.isWhitespace)) then List(SourceToken(t" ", Accent.Unparsed))
+            else line
 
-    val code =
-      lines.map: line =>
-        evolve(line).sequence.map: atom =>
-          val classes = atom.presence.to(List).map { step => CssClass(t"v${step.n0}") }
-          html5.Code
-           (`class` = classes ::: ScalaEmbedding.className(atom.value.accent),
-            style = t"width: ${atom.value.text.length}ch")(atom.value.text)
-        :+ html5.Code(`class` = List(CssClass(t"blank")))
-      . map: line =>
-          html5.Span.line(line)
+      val radios =
+        (0 until samples.length).map: sample =>
+          html5.Input.Radio
+            (`class` = List(CssClass(t"s$sample")), name = name, checked = sample == 0)
+        . unless(samples.length <= 1)
 
-    html5.Div.amok(style = t"font-size: ${fontSize}vw")(radios, html5.Pre(code))
+      val code =
+        lines.map: line =>
+          evolve(line).sequence.map: atom =>
+            val classes = atom.presence.to(List).map { step => CssClass(t"v${step.n0}") }
+            html5.Code
+             (`class` = classes ::: ScalaEmbedding.className(atom.value.accent),
+              style = t"width: ${atom.value.text.length}ch")(atom.value.text)
+          :+ html5.Code(`class` = List(CssClass(t"blank")))
+        . map: line =>
+            html5.Span.line(line)
 
-class AmokEmbedding()(using Tactic[CodlError], Tactic[CodlReadError]) extends Embedding(t"amok"):
+      if autoScale then html5.Div.amok(style = t"font-size: ${fontSize}vw")(radios, html5.Pre(code))
+      else html5.Div.amok(radios, html5.Pre(code))
+
+class AmokEmbedding(autoScale: Boolean)(using Tactic[CodlError], Tactic[CodlReadError])
+extends Embedding(t"amok"):
   def render(meta: Optional[Text], content: Text): Seq[Html["div"]] =
     val preamble = Codl.read[Preamble](content)
 
@@ -196,4 +200,4 @@ class AmokEmbedding()(using Tactic[CodlError], Tactic[CodlReadError]) extends Em
         . init
         . tail
 
-    List(AmokEmbedding.formatCode(preamble.version.map(_.content), context))
+    List(AmokEmbedding.formatCode(preamble.version.map(_.content), context, autoScale))
