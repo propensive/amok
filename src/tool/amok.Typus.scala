@@ -52,6 +52,7 @@ object Typus:
         case Compound(_, typuses*)   => Span(typuses.flatMap(html(_)))
         case Symbolic(text)          => Span(text)
         case Member(text)            => Span(text)
+        case Constant(text)          => Span(text)
         case Refined(typus, members) => Span(html(typus), t"{ ... }")
 
   val cache: scm.HashMap[Any, Typus] = scm.HashMap()
@@ -77,29 +78,45 @@ object Typus:
 
     repr.absolve match
       case ThisType(tpe) => apply(tpe, true)
-      case TypeRef(NoPrefix() | ThisType(TypeRef(NoPrefix(), "<root>")), name) => Typus.Simple(Address.Top(name))
-      case TypeRef(prefix, name)   => apply(prefix) match
-        case Typus.Simple(address)    => val obj = name.tt.ends(t"$$")
-                                         val name2 = if obj then name.tt.skip(1, Rtl) else name.tt
-                                         Typus.Simple(Address.Entity(address, thisType, name2))
-        case compound: Typus.Compound =>
-          if compound.precedence < 10 then Typus(10, compound, Dot, Typus.Member(name.tt))
-          else Typus(10, OpenParens, compound, CloseParens, Dot, Typus.Member(name.tt))
-        case refined@Typus.Refined(base, members) =>
-          if members.contains(name) then members(name.tt)
-          else Typus(10, OpenParens, refined, CloseParens, Project, Typus.Member(name.tt))
-        case other => Out.println(t"OTHER: ${other.toString}") yet Typus.Constant(t"<unknown>")
+      case TypeRef(NoPrefix() | ThisType(TypeRef(NoPrefix(), "<root>")), name) =>
+        Typus.Simple(Address.Top(name))
 
-      case TermRef(NoPrefix() | ThisType(TypeRef(NoPrefix(), "<root>")), name) => Typus.Simple(Address.Top(name))
-      case TermRef(prefix, name)   => apply(prefix) match
-        case Typus.Simple(address)    => Typus.Simple(Address.Entity(address, thisType, name))
+      case TypeRef(prefix, name)   => apply(prefix) match
+        case simple@Typus.Simple(address)    =>
+          val obj = name.tt.ends(t"$$")
+          val name2 = if obj then name.tt.skip(1, Rtl) else name.tt
+          if name2.ends(t"$$package") then simple
+          else Typus.Simple(Address.Entity(address, thisType, name2))
+
         case compound: Typus.Compound =>
           if compound.precedence < 10 then Typus(10, compound, Dot, Typus.Member(name.tt))
           else Typus(10, OpenParens, compound, CloseParens, Dot, Typus.Member(name.tt))
+
         case refined@Typus.Refined(base, members) =>
           if members.contains(name) then members(name.tt)
           else Typus(10, OpenParens, refined, CloseParens, Project, Typus.Member(name.tt))
-        case other => Out.println(t"OTHER: ${other.toString}") yet Typus.Constant(t"<unknown>")
+
+        case other =>
+          Out.println(t"OTHER: ${other.toString}") yet Typus.Constant(t"<unknown>")
+
+      case TermRef(NoPrefix() | ThisType(TypeRef(NoPrefix(), "<root>")), name) =>
+        Typus.Simple(Address.Top(name))
+
+      case TermRef(prefix, name)   => apply(prefix) match
+        case simple@Typus.Simple(address)    =>
+          if name.tt.ends(t"$$package") then simple
+          else Typus.Simple(Address.Entity(address, thisType, name))
+
+        case compound: Typus.Compound =>
+          if compound.precedence < 10 then Typus(10, compound, Dot, Typus.Member(name.tt))
+          else Typus(10, OpenParens, compound, CloseParens, Dot, Typus.Member(name.tt))
+
+        case refined@Typus.Refined(base, members) =>
+          if members.contains(name) then members(name.tt)
+          else Typus(10, OpenParens, refined, CloseParens, Project, Typus.Member(name.tt))
+
+        case other =>
+          Out.println(t"OTHER: ${other.toString}") yet Typus.Constant(t"<unknown>")
 
       case AnnotatedType(tpe, _) => apply(tpe) // FIXME
       case OrType(left, right)   => Typus(1, apply(left), Union, apply(right))

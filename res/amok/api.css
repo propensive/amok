@@ -1,10 +1,15 @@
 @import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:ital,wght@0,200..800;1,200..800&family=Atkinson+Hyperlegible+Next:ital,wght@0,200..800;1,200..800&display=swap');
-:root { --highlight: #b40049; --fg-color: #000c; -bg-color: #fff; }
+:root
+  { --highlight: #b40049;
+    --highlight-light: #b4004911;
+    --fg-color: #000c;
+    --bg-color: #fff;
+    --mono-font: "Atkinson Hyperlegible Mono";
+    --body-font: "Atkinson Hyperlegible Next"; }
+
 .dark { --fg-color: #fffc; --bg-color: #012; }
 
 * { margin: 0; padding: 0; }
-p { margin-top: 0.5em; margin-bottom: 0.5em; }
-ul { padding-left: 1em; }
 footer { background-color: #bb4253; color: white; padding-top: 1em; }
 
 header, footer
@@ -28,7 +33,7 @@ header
 
     & ul
       { list-style:  none;
-        font-family: "Atkinson Hyperlegible Mono";
+        font-family: var(--mono-font);
         font-weight: 300;
         & li
           { transition: all ease 0.3s;
@@ -42,7 +47,7 @@ header
 .dark header { background-image: url('/logo2.svg'); }
 
 body
-  { font-family:   "Atkinson Hyperlegible Next";
+  { font-family:   var(--body-font);
     font-weight:   300;
     line-height:   1;
     display:       grid;
@@ -77,8 +82,9 @@ nav
 .menu
   { height:        100%;
     overflow-y:    auto;
+    overflow-x:    hidden;
     padding-right: 0.5rem;
-    font-family:   "Atkinson Hyperlegible Mono"; }
+    font-family:   var(--mono-font); }
 
 article { flex: 1; overflow: hidden; }
 
@@ -134,3 +140,181 @@ body:has(#open-all:checked) ::details-content
     & details[open]::details-content { height: auto; } }
 
 @supports not (interpolate-size: allow-keywords) { .interpolate-size { display: none; } }
+
+h1, h2, h3, h4, h5, p { margin: 1em 3em 1em 0; line-height: 1.3em; letter-spacing: 0.05em; padding: 0 20px; }
+
+h1 { font-weight: 100; font-size: 3em; margin: 0 0 0 -0.05em; }
+h1.pkg { font-size: 1em; }
+h2 { font-size: 1.35em; font-weight: 400; }
+h3 { font-size: 1.15em; font-weight: 500; }
+h4 { font-size: 1em; font-weight: 600; }
+code { font-family: var(--mono-font); font-weight: 300; font-size: 0.85em; }
+p { text-align: justify; }
+
+code span { transition: background-color ease 0.3s; display: inline-block; padding: 0 0.2em; margin: 0 -0.2em; }
+span:has(> a:hover) { background-color: var(--highlight-light); border-radius: 0.3em; }
+
+.amok {
+  margin: 0 6px 0 6px;
+  width: calc(630px);
+  padding: 1em 6px 1em 6px;
+  border-radius: 0.5em;
+  &>pre {
+    color: #cb8;
+    padding: 0.25em 0.75em;
+    margin: 0;
+    border-radius: 0.5em;
+    overflow-x: auto;
+    scrollbar-color: #fff3 transparent;
+    scrollbar-width: thin;
+    &>.line {
+      padding: 0.05em 0;
+      display: block;
+      height: 1.25em;
+      line-height: 1.25em;
+      &>.hi { --caption-color: 187, 187, 255; }
+      &>.err { --caption-color: 255, 0, 68; }
+      &>.warn { --caption-color: 255, 170, 0; }
+      &>.param { font-style: italic; }
+      & code {
+        white-space: pre;
+        border-bottom: solid 1px rgba(var(--caption-color), 0.5);
+        background-color: rgba(var(--caption-color), 0.25);
+        display: inline-block;
+        margin: 0;
+        padding: 0;
+        vertical-align: middle; }
+      &>span:hover {
+        &>.caption {
+          transition: height ease 0.2s 0.1s, width ease 0.2s;
+          &>span {
+            opacity: 1;
+            transition: opacity ease 0.2s 0.2s; } } }
+      &>span:not(:hover) {
+        &>.caption {
+          height: 0 !important;
+          width: 0 !important;
+          &>span {
+            height: 0;
+            transition: opacity ease 0.2s; } } }
+      &>span {
+        font-weight: 500;
+        cursor: pointer;
+        &>.caption {
+          font-family: "Atkinson Hyperlegible Mono";
+          backdrop-filter: blur(2px);
+          position: absolute;
+          transition: height ease 0.2s, width ease 0.2s 0.1s;
+          margin-top: 1.92em;
+          font-weight: 350;
+          font-size: 0.55em;
+          color: white;
+          padding: 0;
+          line-height: 1.5em;
+          background-color: rgba(var(--caption-color), 0.25);
+          border-bottom: dotted 1px rgba(var(--caption-color), 0.5);
+          &::after {
+            background-color: rgb(var(--caption-color));
+            content: '';
+            position: absolute;
+            bottom: -2.5px;
+            right: -2.5px;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%; }
+          &>span {
+            opacity: 0;
+            overflow: hidden;
+            display: inline-block;
+            margin: 0 0.5ch; } } } } }
+  & input[type=radio] { display: none; }
+  & .fore:checked ~ pre {
+    & .one {
+      opacity: 1;
+      transition: height ease 1s 1s, width ease 1s 1s, opacity ease 1s 2s; }
+    & .two {
+      opacity: 0;
+      transition: height ease 1s 1s, width ease 1s 1s, opacity ease 1s; }
+    &>.two { height: 0; }
+    &>.line>.two { width: 0 !important; } }
+  & .aft:checked ~ pre {
+    & .one {
+      opacity: 0;
+      transition: height ease 1s 1s, width ease 1s 1s, opacity ease 1s; }
+    & .two {
+      opacity: 1;
+      transition: height ease 1s 1s, width ease 1s 1s, opacity ease 1s 2s; }
+    &>.one { height: 0; }
+    &>.line>.one { width: 0 !important; } }
+  & .fore:checked + label::after {
+    background-color: #fc3;
+    color: black; }
+  & .aft:checked + label::before {
+    background-color: #fc3;
+    color: black; }
+  & .fore + label {
+    width: 50%;
+    text-align: right; }
+  & label {
+    cursor: pointer;
+    font-size: 0.6em;
+    color: #fffc;
+    font-weight: 400;
+    display: inline-block;
+    text-transform: uppercase;
+    padding: 0;
+    margin: 1em 0 0 0;
+    &::before, &::after {
+      transition: background-color ease 0.3s, color ease 0.3s;
+      display: inline-block;
+      width: 1.8em;
+      height: 1.7em;
+      color: #fc2;
+      border-radius: 50%;
+      cursor: pointer;
+      border: solid 0.15em #fc2;
+      text-align: center;
+      margin-left: 0.7em;
+      margin-right: 0.7em; }
+    &:hover::before {
+      background-color: #fc3;
+      color: black; }
+    &:nth-of-type(1)::after { content: '1'; }
+    &:nth-of-type(2)::before { content: '2'; } } }
+
+.amok {
+  background: linear-gradient(135deg, #cdeedf40, #cfefdf50);
+  box-shadow: 0 0 0.5em #e0e0e0;
+  border: solid 1px #c0e0d0;
+  & .error { color: #990022; }
+  & .number { color: #992244; }
+  & .modifier { color: #b34700; }
+  & .keyword { color: #cc3300; }
+  & .ident { color: #996633; }
+  & .term { color: #996600; }
+  & .typed { color: #006655; }
+  & .string { color: #339966; }
+  & .parens { color: #993366; }
+  & .symbol { color: #992244; }
+  & .unparsed { color: #005577; }
+}
+
+.dark {
+  background: linear-gradient(135deg, #0d1e2f40, #0e1d250);
+  .amok {
+    background-color: #023;
+    box-shadow: 0 0 0.5em #1f1f1f;
+    border: solid 1px #0f2f3f;
+    & .error { color: #cc0033; }
+    & .number { color: #cc3366; }
+    & .modifier { color: #ff9966; }
+    & .keyword { color: #ff6633; }
+    & .ident { color: #ffcc99; }
+    & .term { color: #ffcc33; }
+    & .typed { color: #00cc99; }
+    & .string { color: #99ddbb; }
+    & .parens { color: #cc6699; }
+    & .symbol { color: #cc3366; }
+    & .unparsed { color: #2288aa; }
+  }
+}

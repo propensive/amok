@@ -107,7 +107,6 @@ def application(): Unit = cli:
           tcp"8080".serve:
             request.location match
               case _ /: t"api.css"  => Http.Response(Classpath/"amok"/"api.css")
-              case _ /: t"styles.css"  => Http.Response(Classpath/"amok"/"styles.css")
               case _ /: t"utils.js"  => Http.Response(Classpath/"amok"/"utils.js")
               case _ /: t"logo.svg" => Http.Response(Classpath/"amok"/"logo.svg")
 
@@ -132,18 +131,33 @@ def application(): Unit = cli:
                       val detail: Optional[Markdown[Markdown.Ast.Block]] =
                         node.detail.let(Markdown.parse(_))
 
-                      given Imports(Set())
+                      given Imports(Set(amok.Address.decode(t"scala"), amok.Address.decode(t"scala.Predef")))
 
                       Page.simple
                        (H1.pkg(Code(prefix, entity)),
                         H1(Code(entity)),
                         node.typeKind.let: kind =>
-                          H2(Code(kind.signature, t" ", entity)),
+                          val exts =
+                            if kind.extensions.length > 0
+                            then t" extends " :: kind.extensions.inspect :: Nil
+                            else Nil
+                          H2(Code(kind.signature, t" ", entity, exts)),
                         node.signature.let: kind =>
-                          H2(Code(kind.signature, t" ", entity), t": ".unless(node.returnType.absent), node.returnType.let: returnType =>
-                            returnType.html),
+                          H2(Code.typed(kind.signature, t" ", entity, t": ".unless(node.returnType.absent), node.returnType.let: returnType =>
+                            returnType.html)),
                         detail.let: detail =>
                           Div(detail.html))
+
+
+              case _ /: t"api" =>
+                import html5.*
+                val rootLocation: Path on Rfc3986 = % / "entity"
+
+                Http.Response:
+                  Page
+                   (Div.content:
+                      amokDb.root.members.filter(!_(1).hidden).map: (member, node) =>
+                        node.tree(member.text, t"", member.safe.skip(1)))
 
 
               case _ /: t"api" /: (pkg: Text) =>
@@ -238,9 +252,6 @@ class AmokDb():
 
   import Member.{OfTerm, OfType}
 
-  var total: Int = 0
-  val cache: scm.HashMap[Any, Typus] = scm.HashMap()
-
   case class DocInspector()(using Stdio) extends Inspector:
     def inspect(using Quotes)(tastys: List[Tasty[quotes.type]]): Unit =
       import quotes.reflect.{Signature as _, *}
@@ -270,7 +281,8 @@ class AmokDb():
               child.returnType = Typus(rtn.tpe)
               body.each(walk(_, child, true))
 
-          case classDef@ClassDef(name, defDef, tree, selfType, body) =>
+          case classDef@ClassDef(name, defDef, extensions0, selfType, body) =>
+            val extensions = extensions0.map(_.symbol.info).map(Typus(_))
             val flags = classDef.symbol.flags
             val obj = flags.is(Module)
             if name.tt.ends(t"$$package") || name.tt.ends(t"$$package$$") then
@@ -287,7 +299,8 @@ class AmokDb():
                                        (Modifier.Private,
                                         Modifier.Erased,
                                         Modifier.Sealed,
-                                        Modifier.Transparent))
+                                        Modifier.Transparent),
+                                       extensions)
               else if flags.is(Enum)
               then
                 child.typeKind =
@@ -300,7 +313,8 @@ class AmokDb():
                                         Modifier.Transparent,
                                         Modifier.Final,
                                         Modifier.Erased,
-                                        Modifier.Case))
+                                        Modifier.Case),
+                                       extensions)
 
               body.each(walk(_, child, obj))
 
@@ -330,17 +344,17 @@ class AmokDb():
       tastys.each: tasty =>
         walk(tasty.ast, root, true)
 
-      Out.println(t"Cache size: ${cache.size}/$total")
-
 enum Visibility:
   case Private, Protected, Public
 
 enum TypeKind:
-  case Class(modifiers: List[Modifier], extensions: List[Text] = Nil, derivations: List[Text] = Nil)
-  case Trait(modifiers: List[Modifier], extensions: List[Text] = Nil)
-  case Enum(modifiers: List[Modifier], extensions: List[Text] = Nil, derivations: List[Text] = Nil)
-  case EnumCase(modifiers: List[Modifier])
-  case TypeAlias(modifiers: List[Modifier])
+  case Class(modifiers: List[Modifier], extensions: List[Typus] = Nil, derivations: List[Text] = Nil)
+  case Trait(modifiers: List[Modifier], extensions: List[Typus] = Nil)
+  case Enum(modifiers: List[Modifier], extensions: List[Typus] = Nil, derivations: List[Text] = Nil)
+  case EnumCase(modifiers: List[Modifier], extensions: List[Typus] = Nil)
+  case TypeAlias(modifiers: List[Modifier], extensions: Nil.type = Nil)
+
+  def extensions: List[Typus]
 
   def keyword: Text = this match
     case _: Class => t"class"

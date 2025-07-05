@@ -25,4 +25,4 @@ object Page:
         Footer(t"© Copyright 2025, Propensive OÜ")))
 
   def simple(content: Html[Flow]*): HtmlDoc = HtmlDoc:
-    Html(Head(Link.Stylesheet(href = % / "styles.css")), Body(content*))
+    Html(Head(Link.Stylesheet(href = % / "api.css")), Body(content*))

@@ -25,19 +25,18 @@ object Address:
     type Result = Phrasing
 
     def html(address: Address): List[Html[Phrasing]] =
-      def recur(address: Address, content: List[Html[Phrasing]]): Html[Phrasing] =
+      def recur(address: Address): Html[Phrasing] =
         val ref = address.id
-        def span(name: Text) = Span(A(href = % / "entity" / ref)(name), content)
+        def link(name: Text) = A(href = % / "entity" / ref)(name)
 
         address match
-          case Top(name)                    => span(name)
+          case Top(name) =>
+            Span(link(name))
 
           case Entity(parent, isType, name) =>
-            if imports.addresses.contains(parent) then span(name) else
-              val link = A(href = % / "entity" / ref)(name)
-              recur(parent, (if isType then t"#" else t".") :: link :: content)
+            Span(recur(parent), if isType then t"#" else t".", link(name))
 
-      List(recur(address, Nil))
+      List(recur(address))
 
 case class Imports(addresses: Set[Address])
 
