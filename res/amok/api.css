@@ -67,8 +67,9 @@ a
     text-decoration: none;
     &:hover, &:active { color: var(--highlight); } }
 
-h1 { font-weight: normal; }
-iframe { height:calc(100vh - 8em); border: 0; margin: 1.4em 0; background-color: transparent; }
+details.active>summary>a { font-weight: 500; color: var(--highlight); }
+
+iframe { height: calc(100vh - 8em); border: 0; margin: 1.4em 0; background-color: transparent; }
 
 nav
   { flex:          0 0 300px;
@@ -86,7 +87,7 @@ nav
     padding-right: 0.5rem;
     font-family:   var(--mono-font); }
 
-article { flex: 1; overflow: hidden; }
+article { flex: 1; overflow: hidden; width: 660px; }
 
 .content { padding: 0 0 0 0.5em; }
 
@@ -141,7 +142,8 @@ body:has(#open-all:checked) ::details-content
 
 @supports not (interpolate-size: allow-keywords) { .interpolate-size { display: none; } }
 
-h1, h2, h3, h4, h5, p { margin: 1em 3em 1em 0; line-height: 1.3em; letter-spacing: 0.05em; padding: 0 20px; }
+h1, h2, h3, h4, h5, p
+  { margin: 1em 3em 1em 0; line-height: 1.3em; letter-spacing: 0.05em; padding: 0 20px; }
 
 h1 { font-weight: 100; font-size: 3em; margin: 0 0 0 -0.05em; }
 h1.pkg { font-size: 1em; }
@@ -149,9 +151,15 @@ h2 { font-size: 1.35em; font-weight: 400; }
 h3 { font-size: 1.15em; font-weight: 500; }
 h4 { font-size: 1em; font-weight: 600; }
 code { font-family: var(--mono-font); font-weight: 300; font-size: 0.85em; }
+code span { white-space: pre; }
 p { text-align: justify; }
 
-code span { transition: background-color ease 0.3s; display: inline-block; padding: 0 0.2em; margin: 0 -0.2em; }
+code span
+  { transition: background-color ease 0.3s;
+    display:    inline-block;
+    padding:    0 0.2em;
+    margin:     0 -0.2em; }
+
 span:has(> a:hover) { background-color: var(--highlight-light); border-radius: 0.3em; }
 
 .amok {

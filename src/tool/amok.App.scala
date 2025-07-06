@@ -18,27 +18,6 @@ val Serve = Subcommand(t"serve", e"serve the documentation on a local HTTP serve
 var amokDb = AmokDb()
 
 
-object AmokData:
-  case class Base(base: Text, memo: Optional[Text], detail: Optional[Text], entry: List[Entry])
-
-  object Entry:
-    given decoder: Void => CodlDecoder[Entry] = CodlDecoder.derived
-    given encoder: Void => CodlEncoder[Entry] = CodlEncoder.derived
-
-  case class Entry
-              (name:   Text,
-               memo:   Optional[Text],
-               detail: Optional[Text],
-               hidden: Optional[Boolean],
-               refer:  List[Text],
-               entry:  List[Entry])
-
-  def read(file: Path on Linux)(using Stdio)
-  : Base raises CodlError raises CodlReadError raises IoError raises StreamError =
-
-      file.open(Codl.read[Base](_))
-
-
 @main
 def application(): Unit = cli:
   idempotent(effectful(safely(TabCompletions.install())))
@@ -61,8 +40,13 @@ def application(): Unit = cli:
           . each: line =>
               Out.println(line)
 
+          given Decimalizer(significantFigures = 4, exponentThreshold = Unset)
+          val memory = Heap.used/1.mib
+
           Out.println(e"$Bold(Amok) version 1.0.0: $Italic(a documentation compiler for Scala)")
           Out.println(e"© Copyright 2025, Propensive OÜ")
+          Out.println()
+          Out.println(e"Memory usage: $memory MiB")
           Out.println()
 
       Exit.Ok
@@ -83,7 +67,7 @@ def application(): Unit = cli:
               Out.println(exception.stackTrace.teletype)
               Exit.Fail(1)
           . within:
-              amokDb.overlay(AmokData.read(file))
+              amokDb.overlay(Amox.read(file))
               Exit.Ok
 
         else Exit.Ok
@@ -139,7 +123,7 @@ def application(): Unit = cli:
                         node.typeKind.let: kind =>
                           val exts =
                             if kind.extensions.length > 0
-                            then t" extends " :: kind.extensions.inspect :: Nil
+                            then t" extends " +: kind.extensions.flatMap(_.html)
                             else Nil
                           H2(Code(kind.signature, t" ", entity, exts)),
                         node.signature.let: kind =>
@@ -224,8 +208,8 @@ class AmokDb():
 
   def apply(pkg: Text): Node = root(Member.OfTerm(pkg))
 
-  def overlay(base: AmokData.Base)(using Stdio): Unit =
-    def recur(prefix: Text, entries: List[AmokData.Entry], current: Node): Unit =
+  def overlay(base: Amox.Base)(using Stdio): Unit =
+    def recur(prefix: Text, entries: List[Amox.Entry], current: Node): Unit =
       entries.map: entry =>
         val part = entry.name.skip(1)
         val next = entry.name.at(Prim) match
@@ -249,6 +233,9 @@ class AmokDb():
     try TastyInspector.inspectTastyFilesInJar(path.encode.s)(inspector)
     catch case error: Throwable =>
       Out.println(error.stackTrace.teletype)
+
+    Typus.cache.clear()
+    java.lang.System.gc()
 
   import Member.{OfTerm, OfType}
 
@@ -292,7 +279,7 @@ class AmokDb():
               val child = node(of(className))
 
               if obj && !(flags.is(Case) && flags.is(Enum))
-              then child.signature = Signature.Object(flags.has(Modifier.Private, Modifier.Case))
+              then () //child.signature = Signature.Object(flags.has(Modifier.Private, Modifier.Case))
               else if flags.is(Trait)
               then child.typeKind = TypeKind.Trait
                                      (flags.has

@@ -1,6 +1,7 @@
 const iframe = document.getElementById('api');
 const body = document.body;
 const theme = document.getElementById('theme');
+var lastCurrent = null;
 
 function applyTheme(isDark) {
   body.classList.toggle('dark', isDark);
@@ -45,14 +46,15 @@ theme.addEventListener('click', () => {
 
 iframe.addEventListener('load', () => {
   const url = iframe.contentWindow.location;
-  console.log("menu_"+url.pathname.slice(8));
-  const detailsId = "menu_"+url.pathname.slice(8);
+  const detailsId = "menu_"+decodeURIComponent(url.pathname.slice(8));
 
-  // Your logic to compute the matching <details> ID from the URL
   if (!detailsId) return;
 
-  // Open the matching <details> and all ancestors
   let el = document.getElementById(detailsId);
+
+  if (lastCurrent) { lastCurrent.classList.remove('active'); }
+  lastCurrent = el;
+  el.classList.add('active');
   while (el && el.tagName === 'DETAILS') {
     el.open = true;
     el = el.parentElement.closest('details');

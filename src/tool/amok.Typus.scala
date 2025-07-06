@@ -22,8 +22,10 @@ object Typus:
   val Intersect = Typus.Symbolic(t" & ")
   val Union = Typus.Symbolic(t" | ")
   val Comma = Typus.Symbolic(t", ")
+  val Colon = Typus.Symbolic(t": ")
   val Arrow = Typus.Symbolic(t"=> ")
   val FunctionArrow = Typus.Symbolic(t" => ")
+  val ContextualArrow = Typus.Symbolic(t" ?=> ")
   val LambdaArrow = Typus.Symbolic(t" =>> ")
   val Qmark = Typus.Symbolic(t"?")
   val Dot = Typus.Symbolic(t".")
@@ -41,7 +43,6 @@ object Typus:
 
     Typus.Compound(outer, elements*)
 
-
   given renderable: Imports => Typus is Renderable:
     import html5.*
     type Result = Phrasing
@@ -54,6 +55,15 @@ object Typus:
         case Member(text)            => Span(text)
         case Constant(text)          => Span(text)
         case Refined(typus, members) => Span(html(typus), t"{ ... }")
+
+  given showable: Imports => Typus is Showable:
+    def text(typus: Typus): Text = typus match
+      case Simple(address)        => address.text
+      case Compound(_, typuses*)  => typuses.map(text(_)).join
+      case Symbolic(text)         => text
+      case Member(text)           => text
+      case Constant(text)         => text
+      case Refined(base, members) => t"$base { ... }"
 
   val cache: scm.HashMap[Any, Typus] = scm.HashMap()
 
@@ -158,24 +168,34 @@ object Typus:
         else if lb == TypeRepr.of[Any] then Typus(10, LowerBound, apply(lb))
         else Typus(10, LowerBound, apply(lb), AndUpperBound, apply(ub))
 
-      case MethodType(_, _, _) => Typus.Constant(t"<method type>")
-      case PolyType(_, _, _) => Typus.Constant(t"<contextual method type>")
+      case method@MethodType(args0, types, result) =>
+        val args =
+          if args0.isEmpty then Nil
+          else args0.zip(types).flatMap(Typus.Member(_) :: Colon :: apply(_) :: Comma :: Nil).init
+
+        val arrow = if method.isContextFunctionType then ContextualArrow else FunctionArrow
+        Typus(0, OpenParens +: args :+ CloseParens :+ arrow :+ apply(result)*)
+
+      case PolyType(_, _, _) =>
+        Typus.Constant(t"...poly method type...")
 
       case TypeLambda(args0, _, tpe)            =>
         val args = args0.map(Typus.Member(_)).flatMap(List(_, Comma)).init
         val params = (OpenBracket +: args :+ CloseBracket :+ LambdaArrow) :+ apply(tpe)
         Typus(0, params*)
 
-      case ref: dotty.tools.dotc.core.Types.TypeParamRef => ref.binder match
-        case TypeLambda(params, _, _) => Typus.Member(params(ref.paramNum))
+      case ParamRef(binder, n) => binder match
+        case TypeLambda(params, _, _) => Typus.Member(params(n))
+        case MethodType(params, _, _) => Typus.Member(params(n))
+        case other =>
+          Out.println(t"Other kind of binder: ${other.toString}")
+          Typus.Constant(t"ParamRef")
 
+      case classInfo: dotty.tools.dotc.core.Types.ClassInfo =>
+        val parents = classInfo.declaredParents.flatMap: tpe =>
+          List(apply(tpe.asInstanceOf[TypeRepr]), Comma)
+        Typus(0, parents.dropRight(1)*)
 
-      // case MethodType(params0, types, result)   =>
-      //   val params = params0.zip(types).flatMap: (name, typed) =>
-      //     TypeRender(name, t": ", render(typed), t", ").compound(true).elements
-
-      //   if params0.length == 1 then TypeRender(TypeRender(params.init*), t" => ", render(result))
-      //   else TypeRender(t"(", TypeRender(params.init*), t") => ", render(result))
 
       // case PolyType(params0, types, result) =>
       //   TypeRender(t"<poly type>")
@@ -186,4 +206,4 @@ object Typus:
 
       case other =>
         Out.println(t"Other kind of type: ${other.toString}")
-        Typus.Constant(t"<?>")
+        Typus.Constant(t"...other: ${other.toString}...")
