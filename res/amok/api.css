@@ -151,7 +151,6 @@ h2 { font-size: 1.35em; font-weight: 400; }
 h3 { font-size: 1.15em; font-weight: 500; }
 h4 { font-size: 1em; font-weight: 600; }
 code { font-family: var(--mono-font); font-weight: 300; font-size: 0.85em; }
-code span { white-space: pre; }
 p { text-align: justify; }
 
 code span
@@ -164,8 +163,8 @@ span:has(> a:hover) { background-color: var(--highlight-light); border-radius: 0
 
 .amok {
   margin: 0 6px 0 6px;
-  width: calc(630px);
-  padding: 1em 6px 1em 6px;
+  width: 630px;
+  padding: 10px 6px 10px 6px;
   border-radius: 0.5em;
   &>pre {
     color: #cb8;
@@ -288,9 +287,8 @@ span:has(> a:hover) { background-color: var(--highlight-light); border-radius: 0
       background-color: #fc3;
       color: black; }
     &:nth-of-type(1)::after { content: '1'; }
-    &:nth-of-type(2)::before { content: '2'; } } }
+    &:nth-of-type(2)::before { content: '2'; } }
 
-.amok {
   background: linear-gradient(135deg, #cdeedf40, #cfefdf50);
   box-shadow: 0 0 0.5em #e0e0e0;
   border: solid 1px #c0e0d0;
