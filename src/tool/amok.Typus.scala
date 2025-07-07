@@ -14,25 +14,26 @@ enum Typus:
   case Refined(typus: Typus, members: ListMap[Text, Typus])
 
 object Typus:
-  val OpenParens = Typus.Symbolic(t"(")
-  val CloseParens = Typus.Symbolic(t")")
+  val OpenParens = Typus.Symbolic(t"\u200b(")
+  val CloseParens = Typus.Symbolic(t")\u200b")
   val OpenBracket = Typus.Symbolic(t"\u200b[")
-  val CloseBracket = Typus.Symbolic(t"]")
-  val Space = Typus.Symbolic(t" ")
-  val Intersect = Typus.Symbolic(t" & ")
-  val Union = Typus.Symbolic(t" | ")
-  val Comma = Typus.Symbolic(t", ")
-  val Colon = Typus.Symbolic(t": ")
-  val Arrow = Typus.Symbolic(t"=> ")
-  val FunctionArrow = Typus.Symbolic(t" => ")
-  val ContextualArrow = Typus.Symbolic(t" ?=> ")
-  val LambdaArrow = Typus.Symbolic(t" =>> ")
+  val CloseBracket = Typus.Symbolic(t"]\u200b")
+  val Space = Typus.Symbolic(t"\u00a0\u200b")
+  val Intersect = Typus.Symbolic(t"\u00a0\u200b&\u00a0")
+  val Union = Typus.Symbolic(t"\u00a0\u200b|\u00a0")
+  val Comma = Typus.Symbolic(t",\u200b\u00a0")
+  val Colon = Typus.Symbolic(t"\u200b:\u00a0")
+  val ClassOf = Typus.Symbolic(t"classOf\u200b[")
+  val Arrow = Typus.Symbolic(t"\u200b=>\u00a0")
+  val FunctionArrow = Typus.Symbolic(t"\u00a0\u200b=>\u00a0")
+  val ContextualArrow = Typus.Symbolic(t"\u00a0\u200b?=>\u00a0")
+  val LambdaArrow = Typus.Symbolic(t"\u00a0\u200b=>>\u00a0")
   val Qmark = Typus.Symbolic(t"?")
-  val Dot = Typus.Symbolic(t".")
+  val Dot = Typus.Symbolic(t"\u200b.")
   val Project = Typus.Symbolic(t"#")
-  val LowerBound = Typus.Symbolic(t"? >: ")
-  val UpperBound = Typus.Symbolic(t"? <: ")
-  val AndUpperBound = Typus.Symbolic(t" <: ")
+  val LowerBound = Typus.Symbolic(t"?\u00a0\u200b>:\u00a0")
+  val UpperBound = Typus.Symbolic(t"?\u00a0\u200b<:\u00a0")
+  val AndUpperBound = Typus.Symbolic(t"\u00a0\u200b<:\u00a0")
 
   def apply(outer: Int, typus: Typus*): Typus.Compound =
     val elements = typus.flatMap:
@@ -52,8 +53,8 @@ object Typus:
         case Simple(address)         => Span(address.html)
         case Compound(_, typuses*)   => Span(typuses.flatMap(html(_)))
         case Symbolic(text)          => Span(text)
-        case Member(text)            => Span(text)
-        case Constant(text)          => Span(text)
+        case Member(text)            => Span(Em(text))
+        case Constant(text)          => Span(Strong(text))
         case Refined(typus, members) => Span(html(typus), t"{ ... }")
 
   given showable: Imports => Typus is Showable:
@@ -144,15 +145,19 @@ object Typus:
           else Typus(10, apply(base) +: OpenBracket +: args :+ CloseBracket*)
 
       case ConstantType(constant) => constant match
-        case IntConstant(int)       => Typus(10, Typus.Constant(int.show))
-        case LongConstant(long)     => Typus(10, Typus.Constant(t"${long}L"))
-        case BooleanConstant(true)  => Typus(10, Typus.Constant(t"true"))
-        case BooleanConstant(false) => Typus(10, Typus.Constant(t"false"))
-        case StringConstant(str)    => Typus(10, Typus.Constant(t"\"$str\""))
-        case CharConstant(char)     => Typus(10, Typus.Constant(t"'$char'"))
-        case DoubleConstant(double) => Typus(10, Typus.Constant(t"${double.toString}"))
-        case FloatConstant(float)   => Typus(10, Typus.Constant(t"${float.toString}F"))
-        case NullConstant()         => Typus(10, Typus.Constant(t"null"))
+        case ByteConstant(byte)     => Typus.Constant(t"$byte.toByte")
+        case ShortConstant(short)   => Typus.Constant(t"$short.toShort")
+        case IntConstant(int)       => Typus.Constant(int.show)
+        case LongConstant(long)     => Typus.Constant(t"${long}L")
+        case BooleanConstant(true)  => Typus.Constant(t"true")
+        case BooleanConstant(false) => Typus.Constant(t"false")
+        case StringConstant(str)    => Typus.Constant(t"\"$str\"")
+        case CharConstant(char)     => Typus.Constant(t"'$char'")
+        case DoubleConstant(double) => Typus.Constant(t"${double.toString}")
+        case FloatConstant(float)   => Typus.Constant(t"${float.toString}F")
+        case UnitConstant()         => Typus.Constant(t"()")
+        case NullConstant()         => Typus.Constant(t"null")
+        case ClassOfConstant(cls)   => Typus(10, ClassOf, apply(cls), CloseBracket)
 
       case Refinement(base, name, member) => apply(base) match
         case Typus.Refined(base, members) =>
@@ -176,8 +181,12 @@ object Typus:
         val arrow = if method.isContextFunctionType then ContextualArrow else FunctionArrow
         Typus(0, OpenParens +: args :+ CloseParens :+ arrow :+ apply(result)*)
 
-      case PolyType(_, _, _) =>
-        Typus.Constant(t"...poly method type...")
+      case PolyType(args0, types, result) =>
+        val args =
+          if args0.isEmpty then Nil
+          else args0.zip(types).flatMap(Typus.Member(_) :: Colon :: apply(_) :: Comma :: Nil).init
+
+        Typus(0, OpenBracket +: args :+ CloseBracket :+ FunctionArrow :+ apply(result)*)
 
       case TypeLambda(args0, _, tpe)            =>
         val args = args0.map(Typus.Member(_)).flatMap(List(_, Comma)).init
@@ -187,6 +196,7 @@ object Typus:
       case ParamRef(binder, n) => binder match
         case TypeLambda(params, _, _) => Typus.Member(params(n))
         case MethodType(params, _, _) => Typus.Member(params(n))
+        case PolyType(params, _, _)   => Typus.Member(params(n))
         case other =>
           Out.println(t"Other kind of binder: ${other.toString}")
           Typus.Constant(t"ParamRef")
@@ -195,14 +205,6 @@ object Typus:
         val parents = classInfo.declaredParents.flatMap: tpe =>
           List(apply(tpe.asInstanceOf[TypeRepr]), Comma)
         Typus(0, parents.dropRight(1)*)
-
-
-      // case PolyType(params0, types, result) =>
-      //   TypeRender(t"<poly type>")
-
-
-      // case ref: dotty.tools.dotc.core.Types.TypeParamRef => ref.binder match
-      //   case TypeLambda(params, _, _) => TypeRender(params(ref.paramNum).tt)
 
       case other =>
         Out.println(t"Other kind of type: ${other.toString}")

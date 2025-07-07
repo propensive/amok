@@ -318,12 +318,12 @@ class AmokDb():
             val flags = typeDef.symbol.flags
             val typeName = name.show
             val child = node(of(typeName))
-            //Out.println(t"TypeDef : $name / ${a.toString}")
             child.typeKind = TypeKind.TypeAlias(flags.has(Modifier.Opaque))
 
           case Export(x, exports) => exports.map:
             case SimpleSelector(name)    => node(of(name.tt))
             case RenameSelector(_, name) => node(of(name.tt))
+            case other: Selector         => Out.println(t"Found a different kind of selector")
 
           case other =>
             //Out.println(t"OTHER: ${other.toString}")
@@ -344,10 +344,11 @@ enum TypeKind:
   def extensions: List[Typus]
 
   def keyword: Text = this match
-    case _: Class => t"class"
-    case _: Trait => t"trait"
-    case _: Enum  => t"enum"
-    case _: EnumCase => t"case"
+    case _: Class     => t"class"
+    case _: Trait     => t"trait"
+    case _: Enum      => t"enum"
+    case _: EnumCase  => t"case"
+    case _: TypeAlias => t"type"
 
   def modifiers: List[Modifier]
   def signature = modifiers.map(_.keyword).join(t"", t" ", t" "+keyword)
