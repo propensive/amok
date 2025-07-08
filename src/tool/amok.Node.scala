@@ -12,9 +12,10 @@ class Node():
   var signature: Optional[amok.Signature] = Unset
   var typeKind: Optional[TypeKind] = Unset
   var memo: Optional[Text] = Unset
+  var params: Optional[Syntax] = Unset
   var detail: Optional[Text] = Unset
   var hidden: Boolean = false
-  var returnType: Optional[Typus] = Unset
+  var returnType: Optional[Syntax] = Unset
 
   def members: List[(Member, Node)] = membersMap.to(List)
 

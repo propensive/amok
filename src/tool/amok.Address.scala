@@ -34,11 +34,13 @@ object Address:
             Span(link(name))
 
           case Entity(parent, isType, name) =>
-            Span(recur(parent), if isType then t"#" else t".", link(name))
+            if imports.has(parent) then Span(link(name))
+            else Span(recur(parent), if isType then t"#" else t".", link(name))
 
       List(recur(address))
 
-case class Imports(addresses: Set[Address])
+case class Imports(addresses: Set[Address]):
+  def has(address: Address): Boolean = addresses.contains(address)
 
 enum Address:
   case Top(name: Text)

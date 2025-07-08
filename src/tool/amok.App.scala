@@ -10,13 +10,12 @@ given Tactic[CodlError] => Tactic[CodlReadError] => Translator =
   HtmlTranslator(AmokEmbedding(false), ScalaEmbedding)
 
 val About = Subcommand(t"about", e"find out about Amok")
-val Load = Subcommand(t"load", e"load definitions from a .jar or .amok file")
+val Load  = Subcommand(t"load",  e"load definitions from a .jar or .amok file")
 val Clear = Subcommand(t"clear", e"clear definitions from a JAR file")
-val Quit = Subcommand(t"quit", e"shutdown Amok")
+val Quit  = Subcommand(t"quit",  e"shutdown Amok")
 val Serve = Subcommand(t"serve", e"serve the documentation on a local HTTP server")
 
 var amokDb = AmokDb()
-
 
 @main
 def application(): Unit = cli:
@@ -61,6 +60,7 @@ def application(): Unit = cli:
           . within:
               amokDb.load(file)
               Exit.Ok
+
         else if file.name.ends(t".amok") then
           recover:
             case exception: Error =>
@@ -115,7 +115,12 @@ def application(): Unit = cli:
                       val detail: Optional[Markdown[Markdown.Ast.Block]] =
                         node.detail.let(Markdown.parse(_))
 
-                      given Imports(Set(amok.Address.decode(t"scala"), amok.Address.decode(t"scala.Predef")))
+                      given Imports(Set
+                             (amok.Address.decode(t"scala"),
+                              amok.Address.decode(t"scala.Predef"),
+                              amok.Address.decode(t"scala.lang"),
+                              amok.Address.decode(t"java.lang"),
+                              ))
 
                       Page.simple
                        (H1.pkg(Code(prefix, entity)),
@@ -127,8 +132,13 @@ def application(): Unit = cli:
                             else Nil
                           H2(Code(kind.signature, t" ", entity, exts)),
                         node.signature.let: kind =>
-                          H2(Code.typed(kind.signature, t" ", entity, t": ".unless(node.returnType.absent), node.returnType.let: returnType =>
-                            returnType.html)),
+                          H2(Code.typed
+                           (kind.signature,
+                            t" ",
+                            Em(entity),
+                            node.params.let(_.html),
+                            t": ".unless(node.returnType.absent),
+                            node.returnType.let(_.html))),
                         detail.let: detail =>
                           Div(detail.html))
 
@@ -139,10 +149,13 @@ def application(): Unit = cli:
 
                 Http.Response:
                   Page
-                   (Div.content:
-                      amokDb.root.members.filter(!_(1).hidden).map: (member, node) =>
-                        node.tree(member.text, t"", member.safe.skip(1)))
-
+                   (Nil,
+                    List
+                     (H2(t"All Packages"),
+                      Ul.all
+                       (amokDb.root.members.filter(!_(1).hidden).map: (member, _) =>
+                          val link: Path on Rfc3986 = (% / "api" / member.text.skip(1)).on[Rfc3986]
+                          Li(Code(A(href = link)(member.text.skip(1)))))))
 
               case _ /: t"api" /: (pkg: Text) =>
                 import html5.*
@@ -151,10 +164,12 @@ def application(): Unit = cli:
 
                 Http.Response:
                   Page
-                   (Details(Summary(B(A(target = id"main", href = rootLocation)(pkg)))),
-                    Div.content:
-                      amokDb(pkg).members.filter(!_(1).hidden).map: (member, node) =>
-                        node.tree(member.text, pkg, pkg+member.safe))
+                   (List
+                     (Details(Summary(B(A(target = id"main", href = rootLocation)(pkg)))),
+                      Div.content:
+                        amokDb(pkg).members.filter(!_(1).hidden).map: (member, node) =>
+                          node.tree(member.text, pkg, pkg+member.safe)),
+                    List(Iframe(id = id"api", name = t"main", width = 700)))
 
               case _ =>
                 Http.Response(t"Hello")
@@ -234,7 +249,7 @@ class AmokDb():
     catch case error: Throwable =>
       Out.println(error.stackTrace.teletype)
 
-    Typus.cache.clear()
+    Syntax.cache.clear()
     java.lang.System.gc()
 
   import Member.{OfTerm, OfType}
@@ -245,8 +260,6 @@ class AmokDb():
       import Flags.*
 
       val retainsSym = TypeRepr.of[annotation.retains].typeSymbol
-      val any = TypeRepr.of[Any]
-      val nothing = TypeRepr.of[Nothing]
 
       def walk(ast: Tree, node: Node, ofTerm: Boolean): Unit =
         def of(name: Text): Member = if ofTerm then OfTerm(name) else OfType(name)
@@ -258,18 +271,18 @@ class AmokDb():
 
           case valDef@ValDef(name, rtn, body) if !(valDef.symbol.flags.is(Private) || name == "_") =>
             val flags = valDef.symbol.flags
-            val termName = if flags.is(Given) && (name.tt.starts(t"evidence$$")) then name.tt/*Typus(rtn.tpe)*/ else name.tt
+            val termName = if flags.is(Given) && (name.tt.starts(t"evidence$$")) then name.tt/*Syntax(rtn.tpe)*/ else name.tt
             if name.tt.ends(t"$$package") then body.each(walk(_, node, true))
             else
               val child = node(of(termName))
               if flags.is(Given) then child.signature = Signature.Given(flags.has(Modifier.Inline, Modifier.Transparent, Modifier.Erased))
               else Signature.Val(flags.has(Modifier.Override, Modifier.Private, Modifier.Erased, Modifier.Inline, Modifier.Final))
 
-              child.returnType = Typus(rtn.tpe)
+              child.returnType = Syntax(rtn.tpe)
               body.each(walk(_, child, true))
 
           case classDef@ClassDef(name, defDef, extensions0, selfType, body) =>
-            val extensions = extensions0.map(_.symbol.info).map(Typus(_))
+            val extensions = extensions0.map(_.symbol.info).map(Syntax(_))
             val flags = classDef.symbol.flags
             val obj = flags.is(Module)
             if name.tt.ends(t"$$package") || name.tt.ends(t"$$package$$") then
@@ -305,16 +318,16 @@ class AmokDb():
 
               body.each(walk(_, child, obj))
 
-          case term@DefDef(name, params, rtn, body) if !term.symbol.flags.is(Synthetic) && !term.symbol.flags.is(Private) && !name.contains("$default$") =>
+          case term@DefDef(name, groups0, rtn, body) if !term.symbol.flags.is(Synthetic) && !term.symbol.flags.is(Private) && !name.contains("$default$") =>
             val flags = term.symbol.flags
             val isGiven = flags.is(Given)
             val termName = name.show
             val child = node(of(termName))
             child.signature = if isGiven then Signature.Given(flags.has(Modifier.Inline, Modifier.Transparent, Modifier.Erased)) else Signature.Def(flags.has(Modifier.Override, Modifier.Private, Modifier.Erased, Modifier.Transparent, Modifier.Inline, Modifier.Final, Modifier.Infix))
-            child.returnType = Typus(rtn.tpe)
-            //params.flatMap(_.params).each(walk(_, child, true))
+            child.returnType = Syntax(rtn.tpe)
+            child.params = Syntax(10, groups0.map(Syntax.clause(_))*)
 
-          case typeDef@TypeDef(name, a) if name != "MirroredMonoType" =>
+          case typeDef@TypeDef(name, _) if name != "MirroredMonoType" =>
             val flags = typeDef.symbol.flags
             val typeName = name.show
             val child = node(of(typeName))
@@ -335,13 +348,13 @@ enum Visibility:
   case Private, Protected, Public
 
 enum TypeKind:
-  case Class(modifiers: List[Modifier], extensions: List[Typus] = Nil, derivations: List[Text] = Nil)
-  case Trait(modifiers: List[Modifier], extensions: List[Typus] = Nil)
-  case Enum(modifiers: List[Modifier], extensions: List[Typus] = Nil, derivations: List[Text] = Nil)
-  case EnumCase(modifiers: List[Modifier], extensions: List[Typus] = Nil)
+  case Class(modifiers: List[Modifier], extensions: List[Syntax] = Nil, derivations: List[Text] = Nil)
+  case Trait(modifiers: List[Modifier], extensions: List[Syntax] = Nil)
+  case Enum(modifiers: List[Modifier], extensions: List[Syntax] = Nil, derivations: List[Text] = Nil)
+  case EnumCase(modifiers: List[Modifier], extensions: List[Syntax] = Nil)
   case TypeAlias(modifiers: List[Modifier], extensions: Nil.type = Nil)
 
-  def extensions: List[Typus]
+  def extensions: List[Syntax]
 
   def keyword: Text = this match
     case _: Class     => t"class"
