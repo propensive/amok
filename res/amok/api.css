@@ -10,7 +10,7 @@
 .dark { --fg-color: #fffc; --bg-color: #012; }
 
 * { margin: 0; padding: 0; }
-footer { background-color: #bb4253; color: white; padding-top: 1em; }
+footer { background-color: #70c96a55; color: black; text-shadow: 0 0 3px white; ; padding-top: 1em; }
 
 header, footer
   { width:         960px;
@@ -46,6 +46,12 @@ header
 
 .dark header { background-image: url('/logo2.svg'); }
 
+.imports { margin-bottom: 1em; }
+.imports>summary::after { content: '...' }
+.imports[open]>summary::after { content: '' }
+
+article { padding: 2em 1em; }
+ul.all { columns: 3; line-height: 1.3em; list-style: none; padding: 1em; }
 body
   { font-family:   var(--body-font);
     font-weight:   300;

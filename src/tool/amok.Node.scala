@@ -1,16 +1,16 @@
 package amok
 
-import scala.tasty.*, inspector.*
 import scala.quoted.*
 import scala.collection.mutable as scm
 
 import soundness.{is as _, Node as _, *}
 
-class Node():
+class Node(parent0: Optional[Node] = Unset):
   val membersMap: scm.TreeMap[Member, Node] = scm.TreeMap()
+  def parent: Node = parent0.or(this)
   private var doc: Optional[Text] = Unset
+  var template: Optional[Template] = Unset
   var signature: Optional[amok.Signature] = Unset
-  var typeKind: Optional[TypeKind] = Unset
   var memo: Optional[Text] = Unset
   var params: Optional[Syntax] = Unset
   var detail: Optional[Text] = Unset
@@ -21,9 +21,10 @@ class Node():
 
   override def toString: String = members.map(_(0).text).join(t", ").s
 
-  def apply(member: Member): Node = membersMap.get(member).getOrElse:
-    Node().tap: node =>
-      membersMap(member) = node
+  def apply(member: Member): Node =
+    membersMap.get(member).getOrElse:
+      Node(this).tap: node =>
+        membersMap(member) = node
 
   def tree(name: Text, group: Text, path: Text): Element["details"] =
     import html5.*

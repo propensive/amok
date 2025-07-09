@@ -2,7 +2,6 @@ package amok
 
 import scala.tasty.*, inspector.*
 import scala.quoted.*
-import scala.collection.mutable as scm
 
 import soundness.{is as _, Node as _, *}
 
@@ -95,7 +94,7 @@ def application(): Unit = cli:
               case _ /: t"logo.svg" => Http.Response(Classpath/"amok"/"logo.svg")
 
               case _ /: t"entity" /: (name: Text) =>
-                val (prefix, entity, node) = amokDb.resolve(name)
+                val (symbol, entity, node) = amokDb.resolve(name)
 
                 Http.Response:
                   import html5.*
@@ -115,17 +114,19 @@ def application(): Unit = cli:
                       val detail: Optional[Markdown[Markdown.Ast.Block]] =
                         node.detail.let(Markdown.parse(_))
 
+                      val parent = Index.decode(name).parent
+
                       given Imports(Set
-                             (amok.Address.decode(t"scala"),
-                              amok.Address.decode(t"scala.Predef"),
-                              amok.Address.decode(t"scala.lang"),
-                              amok.Address.decode(t"java.lang"),
-                              ))
+                             (Index.decode(t"scala"),
+                              Index.decode(name).parent,
+                              Index.decode(t"scala.Predef"),
+                              Index.decode(t"scala.lang"),
+                              Index.decode(t"java.lang")))
 
                       Page.simple
-                       (H1.pkg(Code(prefix, entity)),
+                       (H1.pkg(Code(parent.html, symbol.show), Code(B(entity))),
                         H1(Code(entity)),
-                        node.typeKind.let: kind =>
+                        node.template.let: kind =>
                           val exts =
                             if kind.extensions.length > 0
                             then t" extends " +: kind.extensions.flatMap(_.html)
@@ -165,7 +166,12 @@ def application(): Unit = cli:
                 Http.Response:
                   Page
                    (List
-                     (Details(Summary(B(A(target = id"main", href = rootLocation)(pkg)))),
+                     (Details.imports
+                       (Summary(B(t"import")),
+                        Div.content(Details(Summary(t"scala.*"))),
+                        Div.content(Details(Summary(t"scala.Predef.*"))),
+                        Div.content(Details(Summary(t"scala.collection.*")))),
+                      Details(Summary(B(A(target = id"main", href = rootLocation)(pkg)))),
                       Div.content:
                         amokDb(pkg).members.filter(!_(1).hidden).map: (member, node) =>
                           node.tree(member.text, pkg, pkg+member.safe)),
@@ -205,7 +211,7 @@ class AmokDb():
   val root = Node()
 
   def resolve(path: Text, prefix: Text = t"", current: Node = root, term: Boolean = true)
-  : (Text, Text, Node) =
+  : (Char, Text, Node) =
 
       path.where { char => char == '.' || char == ':' }.let: position =>
         val part = path.before(position).urlDecode
@@ -214,10 +220,10 @@ class AmokDb():
         path.at(position) match
           case '.' => resolve(path.after(position), t"$prefix$part.", next, true)
           case ':' => resolve(path.after(position), t"$prefix$part⌗", next, false)
-          case _   => (prefix, part, current)
+          case _   => (prefix.s.last, part, current)
 
       . or:
-         (prefix,
+         (prefix.s.last,
           path.urlDecode,
           current(if term then Member.OfTerm(path.urlDecode) else Member.OfType(path.urlDecode)))
 
@@ -238,10 +244,10 @@ class AmokDb():
           next.hidden = entry.hidden.or(false)
           recur(prefix+entry.name, entry.entry, next)
 
-    val init = root(Member.OfTerm(base.base))
+    val init = root(Member.OfTerm(base.base.or(t"")))
     init.memo = base.memo
     init.detail = base.detail
-    recur(base.base, base.entry, init)
+    recur(base.base.or(t""), base.entry, init)
 
   def load(path: Path on Linux)(using Stdio): Unit =
     val inspector = DocInspector()
@@ -266,55 +272,55 @@ class AmokDb():
         ast match
           case pc@PackageClause(id@Ident(name), body) =>
             val child = node(of(name))
-            node.signature = Signature.Package(Nil)
+            child.signature = `package`(Nil)
             body.each(walk(_, child, true))
 
           case valDef@ValDef(name, rtn, body) if !(valDef.symbol.flags.is(Private) || name == "_") =>
             val flags = valDef.symbol.flags
-            val termName = if flags.is(Given) && (name.tt.starts(t"evidence$$")) then name.tt/*Syntax(rtn.tpe)*/ else name.tt
+            val termName =
+              if flags.is(Given) && (name.tt.starts(t"evidence$$"))
+              then name.tt/*Syntax(rtn.tpe)*/ else name.tt
             if name.tt.ends(t"$$package") then body.each(walk(_, node, true))
             else
               val child = node(of(termName))
-              if flags.is(Given) then child.signature = Signature.Given(flags.has(Modifier.Inline, Modifier.Transparent, Modifier.Erased))
-              else Signature.Val(flags.has(Modifier.Override, Modifier.Private, Modifier.Erased, Modifier.Inline, Modifier.Final))
+              child.signature =
+                if flags.is(Given)
+                then `given`(flags.has(`inline`, `transparent`, `erased`))
+                else if flags.is(Enum) && flags.is(Case) then `enum.case`(Nil)
+                else if flags.is(Module) && flags.is(Case) then `case object`(Nil)
+                else if flags.is(Module) then `object`(Nil)
+                else if flags.is(Mutable)
+                then `var`(flags.has(`override`, `private`, `protected`, `final`))
+                else `val`(flags.has(`override`, `private`, `protected`, `erased`, `inline`, `final`, `lazy`))
 
-              child.returnType = Syntax(rtn.tpe)
+              if !flags.is(Module) then child.returnType = Syntax(rtn.tpe)
               body.each(walk(_, child, true))
 
           case classDef@ClassDef(name, defDef, extensions0, selfType, body) =>
             val extensions = extensions0.map(_.symbol.info).map(Syntax(_))
             val flags = classDef.symbol.flags
             val obj = flags.is(Module)
-            if name.tt.ends(t"$$package") || name.tt.ends(t"$$package$$") then
-              body.each(walk(_, node, obj))
+            if name.tt.ends(t"$$package") || name.tt.ends(t"$$package$$")
+            then body.each(walk(_, node, obj))
             else
               val className = if obj && name.tt.ends(t"$$") then name.tt.skip(1, Rtl) else name.tt
               val child = node(of(className))
 
               if obj && !(flags.is(Case) && flags.is(Enum))
-              then () //child.signature = Signature.Object(flags.has(Modifier.Private, Modifier.Case))
+              then () //child.signature = Signature.Object(flags.has(`private`, `case`))
               else if flags.is(Trait)
-              then child.typeKind = TypeKind.Trait
-                                     (flags.has
-                                       (Modifier.Private,
-                                        Modifier.Erased,
-                                        Modifier.Sealed,
-                                        Modifier.Transparent),
+              then child.template = `trait`
+                                     (flags.has(`private`, `erased`, `sealed`, `transparent`),
                                        extensions)
               else if flags.is(Enum)
               then
-                child.typeKind =
-                  if flags.is(Case) then TypeKind.EnumCase(flags.has(Modifier.Private))
-                  else TypeKind.Enum(flags.has(Modifier.Private))
-              else child.typeKind = TypeKind.Class
-                                     (flags.has
-                                       (Modifier.Private,
-                                        Modifier.Sealed,
-                                        Modifier.Transparent,
-                                        Modifier.Final,
-                                        Modifier.Erased,
-                                        Modifier.Case),
-                                       extensions)
+                child.template =
+                  if flags.is(Case) then `case`(flags.has(`private`))
+                  else `enum`(flags.has(`private`))
+              else child.template =
+                if flags.is(Case)
+                then `case class`(flags.has(`private`, `protected`, `sealed`, `open`, `transparent`, `final`, `erased`, `abstract`), extensions)
+                else `class`(flags.has(`private`, `protected`, `sealed`, `open`, `transparent`, `final`, `erased`, `abstract`), extensions)
 
               body.each(walk(_, child, obj))
 
@@ -323,15 +329,30 @@ class AmokDb():
             val isGiven = flags.is(Given)
             val termName = name.show
             val child = node(of(termName))
-            child.signature = if isGiven then Signature.Given(flags.has(Modifier.Inline, Modifier.Transparent, Modifier.Erased)) else Signature.Def(flags.has(Modifier.Override, Modifier.Private, Modifier.Erased, Modifier.Transparent, Modifier.Inline, Modifier.Final, Modifier.Infix))
+            val ext = flags.is(ExtensionMethod)
+
+            val extensionClauses = 1 + groups0.indexWhere:
+              case TermParamClause(_) => true
+              case _                  => false
+
+            val paramClauses = if ext then groups0.drop(extensionClauses) else groups0
+
+            val subject = if !ext then Unset else
+              Syntax(10, groups0.take(extensionClauses).map(Syntax.clause(_))*)
+
+            child.params = Syntax(10, paramClauses.map(Syntax.clause(_))*)
+            child.signature =
+              if isGiven then `given`(flags.has(`inline`, `transparent`, `erased`))
+              else `def`(subject, flags.has(`abstract`, `override`, `private`, `protected`, `erased`, `final`, `infix`, `transparent`, `inline`))
             child.returnType = Syntax(rtn.tpe)
-            child.params = Syntax(10, groups0.map(Syntax.clause(_))*)
 
           case typeDef@TypeDef(name, _) if name != "MirroredMonoType" =>
             val flags = typeDef.symbol.flags
+            // This should be `Into`, but it's not provided in the Quotes API
+            if flags.is(ParamAccessor) then Out.println(t"into ${name.tt}")
             val typeName = name.show
             val child = node(of(typeName))
-            child.typeKind = TypeKind.TypeAlias(flags.has(Modifier.Opaque))
+            child.template = `type`(flags.has(`opaque`, `infix`))
 
           case Export(x, exports) => exports.map:
             case SimpleSelector(name)    => node(of(name.tt))
@@ -347,42 +368,25 @@ class AmokDb():
 enum Visibility:
   case Private, Protected, Public
 
-enum TypeKind:
-  case Class(modifiers: List[Modifier], extensions: List[Syntax] = Nil, derivations: List[Text] = Nil)
-  case Trait(modifiers: List[Modifier], extensions: List[Syntax] = Nil)
-  case Enum(modifiers: List[Modifier], extensions: List[Syntax] = Nil, derivations: List[Text] = Nil)
-  case EnumCase(modifiers: List[Modifier], extensions: List[Syntax] = Nil)
-  case TypeAlias(modifiers: List[Modifier], extensions: Nil.type = Nil)
-
-  def extensions: List[Syntax]
-
-  def keyword: Text = this match
-    case _: Class     => t"class"
-    case _: Trait     => t"trait"
-    case _: Enum      => t"enum"
-    case _: EnumCase  => t"case"
-    case _: TypeAlias => t"type"
-
-  def modifiers: List[Modifier]
-  def signature = modifiers.map(_.keyword).join(t"", t" ", t" "+keyword)
-
 extension (using Quotes)(flags: quotes.reflect.Flags)
   def modifier(modifier: Modifier): Boolean =
     import quotes.reflect.*
     modifier match
-      case Modifier.Private     => flags.is(Flags.Private)
-      case Modifier.Abstract    => flags.is(Flags.Abstract)
-      case Modifier.Open        => flags.is(Flags.Open)
-      case Modifier.Case        => flags.is(Flags.Case)
-      case Modifier.Final       => flags.is(Flags.Final)
-      case Modifier.Erased      => flags.is(Flags.Erased)
-      case Modifier.Transparent => flags.is(Flags.Transparent)
-      case Modifier.Inline      => flags.is(Flags.Inline)
-      case Modifier.Lazy        => flags.is(Flags.Lazy)
-      case Modifier.Sealed      => flags.is(Flags.Sealed)
-      case Modifier.Override    => flags.is(Flags.Override)
-      case Modifier.Opaque      => flags.is(Flags.Opaque)
-      case Modifier.Infix       => flags.is(Flags.Infix)
+      case `private`     => flags.is(Flags.Private)
+      case `protected`   => flags.is(Flags.Protected)
+      case `abstract`    => flags.is(Flags.Abstract) || flags.is(Flags.AbsOverride)
+      case `open`        => flags.is(Flags.Open)
+      case `final`       => flags.is(Flags.Final)
+      case `erased`      => flags.is(Flags.Erased)
+      case `transparent` => flags.is(Flags.Transparent)
+      case `inline`      => flags.is(Flags.Inline)
+      case `lazy`        => flags.is(Flags.Lazy)
+      case `sealed`      => flags.is(Flags.Sealed)
+      case `override`    => flags.is(Flags.Override) || flags.is(Flags.AbsOverride)
+      case `opaque`      => flags.is(Flags.Opaque)
+      case `infix`       => flags.is(Flags.Infix)
+      case `into`        => false
+      case `tracked`     => false
 
   def has(modifiers: Modifier*): List[Modifier] = modifiers.filter(flags.modifier(_)).to(List)
 
@@ -390,26 +394,58 @@ object Modifier:
   val all: List[Modifier] = values.to(List)
 
 enum Modifier:
-  case Private, Abstract, Open, Case, Final, Erased, Transparent, Inline, Lazy, Sealed, Override,
-      Opaque, Infix
+  case `private`, `abstract`, `open`, `final`, `erased`, `transparent`, `inline`, `lazy`, `sealed`,
+      `override`, `opaque`, `infix`, `into`, `tracked`, `protected`
 
   def keyword: Text = this.toString.tt.lower
 
+export Modifier.*
+
 enum Signature:
-  case Package(modifiers: List[Modifier])
-  case Object(modifiers: List[Modifier])
-  case Def(modifiers: List[Modifier])
-  case Val(modifiers: List[Modifier])
-  case Var(modifiers: List[Modifier])
-  case Given(modifiers: List[Modifier])
+  case `package`(modifiers: List[Modifier])
+  case `object`(modifiers: List[Modifier])
+  case `case object`(modifiers: List[Modifier])
+  case `enum.case`(modifiers: List[Modifier])
+  case `def`(`extension`: Optional[Syntax], modifiers: List[Modifier])
+  case `val`(modifiers: List[Modifier])
+  case `var`(modifiers: List[Modifier])
+  case `given`(modifiers: List[Modifier])
 
   def keyword: Text = this match
-    case _: Package  => t"package"
-    case _: Object   => t"object"
-    case _: Def      => t"def"
-    case _: Val      => t"val"
-    case _: Var      => t"var"
-    case _: Given    => t"given"
+    case _: `package`     => t"package"
+    case _: `object`      => t"object"
+    case _: `case object` => t"case object"
+    case _: `enum.case`   => t"case"
+    case `def`(Unset, _)  => t"def"
+    case _: `def`         => t"extension"
+    case _: `val`         => t"val"
+    case _: `var`         => t"var"
+    case _: `given`       => t"given"
 
   def modifiers: List[Modifier]
   def signature = modifiers.map(_.keyword).join(t"", t" ", t" "+keyword)
+
+export Signature.*
+
+enum Template:
+  case `case class`(modifiers: List[Modifier], extensions: List[Syntax] = Nil, derivations: List[Text] = Nil)
+  case `class`(modifiers: List[Modifier], extensions: List[Syntax] = Nil, derivations: List[Text] = Nil)
+  case `trait`(modifiers: List[Modifier], extensions: List[Syntax] = Nil)
+  case `enum`(modifiers: List[Modifier], extensions: List[Syntax] = Nil, derivations: List[Text] = Nil)
+  case `case`(modifiers: List[Modifier], extensions: List[Syntax] = Nil)
+  case `type`(modifiers: List[Modifier], extensions: Nil.type = Nil)
+
+  def extensions: List[Syntax]
+
+  def keyword: Text = this match
+    case _: `case class` => t"case class"
+    case _: `class`      => t"class"
+    case _: `trait`      => t"trait"
+    case _: `enum`       => t"enum"
+    case _: `case`       => t"case"
+    case _: `type`       => t"type"
+
+  def modifiers: List[Modifier]
+  def signature = modifiers.map(_.keyword).join(t"", t" ", t" "+keyword)
+
+export Template.*

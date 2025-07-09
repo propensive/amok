@@ -6,7 +6,7 @@ import scala.collection.mutable as scm
 import soundness.{is as _, Node as _, *}
 
 enum Syntax:
-  case Simple(address: Address)
+  case Simple(index: Index)
   case Compound(precedence: Int, syntax: Syntax*)
   case Symbolic(text: Text)
   case Constant(text: Text)
@@ -23,6 +23,7 @@ object Syntax:
   val Union = Syntax.Symbolic(t"\u00a0\u200b|\u00a0")
   val Comma = Syntax.Symbolic(t",\u200b\u00a0")
   val Colon = Syntax.Symbolic(t"\u200b:\u00a0")
+  val Into = Syntax.Symbolic(t"\u200binto\u00a0")
   val ClassOf = Syntax.Symbolic(t"classOf\u200b[")
   val Arrow = Syntax.Symbolic(t"\u200b=>\u00a0")
   val FunctionArrow = Syntax.Symbolic(t"\u00a0\u200b=>\u00a0")
@@ -50,7 +51,7 @@ object Syntax:
 
     def html(syntax: Syntax): List[Html[Phrasing]] = List:
       syntax match
-        case Simple(address)          => Span(address.html)
+        case Simple(index)          => Span(index.html)
         case Compound(_, syntaxes*)   => Span(syntaxes.flatMap(html(_)))
         case Symbolic(text)           => text
         case Member(text)             => Em(text)
@@ -59,7 +60,7 @@ object Syntax:
 
   given showable: Imports => Syntax is Showable:
     def text(syntax: Syntax): Text = syntax match
-      case Simple(address)        => address.text
+      case Simple(index)        => index.text
       case Compound(_, syntaxes*) => syntaxes.map(text(_)).join
       case Symbolic(text)         => text
       case Member(text)           => text
@@ -88,15 +89,20 @@ object Syntax:
     import quotes.reflect.*
     clause match
       case TermParamClause(termDefs) =>
+        val contextual = termDefs.exists(_.symbol.flags.is(Flags.Given))
         val defs = termDefs.flatMap:
           case valDef@ValDef(name, rtn, default) =>
-            val syntax = List(Syntax.Member(name.tt), Colon, apply(rtn.tpe), Comma)
+            val syntax =
+              if name.tt.starts(t"evidence$$") then List(apply(rtn.tpe), Comma)
+              else List(Syntax.Member(name.tt), Colon, apply(rtn.tpe), Comma)
+
             if valDef.symbol.flags.is(Flags.Inline)
             then Syntax.Member(t"inline\u00a0") :: syntax
             else syntax
 
 
-        Syntax(10, OpenParens +: defs.dropRight(1) :+ CloseParens*)
+        val usingKeyword = if contextual then List(Syntax.Symbolic(t"using ")) else Nil
+        Syntax(10, OpenParens +: (usingKeyword ++ defs.dropRight(1)) :+ CloseParens*)
 
       case TypeParamClause(typeDefs) =>
         val defs = typeDefs.flatMap:
@@ -118,14 +124,14 @@ object Syntax:
     repr.absolve match
       case ThisType(tpe) => apply(tpe, true)
       case TypeRef(NoPrefix() | ThisType(TypeRef(NoPrefix(), "<root>")), name) =>
-        Syntax.Simple(Address.Top(name))
+        Syntax.Simple(Index.Top(name))
 
       case TypeRef(prefix, name)   => apply(prefix) match
-        case simple@Syntax.Simple(address)    =>
+        case simple@Syntax.Simple(index)    =>
           val obj = name.tt.ends(t"$$")
           val name2 = if obj then name.tt.skip(1, Rtl) else name.tt
           if name2.ends(t"$$package") then simple
-          else Syntax.Simple(Address.Entity(address, thisType, name2))
+          else Syntax.Simple(Index.Entity(index, thisType, name2))
 
         case compound: Syntax.Compound =>
           if compound.precedence < 10 then Syntax(10, compound, Dot, Syntax.Member(name.tt))
@@ -139,12 +145,12 @@ object Syntax:
           Out.println(t"OTHER: ${other.toString}") yet Syntax.Constant(t"<unknown>")
 
       case TermRef(NoPrefix() | ThisType(TypeRef(NoPrefix(), "<root>")), name) =>
-        Syntax.Simple(Address.Top(name))
+        Syntax.Simple(Index.Top(name))
 
       case TermRef(prefix, name)   => apply(prefix) match
-        case simple@Syntax.Simple(address)    =>
+        case simple@Syntax.Simple(index)    =>
           if name.tt.ends(t"$$package") then simple
-          else Syntax.Simple(Address.Entity(address, thisType, name))
+          else Syntax.Simple(Index.Entity(index, thisType, name))
 
         case compound: Syntax.Compound =>
           if compound.precedence < 10 then Syntax(10, compound, Dot, Syntax.Member(name.tt))
@@ -157,7 +163,12 @@ object Syntax:
         case other =>
           Out.println(t"OTHER: ${other.toString}") yet Syntax.Constant(t"<unknown>")
 
-      case AnnotatedType(tpe, _) => apply(tpe) // FIXME
+      case AnnotatedType(tpe, annotation) =>
+        // FIXME: We don't have access to `into` information, so this is hack
+        if annotation.toString.contains("object annotation),into)")
+        then Syntax(0, Into, apply(tpe))
+        else apply(tpe)
+
       case OrType(left, right)   => Syntax(1, apply(left), Union, apply(right))
       case AndType(left, right)  => Syntax(3, apply(left), Intersect, apply(right))
       case ByNameType(tpe)       => Syntax(0, Arrow, apply(tpe))

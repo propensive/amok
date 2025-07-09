@@ -1,9 +1,5 @@
 package amok
 
-import scala.tasty.*, inspector.*
-import scala.quoted.*
-import scala.collection.mutable as scm
-
 import soundness.{is as _, Node as _, *}
 
 object Page:
