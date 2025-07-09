@@ -6,7 +6,7 @@ import scala.collection.mutable as scm
 import soundness.{is as _, Node as _, *}
 
 enum Syntax:
-  case Simple(index: Index)
+  case Simple(index: Index, term: Boolean)
   case Compound(precedence: Int, syntax: Syntax*)
   case Symbolic(text: Text)
   case Constant(text: Text)
@@ -51,7 +51,7 @@ object Syntax:
 
     def html(syntax: Syntax): List[Html[Phrasing]] = List:
       syntax match
-        case Simple(index)          => Span(index.html)
+        case Simple(index, _)         => Span(index.html)
         case Compound(_, syntaxes*)   => Span(syntaxes.flatMap(html(_)))
         case Symbolic(text)           => text
         case Member(text)             => Em(text)
@@ -60,7 +60,7 @@ object Syntax:
 
   given showable: Imports => Syntax is Showable:
     def text(syntax: Syntax): Text = syntax match
-      case Simple(index)        => index.text
+      case Simple(index, _)       => index.text
       case Compound(_, syntaxes*) => syntaxes.map(text(_)).join
       case Symbolic(text)         => text
       case Member(text)           => text
@@ -93,7 +93,7 @@ object Syntax:
         val defs = termDefs.flatMap:
           case valDef@ValDef(name, rtn, default) =>
             val syntax =
-              if name.tt.starts(t"evidence$$") then List(apply(rtn.tpe), Comma)
+              if name.tt.starts(t"evidence$$") || name.tt.starts(t"x$$") then List(apply(rtn.tpe), Comma)
               else List(Syntax.Member(name.tt), Colon, apply(rtn.tpe), Comma)
 
             if valDef.symbol.flags.is(Flags.Inline)
@@ -118,20 +118,22 @@ object Syntax:
 
         Syntax(10, OpenBracket +: defs.dropRight(1) :+ CloseBracket*)
 
-  def apply(using quotes: Quotes)(repr: quotes.reflect.TypeRepr, thisType: Boolean = false)(using Stdio): Syntax = cache.establish(repr):
+  def apply(using quotes: Quotes)(repr: quotes.reflect.TypeRepr)(using Stdio)
+  : Syntax = cache.establish(repr):
     import quotes.reflect.*
 
     repr.absolve match
-      case ThisType(tpe) => apply(tpe, true)
+      case ThisType(tpe) =>
+        apply(tpe)
       case TypeRef(NoPrefix() | ThisType(TypeRef(NoPrefix(), "<root>")), name) =>
-        Syntax.Simple(Index.Top(name))
+        Syntax.Simple(Index.Top(name), true)
 
-      case TypeRef(prefix, name)   => apply(prefix) match
-        case simple@Syntax.Simple(index)    =>
+      case TypeRef(prefix, name) => apply(prefix) match
+        case simple@Syntax.Simple(index, isTerm) =>
           val obj = name.tt.ends(t"$$")
           val name2 = if obj then name.tt.skip(1, Rtl) else name.tt
           if name2.ends(t"$$package") then simple
-          else Syntax.Simple(Index.Entity(index, thisType, name2))
+          else Syntax.Simple(Index.Entity(index, !isTerm, name2), false)
 
         case compound: Syntax.Compound =>
           if compound.precedence < 10 then Syntax(10, compound, Dot, Syntax.Member(name.tt))
@@ -145,12 +147,12 @@ object Syntax:
           Out.println(t"OTHER: ${other.toString}") yet Syntax.Constant(t"<unknown>")
 
       case TermRef(NoPrefix() | ThisType(TypeRef(NoPrefix(), "<root>")), name) =>
-        Syntax.Simple(Index.Top(name))
+        Syntax.Simple(Index.Top(name), true)
 
       case TermRef(prefix, name)   => apply(prefix) match
-        case simple@Syntax.Simple(index)    =>
+        case simple@Syntax.Simple(index, isTerm) =>
           if name.tt.ends(t"$$package") then simple
-          else Syntax.Simple(Index.Entity(index, thisType, name))
+          else Syntax.Simple(Index.Entity(index, !isTerm, name), true)
 
         case compound: Syntax.Compound =>
           if compound.precedence < 10 then Syntax(10, compound, Dot, Syntax.Member(name.tt))
