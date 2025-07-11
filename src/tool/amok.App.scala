@@ -128,10 +128,10 @@ def application(): Unit = cli:
                         H1(Code(entity)),
                         node.template.let: kind =>
                           val exts =
-                            if kind.extensions.length > 0
-                            then t" extends " +: kind.extensions.flatMap(_.html)
-                            else Nil
-                          H2(Code(kind.signature, t" ", entity, exts)),
+                            if kind.extensions.length == 0 then Unset
+                            else Syntax.sequence(kind.extensions).let(_.html)
+
+                          H2(Code(kind.signature, t" ", entity, t" extends ".unless(kind.extensions.length == 0), exts)),
                         node.signature.let: kind =>
                           H2(Code.typed
                            (kind.signature,
@@ -297,7 +297,8 @@ class AmokDb():
               body.each(walk(_, child, true))
 
           case classDef@ClassDef(name, defDef, extensions0, selfType, body) =>
-            val extensions = extensions0.map(_.symbol.info).map(Syntax(_))
+            val typeRef = classDef.symbol.typeRef
+            val extensions = typeRef.baseClasses.map(typeRef.baseType(_)).tail.map(Syntax(_))
             val flags = classDef.symbol.flags
             val obj = flags.is(Module)
             if name.tt.ends(t"$$package") || name.tt.ends(t"$$package$$")
