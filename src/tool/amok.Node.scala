@@ -2,6 +2,7 @@ package amok
 
 import scala.quoted.*
 import scala.collection.mutable as scm
+import scala.collection.immutable.ListMap
 
 import soundness.{is as _, Node as _, *}
 
@@ -10,7 +11,7 @@ class Node(parent0: Optional[Node] = Unset):
   def parent: Node = parent0.or(this)
   private var doc: Optional[Text] = Unset
   var template: Optional[Template] = Unset
-  var signature: Optional[amok.Signature] = Unset
+  var definition: Optional[Definition] = Unset
   var memo: Optional[Text] = Unset
   var params: Optional[Syntax] = Unset
   var detail: Optional[Text] = Unset
@@ -18,6 +19,15 @@ class Node(parent0: Optional[Node] = Unset):
   var returnType: Optional[Syntax] = Unset
 
   def members: List[(Member, Node)] = membersMap.to(List)
+
+  def terms: ListMap[Text, Node] =
+    members.collect:
+      case (Member.Root(name), node)   => name -> node
+      case (Member.OfTerm(name), node) => name -> node
+    . to(ListMap)
+
+  def types: ListMap[Text, Node] =
+    members.collect { case (Member.OfType(name), node) => name -> node }.to(ListMap)
 
   override def toString: String = members.map(_(0).text).join(t", ").s
 

@@ -148,12 +148,27 @@ body:has(#open-all:checked) ::details-content
 
 @supports not (interpolate-size: allow-keywords) { .interpolate-size { display: none; } }
 
-h1, h2, h3, h4, h5, p
-  { margin: 1em 3em 1em 0; line-height: 1.3em; letter-spacing: 0.05em; padding: 0 20px; }
+h1, h2, h3, h4, h5, p, table
+  { margin:         1em 3em 1em 0;
+    line-height:    1.3em;
+    letter-spacing: 0.05em;
+    padding:        0 20px;
+    font-size:      0.9em; }
+
+table { border-collapse: collapse; width: 100%; border-top: solid 1px #9992; }
+
+td, th
+  { padding-right:  1em;
+    padding:        0.35em 1em;
+    vertical-align: bottom;
+    border-bottom:  solid 1px #9992; }
+
+th { font-weight: bold; text-align: right; padding-bottom: 0.3em }
+
 
 h1 { font-weight: 100; font-size: 3em; margin: 0 0 0 -0.05em; }
 h1.pkg { font-size: 1em; }
-h2 { font-size: 1.35em; font-weight: 400; }
+h2 { font-size: 1.35em; font-weight: 400; margin: 0.5em 0 0; }
 h3 { font-size: 1.15em; font-weight: 500; }
 h4 { font-size: 1em; font-weight: 600; }
 code { font-family: var(--mono-font); font-weight: 300; font-size: 0.85em; }
@@ -169,7 +184,7 @@ span:has(> a:hover) { background-color: var(--highlight-light); border-radius: 0
 
 .amok {
   margin: 0 6px 0 6px;
-  width: 630px;
+  width: 618px;
   padding: 10px 6px 10px 6px;
   border-radius: 0.5em;
   &>pre {
@@ -297,7 +312,7 @@ span:has(> a:hover) { background-color: var(--highlight-light); border-radius: 0
 
   background: linear-gradient(135deg, #cdeedf40, #cfefdf50);
   box-shadow: 0 0 0.5em #e0e0e0;
-  border: solid 1px #c0e0d0;
+  border: solid 1px #c0e0d099;
   & .error { color: #990022; }
   & .number { color: #992244; }
   & .modifier { color: #b34700; }
@@ -312,11 +327,11 @@ span:has(> a:hover) { background-color: var(--highlight-light); border-radius: 0
 }
 
 .dark {
-  background: linear-gradient(135deg, #0d1e2f40, #0e1d250);
+  body { background-color: black; }
   .amok {
-    background-color: #023;
+    background: linear-gradient(135deg, #0d1e2f40, #0e1d250);
     box-shadow: 0 0 0.5em #1f1f1f;
-    border: solid 1px #0f2f3f;
+    border: solid 1px #0f2f3f99;
     & .error { color: #cc0033; }
     & .number { color: #cc3366; }
     & .modifier { color: #ff9966; }

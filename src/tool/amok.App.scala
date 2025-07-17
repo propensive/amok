@@ -14,7 +14,14 @@ val Clear = Subcommand(t"clear", e"clear definitions from a JAR file")
 val Quit  = Subcommand(t"quit",  e"shutdown Amok")
 val Serve = Subcommand(t"serve", e"serve the documentation on a local HTTP server")
 
-var amokDb = AmokDb()
+var model = Model()
+
+given Imports(Set
+       (Index.decode(t"scala"),
+        Index.decode(t"scala.Predef"),
+        Index.decode(t"prepositional"),
+        Index.decode(t"scala.lang"),
+        Index.decode(t"java.lang")))
 
 @main
 def application(): Unit = cli:
@@ -40,8 +47,9 @@ def application(): Unit = cli:
 
           given Decimalizer(significantFigures = 4, exponentThreshold = Unset)
           val memory = Heap.used/1.mib
+          val build = unsafely((Classpath / "build.id").read[Text].trim)
 
-          Out.println(e"$Bold(Amok) version 1.0.0: $Italic(a documentation compiler for Scala)")
+          Out.println(e"$Bold(Amok) prerelease version, build $build: $Italic(a documentation compiler for Scala)")
           Out.println(e"© Copyright 2025, Propensive OÜ")
           Out.println()
           Out.println(e"Memory usage: $memory MiB")
@@ -57,7 +65,7 @@ def application(): Unit = cli:
             case StreamError(_)   => Exit.Fail(1)
 
           . within:
-              amokDb.load(file)
+              model.load(file)
               Exit.Ok
 
         else if file.name.ends(t".amok") then
@@ -66,14 +74,14 @@ def application(): Unit = cli:
               Out.println(exception.stackTrace.teletype)
               Exit.Fail(1)
           . within:
-              amokDb.overlay(Amox.read(file))
+              model.overlay(Amox.read(file))
               Exit.Ok
 
         else Exit.Ok
 
     case Clear() :: Nil =>
       execute:
-        amokDb = AmokDb()
+        model = Model()
         Out.println(m"Documentation database has been cleared")
         Exit.Ok
 
@@ -90,58 +98,62 @@ def application(): Unit = cli:
           tcp"8080".serve:
             request.location match
               case _ /: t"api.css"  => Http.Response(Classpath/"amok"/"api.css")
-              case _ /: t"utils.js"  => Http.Response(Classpath/"amok"/"utils.js")
+              case _ /: t"utils.js" => Http.Response(Classpath/"amok"/"utils.js")
               case _ /: t"logo.svg" => Http.Response(Classpath/"amok"/"logo.svg")
 
               case _ /: t"entity" /: (name: Text) =>
-                val (symbol, entity, node) = amokDb.resolve(name)
+                val (symbol, entity, node) = model.resolve(name)
 
                 Http.Response:
                   import html5.*
+                  try
+                    recover:
+                      case MarkdownError(_) =>
+                        Page.simple(H2(t"Error"), P(t"The page contained errors"))
 
-                  recover:
-                    case MarkdownError(_) =>
-                      Page.simple(H2(t"Error"), P(t"The page contained errors"))
+                      case CodlError(_, _, _, _) =>
+                        Page.simple(H2(t"Error"), P(t"The page contained errors"))
 
-                    case CodlError(_, _, _, _) =>
-                      Page.simple(H2(t"Error"), P(t"The page contained errors"))
+                      case CodlReadError(_) =>
+                        Page.simple(H2(t"Error"), P(t"The page contained errors"))
 
-                    case CodlReadError(_) =>
-                      Page.simple(H2(t"Error"), P(t"The page contained errors"))
+                    . within:
 
-                  . within:
+                          val detail: Optional[Markdown[Markdown.Ast.Block]] =
+                            node.detail.let(Markdown.parse(_))
 
-                      val detail: Optional[Markdown[Markdown.Ast.Block]] =
-                        node.detail.let(Markdown.parse(_))
+                          val parent = Index.decode(name).parent
 
-                      val parent = Index.decode(name).parent
+                          Page.simple
+                           (H1.pkg(Code(parent.html, symbol), Code(B(entity))),
+                            H1(Code(entity)),
+                            node.template.let: kind =>
+                              val exts =
+                                if kind.extensions.length == 0 then Unset
+                                else Syntax.sequence(kind.extensions).let(_.html)
 
-                      given Imports(Set
-                             (Index.decode(t"scala"),
-                              Index.decode(name).parent,
-                              Index.decode(t"scala.Predef"),
-                              Index.decode(t"scala.lang"),
-                              Index.decode(t"java.lang")))
-
-                      Page.simple
-                       (H1.pkg(Code(parent.html, symbol.show), Code(B(entity))),
-                        H1(Code(entity)),
-                        node.template.let: kind =>
-                          val exts =
-                            if kind.extensions.length == 0 then Unset
-                            else Syntax.sequence(kind.extensions).let(_.html)
-
-                          H2(Code(kind.signature, t" ", entity, t" extends ".unless(kind.extensions.length == 0), exts)),
-                        node.signature.let: kind =>
-                          H2(Code.typed
-                           (kind.signature,
-                            t" ",
-                            Em(entity),
-                            node.params.let(_.html),
-                            t": ".unless(node.returnType.absent),
-                            node.returnType.let(_.html))),
-                        detail.let: detail =>
-                          Div(detail.html))
+                              Div
+                               (H2(Code(kind.definition, t" ", entity, t" extends ".unless(kind.extensions.length == 0), exts)),
+                                Table.members:
+                                  node.types.to(List).map: (name, item) =>
+                                    Tr(Th(Small(Code(item.definition.let(_.text))), Br, Code(B(name))), Td(Em(item.memo.let(_.html))))),
+                            node.definition.let: kind =>
+                              Div
+                               (H2(Code.typed
+                                 (kind.text,
+                                  t" ",
+                                  Em(entity),
+                                  node.params.let(_.html),
+                                  t": ".unless(node.returnType.absent),
+                                  node.returnType.let(_.html))),
+                                Table.members:
+                                  node.terms.to(List).map: (name, term) =>
+                                    Tr(Th(Small(Code(term.definition.let(_.text))), Br, Code(B(name))), Td(Em(term.memo.let(_.html))))),
+                            detail.let(_.html).let(Div(_)))
+                  catch
+                    case exception: Throwable =>
+                      Out.println(m"Had an exception")
+                      Page.simple(H1(t"Error"), Div(exception.stackTrace.html))
 
 
               case _ /: t"api" =>
@@ -154,7 +166,7 @@ def application(): Unit = cli:
                     List
                      (H2(t"All Packages"),
                       Ul.all
-                       (amokDb.root.members.filter(!_(1).hidden).map: (member, _) =>
+                       (model.root.members.filter(!_(1).hidden).map: (member, _) =>
                           val link: Path on Rfc3986 = (% / "api" / member.text.skip(1)).on[Rfc3986]
                           Li(Code(A(href = link)(member.text.skip(1)))))))
 
@@ -173,17 +185,18 @@ def application(): Unit = cli:
                         Div.content(Details(Summary(t"scala.collection.*")))),
                       Details(Summary(B(A(target = id"main", href = rootLocation)(pkg)))),
                       Div.content:
-                        amokDb(pkg).members.filter(!_(1).hidden).map: (member, node) =>
+                        model(pkg).members.filter(!_(1).hidden).map: (member, node) =>
                           node.tree(member.text, pkg, pkg+member.safe)),
                     List(Iframe(id = id"api", name = t"main", width = 700)))
 
               case _ =>
                 Http.Response(t"Hello")
 
+          Out.println(e"Listening on $Bold(http://localhost:8080)")
           Exit.Ok
 
-    case _ =>
-      execute(Out.println(m"Unknown command") yet Exit.Fail(1))
+    case command :: _ =>
+      execute(Out.println(m"Unknown command: ${command()}") yet Exit.Fail(1))
 
 
 object Member:
@@ -207,11 +220,11 @@ enum Member:
     case OfType(name) => t":${name.urlEncode}"
     case Root(name)   => name
 
-class AmokDb():
+class Model():
   val root = Node()
 
   def resolve(path: Text, prefix: Text = t"", current: Node = root, term: Boolean = true)
-  : (Char, Text, Node) =
+  : (Text, Text, Node) =
 
       path.where { char => char == '.' || char == ':' }.let: position =>
         val part = path.before(position).urlDecode
@@ -220,10 +233,10 @@ class AmokDb():
         path.at(position) match
           case '.' => resolve(path.after(position), t"$prefix$part.", next, true)
           case ':' => resolve(path.after(position), t"$prefix$part⌗", next, false)
-          case _   => (prefix.s.last, part, current)
+          case _   => (if prefix.empty then t"" else prefix.keep(1, Rtl), part, current)
 
       . or:
-         (prefix.s.last,
+         (if prefix.empty then t"" else prefix.keep(1, Rtl),
           path.urlDecode,
           current(if term then Member.OfTerm(path.urlDecode) else Member.OfType(path.urlDecode)))
 
@@ -262,7 +275,7 @@ class AmokDb():
 
   case class DocInspector()(using Stdio) extends Inspector:
     def inspect(using Quotes)(tastys: List[Tasty[quotes.type]]): Unit =
-      import quotes.reflect.{Signature as _, *}
+      import quotes.reflect.*
       import Flags.*
 
       val retainsSym = TypeRepr.of[annotation.retains].typeSymbol
@@ -272,7 +285,7 @@ class AmokDb():
         ast match
           case pc@PackageClause(id@Ident(name), body) =>
             val child = node(of(name))
-            child.signature = `package`(Nil)
+            child.definition = `package`(Nil)
             body.each(walk(_, child, true))
 
           case valDef@ValDef(name, rtn, body) if !(valDef.symbol.flags.is(Private) || name == "_") =>
@@ -283,7 +296,7 @@ class AmokDb():
             if name.tt.ends(t"$$package") then body.each(walk(_, node, true))
             else
               val child = node(of(termName))
-              child.signature =
+              child.definition =
                 if flags.is(Given)
                 then `given`(flags.has(`inline`, `transparent`, `erased`))
                 else if flags.is(Enum) && flags.is(Case) then `enum.case`(Nil)
@@ -298,8 +311,28 @@ class AmokDb():
 
           case classDef@ClassDef(name, defDef, extensions0, selfType, body) =>
             val typeRef = classDef.symbol.typeRef
-            val extensions = typeRef.baseClasses.map(typeRef.baseType(_)).tail.map(Syntax(_))
             val flags = classDef.symbol.flags
+            val parents = typeRef.baseClasses.map(typeRef.baseType(_))
+
+            given TypeRepr is PartiallyOrdered = (left, right) =>
+              !(left =:= right) && left <:< right
+
+            given TypeRepr is Showable = Syntax(_).show
+            import dagStyles.default
+            val caseClass = flags.is(Case)
+            val dag = Poset(parents*).dag
+
+            val extensions: List[Syntax] =
+              dag(parents.head).filter: repr =>
+                repr.typeSymbol != defn.ObjectClass
+                && repr.typeSymbol != defn.AnyClass
+                && repr.typeSymbol != defn.AnyRefClass
+                && (caseClass && repr.typeSymbol != defn.ProductClass)
+                && (caseClass && repr.typeSymbol != TypeRepr.of[java.io.Serializable].typeSymbol)
+
+              . to(List)
+              . map(Syntax(_))
+
             val obj = flags.is(Module)
             if name.tt.ends(t"$$package") || name.tt.ends(t"$$package$$")
             then body.each(walk(_, node, obj))
@@ -308,11 +341,11 @@ class AmokDb():
               val child = node(of(className))
 
               if obj && !(flags.is(Case) && flags.is(Enum))
-              then () //child.signature = Signature.Object(flags.has(`private`, `case`))
+              then () //child.definition = Definition.Object(flags.has(`private`, `case`))
               else if flags.is(Trait)
               then child.template = `trait`
                                      (flags.has(`private`, `erased`, `sealed`, `transparent`),
-                                       extensions)
+                                      extensions)
               else if flags.is(Enum)
               then
                 child.template =
@@ -342,7 +375,7 @@ class AmokDb():
               Syntax(10, groups0.take(extensionClauses).map(Syntax.clause(_))*)
 
             child.params = Syntax(10, paramClauses.map(Syntax.clause(_))*)
-            child.signature =
+            child.definition =
               if isGiven then `given`(flags.has(`inline`, `transparent`, `erased`))
               else `def`(subject, flags.has(`abstract`, `override`, `private`, `protected`, `erased`, `final`, `infix`, `transparent`, `inline`))
             child.returnType = Syntax(rtn.tpe)
@@ -402,7 +435,7 @@ enum Modifier:
 
 export Modifier.*
 
-enum Signature:
+enum Definition:
   case `package`(modifiers: List[Modifier])
   case `object`(modifiers: List[Modifier])
   case `case object`(modifiers: List[Modifier])
@@ -424,9 +457,9 @@ enum Signature:
     case _: `given`       => t"given"
 
   def modifiers: List[Modifier]
-  def signature = modifiers.map(_.keyword).join(t"", t" ", t" "+keyword)
+  def text: Text = modifiers.map(_.keyword).join(t"", t" ", t" "+keyword)
 
-export Signature.*
+export Definition.*
 
 enum Template:
   case `case class`(modifiers: List[Modifier], extensions: List[Syntax] = Nil, derivations: List[Text] = Nil)
@@ -447,6 +480,6 @@ enum Template:
     case _: `type`       => t"type"
 
   def modifiers: List[Modifier]
-  def signature = modifiers.map(_.keyword).join(t"", t" ", t" "+keyword)
+  def definition: Text = modifiers.map(_.keyword).join(t"", t" ", t" "+keyword)
 
 export Template.*
