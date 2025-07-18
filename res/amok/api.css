@@ -10,7 +10,7 @@
 .dark { --fg-color: #fffc; --bg-color: #012; }
 
 * { margin: 0; padding: 0; }
-footer { background-color: #70c96a55; color: black; text-shadow: 0 0 3px white; ; padding-top: 1em; }
+footer { background-color: #70c96a55; color: var(--fg-color); text-shadow: 0 0 3px white; ; padding-top: 1em; }
 
 header, footer
   { width:         960px;
@@ -69,7 +69,8 @@ main
     height:     calc(100vh - 8em); }
 
 a
-  { color:           var(--fg-color);
+  { transition: color 0.2s ease;
+    color:           var(--fg-color);
     text-decoration: none;
     &:hover, &:active { color: var(--highlight); } }
 
@@ -155,23 +156,20 @@ h1, h2, h3, h4, h5, p, table
     padding:        0 20px;
     font-size:      0.9em; }
 
-table { border-collapse: collapse; width: 100%; border-top: solid 1px #9992; }
+table { border-collapse: collapse; min-width: 50%; border-top: solid 1px #9992; }
 
-td, th
-  { padding-right:  1em;
-    padding:        0.35em 1em;
-    vertical-align: bottom;
-    border-bottom:  solid 1px #9992; }
-
-th { font-weight: bold; text-align: right; padding-bottom: 0.3em }
-
+td, th { text-align: left; padding: 0.3em; border-bottom:  solid 1px #9992; }
+th { font-weight: bold; padding-bottom: 0.3em; border-bottom: none; }
+td.kind { text-align: right; border-bottom: none; }
+td.memo { font-size: 0.8em; padding-top: 0; }
+td p { margin: 0; padding: 0.2em; }
 
 h1 { font-weight: 100; font-size: 3em; margin: 0 0 0 -0.05em; }
-h1.pkg { font-size: 1em; }
-h2 { font-size: 1.35em; font-weight: 400; margin: 0.5em 0 0; }
-h3 { font-size: 1.15em; font-weight: 500; }
+h1.pkg { font-size: 0.9em; }
+h2 { font-size: 1.2em; font-weight: 400; margin: 0.25em 0 0; }
+h3 { font-size: 1.1em; font-weight: 500; }
 h4 { font-size: 1em; font-weight: 600; }
-code { font-family: var(--mono-font); font-weight: 300; font-size: 0.85em; }
+code { font-family: var(--mono-font); font-weight: 300; }
 p { text-align: justify; }
 
 code span
@@ -187,6 +185,7 @@ span:has(> a:hover) { background-color: var(--highlight-light); border-radius: 0
   width: 618px;
   padding: 10px 6px 10px 6px;
   border-radius: 0.5em;
+  font-size: 0.8rem;
   &>pre {
     color: #cb8;
     padding: 0.25em 0.75em;
@@ -327,7 +326,7 @@ span:has(> a:hover) { background-color: var(--highlight-light); border-radius: 0
 }
 
 .dark {
-  body { background-color: black; }
+  background-color: black;
   .amok {
     background: linear-gradient(135deg, #0d1e2f40, #0e1d250);
     box-shadow: 0 0 0.5em #1f1f1f;

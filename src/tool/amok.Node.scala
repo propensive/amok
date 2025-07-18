@@ -12,8 +12,9 @@ class Node(parent0: Optional[Node] = Unset):
   private var doc: Optional[Text] = Unset
   var template: Optional[Template] = Unset
   var definition: Optional[Definition] = Unset
-  var memo: Optional[Text] = Unset
+  var memo: Optional[InlineMd] = Unset
   var params: Optional[Syntax] = Unset
+  var subject: Optional[Syntax] = Unset
   var detail: Optional[Text] = Unset
   var hidden: Boolean = false
   var returnType: Optional[Syntax] = Unset
@@ -41,7 +42,7 @@ class Node(parent0: Optional[Node] = Unset):
     val members2 = members.filter(!_(1).hidden)
 
     Details(name = group.urlEncode, id = DomId(t"menu_${path}"))
-      (if members2.isEmpty then Summary(A(href = % / "entity" / path, target = id"main")(name))
+     (if members2.isEmpty then Summary(A(href = % / "entity" / path, target = id"main")(name))
       else Summary.full(A(href = % / "entity" / path, target = id"main")(name)),
       Div.content:
         members2.map: (member, node) =>

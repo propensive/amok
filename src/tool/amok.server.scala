@@ -15,48 +15,55 @@ def httpServer()(using Stdio): Unit raises ServerError raises ClasspathError = t
         import html5.*
         try
           recover:
-            case MarkdownError(_) =>
-              Page.simple(H2(t"Error"), P(t"The page contained errors"))
-
-            case CodlError(_, _, _, _) =>
-              Page.simple(H2(t"Error"), P(t"The page contained errors"))
-
-            case CodlReadError(_) =>
+            case MarkdownError(_) | CodlError(_, _, _, _) | CodlReadError(_) =>
               Page.simple(H2(t"Error"), P(t"The page contained errors"))
 
           . within:
+              import Markdown.renderable
 
-                val detail: Optional[Markdown[Markdown.Ast.Block]] =
-                  node.detail.let(Markdown.parse(_))
+              val detail: Optional[Markdown[Markdown.Ast.Block]] =
+                node.detail.let(Markdown.parse(_))
 
-                val parent = Index.decode(name).parent
+              val index = Index.decode(name)
 
-                Page.simple
-                 (H1.pkg(Code(parent.html, symbol), Code(B(entity))),
-                  H1(Code(entity)),
-                  node.template.let: kind =>
-                    val exts =
-                      if kind.extensions.length == 0 then Unset
-                      else Syntax.sequence(kind.extensions).let(_.html)
+              Page.simple
+               (H1.pkg(Code(index.parent.html, symbol), Code(B(entity))),
+                H1(Code(entity)),
+                node.template.let: kind =>
+                  val exts =
+                    if kind.extensions.length == 0 then Unset
+                    else Syntax.sequence(kind.extensions).let(_.html)
 
-                    Div
-                      (H2(Code(kind.definition, t" ", entity, t" extends ".unless(kind.extensions.length == 0), exts)),
-                      Table.members:
-                        node.types.to(List).map: (name, item) =>
-                          Tr(Th(Small(Code(item.definition.let(_.text))), Br, Code(B(name))), Td(Em(item.memo.let(_.html))))),
-                  node.definition.let: kind =>
-                    Div
-                     (H2(Code.typed
-                       (kind.text,
-                        t" ",
-                        Em(entity),
-                        node.params.let(_.html),
-                        t": ".unless(node.returnType.absent),
-                        node.returnType.let(_.html))),
-                      Table.members:
-                        node.terms.to(List).map: (name, term) =>
-                          Tr(Th(Small(Code(term.definition.let(_.text))), Br, Code(B(name))), Td(Em(term.memo.let(_.html))))),
-                  detail.let(_.html).let(Div(_)))
+                  Div
+                   (H2(Code(kind.definition, t" ", entity, t" extends ".unless(kind.extensions.length == 0), exts)),
+                    if node.types.isEmpty then P(Em(t"No type members."))
+                    else Table.members:
+                      node.types.to(List).flatMap: (name, template) =>
+                        val link: Path on Rfc3986 = (% / "entity" / index.child(name, true).id).on[Rfc3986]
+                        List
+                         (Tr(Td.kind(Code(template.definition.let(_.text))),
+                             Th(Code(A(href = link)(name)))),
+                          template.memo.let { memo => Tr(Td, Td.memo(memo.html)) })),
+
+                node.definition.let: kind =>
+                  Div
+                   (H2(Code.typed
+                     (kind.text,
+                      t" ",
+                      Em(entity),
+                      node.params.let(_.html),
+                      t": ".unless(node.returnType.absent),
+                      node.returnType.let(_.html))),
+                    if node.terms.isEmpty then P(Em(t"No term members."))
+                    else Table.members:
+                      node.terms.to(List).flatMap: (name, term) =>
+                        val link: Path on Rfc3986 = (% / "entity" / index.child(name, false).id).on[Rfc3986]
+                        List
+                         (Tr(Td.kind(Code(term.definition.let(_.text))),
+                             Th(Code(A(href = link)(name)))),
+                          term.memo.let { memo => Tr(Td, Td.memo(memo.html)) })),
+                detail.let(_.html).let(Div(_)))
+
         catch
           case exception: Throwable =>
             Out.println(m"Had an exception")

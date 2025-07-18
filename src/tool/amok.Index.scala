@@ -44,6 +44,8 @@ enum Index:
   case Top(name: Text)
   case Entity(parent0: Index, isType: Boolean, name: Text)
 
+  def child(name: Text, isType: Boolean) = Entity(this, isType, name)
+
   def parent: Index = this match
     case Entity(parent, _, _) => parent
     case Top(_)               => this

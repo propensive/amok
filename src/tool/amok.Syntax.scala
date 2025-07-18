@@ -100,8 +100,8 @@ object Syntax:
         val defs = termDefs.flatMap:
           case valDef@ValDef(name, rtn, default) =>
             val syntax =
-              if name.tt.starts(t"evidence$$") || name.tt.starts(t"x$$") then List(apply(rtn.tpe), Comma)
-              else List(Syntax.Member(name.tt), Colon, apply(rtn.tpe), Comma)
+              /*if name.tt.starts(t"evidence$$") || name.tt.starts(t"x$$") then List(apply(rtn.tpe), Comma)
+              else*/ List(Syntax.Member(name.tt), Colon, apply(rtn.tpe), Comma)
 
             if valDef.symbol.flags.is(Flags.Inline)
             then Syntax.Member(t"inline\u00a0") :: syntax
@@ -133,53 +133,43 @@ object Syntax:
       case ThisType(tpe) =>
         apply(tpe)
       case TypeRef(NoPrefix() | ThisType(TypeRef(NoPrefix(), "<root>")), name) =>
-        if name == "decompiler" then Out.println(t"decompiler prefix = none1")
         Syntax.Simple(Index.Top(name), true)
 
       case TypeRef(prefix, name) => apply(prefix) match
         case simple@Syntax.Simple(index, isTerm) =>
-          if name == "decompiler" then Out.println(t"decompiler prefix = ${prefix.toString}")
           val obj = name.tt.ends(t"$$")
           val name2 = if obj then name.tt.skip(1, Rtl) else name.tt
           if name2.ends(t"$$package") then simple
           else Syntax.Simple(Index.Entity(index, !isTerm, name2), false)
 
         case compound: Syntax.Compound =>
-          if name == "decompiler" then Out.println(t"decompiler prefix = ${prefix.toString}")
           if compound.precedence < 10 then Syntax(10, compound, Dot, Syntax.Member(name.tt))
           else Syntax(10, OpenParens, compound, CloseParens, Dot, Syntax.Member(name.tt))
 
         case refined@Syntax.Refined(base, members) =>
-          if name == "decompiler" then Out.println(t"decompiler prefix = ${prefix.toString}")
           if members.contains(name) then members(name.tt)
           else Syntax(10, OpenParens, refined, CloseParens, Project, Syntax.Member(name.tt))
 
         case other =>
-          if name == "decompiler" then Out.println(t"decompiler prefix = ${prefix.toString}")
           Out.println(t"OTHER: ${other.toString}") yet Syntax.Constant(t"<unknown>")
 
       case TermRef(NoPrefix() | ThisType(TypeRef(NoPrefix(), "<root>")), name) =>
-        if name == "decompiler" then Out.println(t"decompiler prefix = none")
         Syntax.Simple(Index.Top(name), true)
 
       case TermRef(prefix, name)   => apply(prefix) match
         case simple@Syntax.Simple(index, isTerm) =>
-          if name == "decompiler" then Out.println(t"decompiler prefix = ${prefix.toString}")
           if name.tt.ends(t"$$package") then simple
           else Syntax.Simple(Index.Entity(index, !isTerm, name), true)
 
         case compound: Syntax.Compound =>
-          if name == "decompiler" then Out.println(t"decompiler prefix = ${prefix.toString}")
           if compound.precedence < 10 then Syntax(10, compound, Dot, Syntax.Member(name.tt))
           else Syntax(10, OpenParens, compound, CloseParens, Dot, Syntax.Member(name.tt))
 
         case refined@Syntax.Refined(base, members) =>
-          if name == "decompiler" then Out.println(t"decompiler prefix = ${prefix.toString}")
           if members.contains(name) then members(name.tt)
           else Syntax(10, OpenParens, refined, CloseParens, Project, Syntax.Member(name.tt))
 
         case other =>
-          if name == "decompiler" then Out.println(t"decompiler prefix = ${prefix.toString}")
           Out.println(t"OTHER: ${other.toString}") yet Syntax.Constant(t"<unknown>")
 
       case AnnotatedType(tpe, annotation) =>

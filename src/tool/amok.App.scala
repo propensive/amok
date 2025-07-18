@@ -156,13 +156,13 @@ class Model():
           case other   => Out.println(m"Unexpected: ${other.inspect}") yet Unset
 
         next.let: next =>
-          next.memo = entry.memo
+          next.memo = entry.memo.dare(Markdown.parseInline)
           next.detail = entry.detail
           next.hidden = entry.hidden.or(false)
           recur(prefix+entry.name, entry.entry, next)
 
     val init = root(Member.OfTerm(base.base.or(t"")))
-    init.memo = base.memo
+    init.memo = base.memo.dare(Markdown.parseInline)
     init.detail = base.detail
     recur(base.base.or(t""), base.entry, init)
 
@@ -246,7 +246,7 @@ class Model():
               then () //child.definition = Definition.Object(flags.has(`private`, `case`))
               else if flags.is(Trait)
               then child.template = `trait`
-                                     (flags.has(`private`, `erased`, `sealed`, `transparent`),
+                                     (flags.has(`private`, `erased`, `into`, `sealed`, `transparent`),
                                       extensions)
               else if flags.is(Enum)
               then
@@ -255,8 +255,8 @@ class Model():
                   else `enum`(flags.has(`private`))
               else child.template =
                 if flags.is(Case)
-                then `case class`(flags.has(`private`, `protected`, `sealed`, `open`, `transparent`, `final`, `erased`, `abstract`), extensions)
-                else `class`(flags.has(`private`, `protected`, `sealed`, `open`, `transparent`, `final`, `erased`, `abstract`), extensions)
+                then `case class`(flags.has(`private`, `protected`, `sealed`, `open`, `transparent`, `final`, `into`, `erased`, `abstract`), extensions)
+                else `class`(flags.has(`private`, `protected`, `sealed`, `open`, `transparent`, `final`, `into`, `erased`, `abstract`), extensions)
 
               body.each(walk(_, child, obj))
 
@@ -267,16 +267,17 @@ class Model():
             val child = node(of(termName))
             val ext = flags.is(ExtensionMethod)
 
-            val extensionClauses = 1 + groups0.indexWhere:
-              case TermParamClause(_) => true
-              case _                  => false
+            val split = 1 + groups0.indexWhere:
+              case clause@TermParamClause(terms) => terms.length == 1
+                                                    && !terms.exists(_.symbol.flags.is(Given))
+              case _                             => false
 
-            val paramClauses = if ext then groups0.drop(extensionClauses) else groups0
-
-            val subject = if !ext then Unset else
-              Syntax(10, groups0.take(extensionClauses).map(Syntax.clause(_))*)
+            val preClauses = if ext then groups0.take(split) else Nil
+            val paramClauses = if ext then groups0.drop(split) else groups0
+            val subject = if !ext then Unset else Syntax(10, preClauses.map(Syntax.clause(_))*)
 
             child.params = Syntax(10, paramClauses.map(Syntax.clause(_))*)
+            child.subject = subject
             child.definition =
               if isGiven then `given`(flags.has(`inline`, `transparent`, `erased`))
               else `def`(subject, flags.has(`abstract`, `override`, `private`, `protected`, `erased`, `final`, `infix`, `transparent`, `inline`))
@@ -284,11 +285,9 @@ class Model():
 
           case typeDef@TypeDef(name, _) if name != "MirroredMonoType" =>
             val flags = typeDef.symbol.flags
-            // This should be `Into`, but it's not provided in the Quotes API
-            if flags.is(ParamAccessor) then Out.println(t"into ${name.tt}")
             val typeName = name.show
             val child = node(of(typeName))
-            child.template = `type`(flags.has(`opaque`, `infix`))
+            child.template = `type`(flags.has(`into`, `opaque`, `infix`))
 
           case Export(x, exports) => exports.map:
             case SimpleSelector(name)    => node(of(name.tt))
@@ -348,15 +347,15 @@ enum Definition:
   case `given`(modifiers: List[Modifier])
 
   def keyword: Text = this match
-    case _: `package`     => t"package"
-    case _: `object`      => t"object"
-    case _: `case object` => t"case object"
-    case _: `enum.case`   => t"case"
-    case `def`(Unset, _)  => t"def"
-    case _: `def`         => t"extension"
-    case _: `val`         => t"val"
-    case _: `var`         => t"var"
-    case _: `given`       => t"given"
+    case _: `package`            => t"package"
+    case _: `object`             => t"object"
+    case _: `case object`        => t"case object"
+    case _: `enum.case`          => t"case"
+    case `def`(Unset, _)         => t"def"
+    case _: `val`                => t"val"
+    case _: `var`                => t"var"
+    case _: `given`              => t"given"
+    case `def`(param: Syntax, _) => t"extension ${param.show} def"
 
   def modifiers: List[Modifier]
   def text: Text = modifiers.map(_.keyword).join(t"", t" ", t" "+keyword)
