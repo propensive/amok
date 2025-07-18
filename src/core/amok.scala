@@ -72,7 +72,7 @@ object Amok:
         import quotes.reflect.*
         import Flags.*
 
-        val retainsSym = TypeRepr.of[annotation.retains].typeSymbol
+        //val retainsSym = TypeRepr.of[annotation.retains].typeSymbol
 
         def pname(term: Term, xs: List[Text] = Nil): List[Text] = term match
           case Ident(base)        => base.show :: xs
@@ -101,16 +101,16 @@ object Amok:
             case other =>
               t"???"
 
-        def captures(using scope: Scope)(term: quotes.reflect.Term): Text =
-          term match
-            case Apply(Select(New(focus), _), List(Typed(Repeated(values, _), _))) if focus.tpe.typeSymbol == retainsSym =>
-              values.map:
-                case Select(prefix, name) => t"${scope.prefix(pname(prefix))}${name}"
-                case Ident(name)          => t"${name}"
+        // def captures(using scope: Scope)(term: quotes.reflect.Term): Text =
+        //   term match
+        //     case Apply(Select(New(focus), _), List(Typed(Repeated(values, _), _))) if focus.tpe.typeSymbol == retainsSym =>
+        //       values.map:
+        //         case Select(prefix, name) => t"${scope.prefix(pname(prefix))}${name}"
+        //         case Ident(name)          => t"${name}"
 
-              . join(t"{", t", ", t"} ")
+        //       . join(t"{", t", ", t"} ")
 
-            case other => t""
+        //     case other => t""
 
         def icon(entityType: Icons.Entity, flags: Flags): Icons.Icon =
           import Icons.*

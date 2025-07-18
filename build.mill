@@ -54,12 +54,6 @@ trait Submodule extends ScalaModule with PublishModule {
 }
 
 object amok extends ProjectModule {
-  /*object model extends Submodule {
-    def sources = Task.Sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "src" / "model")))
-    def moduleDeps = Seq()
-    def ivyDeps = Agg(ivy"dev.soundness:soundness-all:0.39.0")
-  }*/
-
   object web extends Submodule {
     def sources = Task.Sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "src" / "web")))
     def moduleDeps = Seq()
