@@ -138,9 +138,10 @@ object Syntax:
       case TypeRef(prefix, name) => apply(prefix) match
         case simple@Syntax.Simple(index, isTerm) =>
           val obj = name.tt.ends(t"$$")
+
           val name2 = if obj then name.tt.skip(1, Rtl) else name.tt
           if name2.ends(t"$$package") then simple
-          else Syntax.Simple(Index.Entity(index, !isTerm, name2), false)
+          else Syntax.Simple(Index.Entity(index, !isTerm, name2), obj)
 
         case compound: Syntax.Compound =>
           if compound.precedence < 10 then Syntax(10, compound, Dot, Syntax.Member(name.tt))
@@ -156,7 +157,7 @@ object Syntax:
       case TermRef(NoPrefix() | ThisType(TypeRef(NoPrefix(), "<root>")), name) =>
         Syntax.Simple(Index.Top(name), true)
 
-      case TermRef(prefix, name)   => apply(prefix) match
+      case TermRef(prefix, name) => apply(prefix) match
         case simple@Syntax.Simple(index, isTerm) =>
           if name.tt.ends(t"$$package") then simple
           else Syntax.Simple(Index.Entity(index, !isTerm, name), true)

@@ -33,7 +33,7 @@ object Index:
 
           case Entity(parent, isType, name) =>
             if imports.has(parent) then Span(link(name))
-            else Span(recur(parent), if isType then t"#" else t".", link(name))
+            else Span(recur(parent), if isType then t"⌗" else t".", link(name))
 
       List(recur(index))
 
