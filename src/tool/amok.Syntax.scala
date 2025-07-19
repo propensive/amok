@@ -132,16 +132,19 @@ object Syntax:
     repr.absolve match
       case ThisType(tpe) =>
         apply(tpe)
-      case TypeRef(NoPrefix() | ThisType(TypeRef(NoPrefix(), "<root>")), name) =>
-        Syntax.Simple(Index.Top(name), true)
 
-      case TypeRef(prefix, name) => apply(prefix) match
+      case typeRef@TypeRef(NoPrefix(), name) =>
+        Syntax.Simple(Index(typeRef.typeSymbol.fullName.tt), true)
+
+      case typeRef@TypeRef(prefix, name) => apply(prefix) match
         case simple@Syntax.Simple(index, isTerm) =>
-          val obj = name.tt.ends(t"$$")
+          val module = typeRef.typeSymbol.flags.is(Flags.Module)
 
-          val name2 = if obj then name.tt.skip(1, Rtl) else name.tt
-          if name2.ends(t"$$package") then simple
-          else Syntax.Simple(Index.Entity(index, !isTerm, name2), obj)
+          val name2 = if module then name.tt.skip(1, Rtl) else name.tt
+          if name2.ends(t"$$package") || name2 == t"package" then simple
+          else
+            if name2.contains(t"package") then Out.println(t"Package: ${name2}")
+            Syntax.Simple(Index.Entity(index, !isTerm, name2), module)
 
         case compound: Syntax.Compound =>
           if compound.precedence < 10 then Syntax(10, compound, Dot, Syntax.Member(name.tt))
@@ -154,12 +157,15 @@ object Syntax:
         case other =>
           Out.println(t"OTHER: ${other.toString}") yet Syntax.Constant(t"<unknown>")
 
-      case TermRef(NoPrefix() | ThisType(TypeRef(NoPrefix(), "<root>")), name) =>
-        Syntax.Simple(Index.Top(name), true)
+      case termRef@TermRef(NoPrefix(), name) =>
+        Syntax.Simple(Index(termRef.termSymbol.fullName.tt), true)
 
-      case TermRef(prefix, name) => apply(prefix) match
+      case termRef@TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), name) =>
+        Syntax.Simple(Index(termRef.termSymbol.fullName.tt), true)
+
+      case termRef@TermRef(prefix, name) => apply(prefix) match
         case simple@Syntax.Simple(index, isTerm) =>
-          if name.tt.ends(t"$$package") then simple
+          if name.tt.ends(t"$$package") || name == t"package" then simple
           else Syntax.Simple(Index.Entity(index, !isTerm, name), true)
 
         case compound: Syntax.Compound =>

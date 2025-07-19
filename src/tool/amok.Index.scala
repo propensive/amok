@@ -3,6 +3,9 @@ package amok
 import soundness.*
 
 object Index:
+  def apply(text: Text): Index = text.where(_ == '.', bidi = Rtl).lay(Top(text)): position =>
+    Entity(apply(text.before(position)), false, text.after(position))
+
   def decode(text: Text): Index =
     def entity(start: Ordinal, end: Ordinal, isType: Boolean, parent: Optional[Index]): Index =
       val part = text.segment(start ~ end)

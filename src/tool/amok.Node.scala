@@ -26,9 +26,6 @@ class Node(parent0: Optional[Node] = Unset):
       case (Member.OfTerm(name), node) => name -> node
     . to(ListMap)
 
-  def types9: ListMap[Text, Node] =
-    members.collect { case (Member.OfType(name), node) => name -> node }.to(ListMap)
-
   def types: ListMap[Text, Node] =
     members.collect { case (Member.OfType(name), node) => name -> node }.to(ListMap)
 

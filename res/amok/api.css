@@ -19,7 +19,7 @@ html { font-size: 13px; }
   { --fg-color: #fffc;
     --bg-color: #012;
     & header { background-image: url('/logo2.svg'); }
-    .amok
+    & .amok
       { background: linear-gradient(135deg, #0d1e2f40, #0e1d250);
         box-shadow: 0 0 0.5em #1f1f1f;
         border: solid 1px #0f2f3f99;
@@ -46,10 +46,7 @@ body
     &:has(#open-all:checked) ::details-content
       { content-visibility: auto; height: calc-size(auto, size); opacity: 1; } }
 
-header, footer
-  { width:         960px;
-    padding:       1em calc(50vw - 480px);
-    border-bottom: solid 1px #e8e8e8; }
+header, footer { width: 960px; padding: 1em calc(50vw - 480px); border-bottom: solid 1px #e8e8e8; }
 
 header
   { height:              2em;
@@ -95,13 +92,8 @@ main
     gap:        0;
     height:     calc(100vh - 8em); }
 
-nav
-  { height: 100%;
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding-right: 0.5rem;
-
-    & a { text-decoration: none; } }
+aside nav { height: 100%; overflow-y: auto; overflow-x: hidden; padding-right: 0.5rem; }
+nav a { text-decoration: none; }
 
 aside
   { flex:          0 0 300px;
@@ -122,13 +114,17 @@ h2 { font-size: 1.5rem; font-weight: 380; margin: 0.25em 0 0; }
 h3 { font-size: 1.3rem; font-weight: 430; }
 h4 { font-size: 1.1rem; font-weight: 510; }
 
-table { border-collapse: collapse; min-width: 50%; border-top: solid 1px #9992; }
+table
+  { border-collapse: collapse;
+    min-width:       50%;
+    border-top:      solid 1px #9992;
+    border-bottom:   solid 1px #9992; }
 
-td, th { text-align: left; padding: 0.1rem 1rem; border-bottom:  solid 1px #9992; }
-th { font-weight: bold; padding-bottom: 0.3em; border-bottom: none; }
+td, th { text-align: left; padding: 0.1rem 1rem; }
+th { font-weight: 600; border-top: solid 1px #9992; }
 td
-  { &.kind { text-align: right; border-bottom: none; }
-    & p { margin: 0; padding: 0;; } }
+  { &.kind { text-align: right; }
+    & p { margin: 0; padding: 0; } }
 
 a
   { transition: color 0.2s ease;
@@ -136,7 +132,7 @@ a
     text-decoration:           underline dashed;
     text-underline-offset:     0.3em;
     text-decoration-color:     var(--highlight-mid);
-    text-decoration-thickness: 0.1rem;
+    text-decoration-thickness: 1px;
 
     &:hover, &:active { color: var(--highlight); } }
 
@@ -160,6 +156,7 @@ details
         line-height: 1.5em;
         user-select: none;
 
+        &>h3 { padding: 0; margin: 0.2rem 0 0.2rem -1.1rem; }
         &:before
           { content:      "";
             flex-shrink:  0;
@@ -171,7 +168,7 @@ details
           { background-image:  url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23616569'%3e%3cpath d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
             background-repeat: no-repeat;
             transform:         rotate(-90deg);
-            background-size:   0.5rem;
+            background-size:   0.6rem;
             transition:        transform 0.2s ease-in-out; } }
 
     &[open]>summary.full

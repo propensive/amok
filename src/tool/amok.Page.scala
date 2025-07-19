@@ -11,11 +11,11 @@ object Page:
        (Head
          (Script(src = % / "utils.js", defer = true), Link.Stylesheet(href = % / "api.css")),
         Body
-         (Header(Ul
+         (Header(Nav(Ul
             (Li(A(href = % / "api")(t"API")),
              Li(A(href = % / "glossary")(t"GLOSSARY")),
              Li(A(href = % / "context")(t"CONTEXT")),
-             Li(Button(id = id"theme")))),
+             Li(Button(id = id"theme"))))),
           Main(Aside(Nav(nav*)), Article(article)),
           Footer(t"© Copyright 2025, Propensive OÜ")))
 
