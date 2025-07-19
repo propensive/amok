@@ -14,7 +14,6 @@ class Node(parent0: Optional[Node] = Unset):
   var definition: Optional[Definition] = Unset
   var memo: Optional[InlineMd] = Unset
   var params: Optional[Syntax] = Unset
-  var subject: Optional[Syntax] = Unset
   var detail: Optional[Text] = Unset
   var hidden: Boolean = false
   var returnType: Optional[Syntax] = Unset
@@ -26,6 +25,9 @@ class Node(parent0: Optional[Node] = Unset):
       case (Member.Root(name), node)   => name -> node
       case (Member.OfTerm(name), node) => name -> node
     . to(ListMap)
+
+  def types9: ListMap[Text, Node] =
+    members.collect { case (Member.OfType(name), node) => name -> node }.to(ListMap)
 
   def types: ListMap[Text, Node] =
     members.collect { case (Member.OfType(name), node) => name -> node }.to(ListMap)

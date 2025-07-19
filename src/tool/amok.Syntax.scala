@@ -69,11 +69,11 @@ object Syntax:
 
   val cache: scm.HashMap[Any, Syntax] = scm.HashMap()
 
-  def sequence(elements: List[Syntax]): Optional[Syntax] =
+  def sequence(elements: List[Syntax], separator: Syntax): Optional[Syntax] =
     if elements.isEmpty then Unset else
       Syntax
        (0, elements.flatMap: element =>
-          List(element, Comma)
+          List(element, separator)
         . dropRight(1)*)
 
   def precedence(char: Char): Int = char match

@@ -59,3 +59,6 @@ enum Index:
     case Top(name)                   => name
     case Entity(parent, false, name) => t"${parent.text}.$name"
     case Entity(parent, true, name)  => t"${parent.text}#$name"
+
+  def apiLink: Path on Rfc3986 = (% / "api" / text.skip(1)).on[Rfc3986]
+  def entityLink: Path on Rfc3986 = (% / "entity" / text.skip(1)).on[Rfc3986]

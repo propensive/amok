@@ -38,23 +38,23 @@ def httpServer()(using Stdio): Unit raises ServerError raises ClasspathError = t
                 node.template.let: kind =>
                   val exts =
                     if kind.extensions.length == 0 then Unset
-                    else Syntax.sequence(kind.extensions).let(_.html)
+                    else Syntax.sequence(kind.extensions, Syntax.Comma).let(_.html)
 
                   Div
-                   (H2(Code(kind.definition, t" ", entity, t" extends ".unless(kind.extensions.isEmpty), exts)),
+                   (H2(Code(kind.syntax.html, t" ", entity, t" extends ".unless(kind.extensions.isEmpty), exts)),
                     if node.types.isEmpty then P(Em(t"No type members."))
                     else Table.members:
                       node.types.to(List).flatMap: (name, template) =>
                         val link: Path on Rfc3986 = (% / "entity" / index.child(name, true).id).on[Rfc3986]
                         List
-                         (Tr(Td.kind(Code(template.definition.let(_.text))),
+                         (Tr(Td.kind(Code(template.definition.let(_.syntax.html))),
                              Th(Code(A(href = link)(name)))),
                           template.memo.let { memo => Tr(Td, Td.memo(memo.html)) })),
 
                 node.definition.let: kind =>
                   Div
                    (H2(Code.typed
-                     (kind.text,
+                     (kind.syntax.html,
                       t" ",
                       Em(entity),
                       node.params.let(_.html),
@@ -65,14 +65,13 @@ def httpServer()(using Stdio): Unit raises ServerError raises ClasspathError = t
                       node.terms.to(List).flatMap: (name, term) =>
                         val link: Path on Rfc3986 = (% / "entity" / index.child(name, false).id).on[Rfc3986]
                         List
-                         (Tr(Td.kind(Code(term.definition.let(_.text))),
+                         (Tr(Td.kind(Code(term.definition.let(_.syntax).let(_.html))),
                              Th(Code(A(href = link)(name)))),
                           term.memo.let { memo => Tr(Td, Td.memo(memo.html)) })),
                 detail.let(_.html).let(Div(_)))
 
         catch
           case exception: Throwable =>
-            Out.println(m"Had an exception")
             Page.simple(H1(t"Error"), Div(exception.stackTrace.html))
 
     case _ /: t"api" =>
@@ -99,14 +98,14 @@ def httpServer()(using Stdio): Unit raises ServerError raises ClasspathError = t
          (List
            (Details.imports
              (Summary(B(t"import")),
-              Div.content(Details(Summary(t"scala.*"))),
-              Div.content(Details(Summary(t"scala.Predef.*"))),
-              Div.content(Details(Summary(t"scala.collection.*")))),
+              Div(Details(Summary(t"scala.*"))),
+              Div(Details(Summary(t"scala.Predef.*"))),
+              Div(Details(Summary(t"scala.collection.*")))),
             Details(Summary(B(A(target = id"main", href = rootLocation)(pkg)))),
-            Div.content:
+            Div:
               model(pkg).members.filter(!_(1).hidden).map: (member, node) =>
                 node.tree(member.text, pkg, pkg+member.safe)),
-          List(Iframe(id = id"api", name = t"main", width = 700)))
+          List(Iframe(id = id"api", name = t"main", src = rootLocation, width = 700)))
 
     case _ =>
       Http.Response(t"Hello")

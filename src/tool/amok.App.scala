@@ -272,13 +272,17 @@ class Model():
 
             val preClauses = if ext then groups0.take(split) else Nil
             val paramClauses = if ext then groups0.drop(split) else groups0
-            val subject = if !ext then Unset else Syntax(10, preClauses.map(Syntax.clause(_))*)
 
             child.params = Syntax(10, paramClauses.map(Syntax.clause(_))*)
-            child.subject = subject
             child.definition =
               if isGiven then `given`(flags.has(`inline`, `transparent`, `erased`))
-              else `def`(subject, flags.has(`abstract`, `override`, `private`, `protected`, `erased`, `final`, `infix`, `transparent`, `inline`))
+              else
+                val definition: amok.Definition.`def` =
+                  `def`(flags.has(`abstract`, `override`, `private`, `protected`, `erased`, `final`, `infix`, `transparent`, `inline`))
+
+                if ext then `extension`(Syntax(10, preClauses.map(Syntax.clause(_))*), definition)
+                else definition
+
             child.returnType = Syntax(rtn.tpe)
 
           case typeDef@TypeDef(name, _) if name != "MirroredMonoType" =>
@@ -330,7 +334,7 @@ enum Modifier:
   case `private`, `abstract`, `open`, `final`, `erased`, `transparent`, `inline`, `lazy`, `sealed`,
       `override`, `opaque`, `infix`, `into`, `tracked`, `protected`
 
-  def keyword: Text = this.toString.tt.lower
+  def keyword: Syntax = Syntax.Symbolic(this.toString.tt.lower)
 
 export Modifier.*
 
@@ -339,24 +343,33 @@ enum Definition:
   case `object`(modifiers: List[Modifier])
   case `case object`(modifiers: List[Modifier])
   case `enum.case`(modifiers: List[Modifier])
-  case `def`(`extension`: Optional[Syntax], modifiers: List[Modifier])
+  case `def`(modifiers: List[Modifier])
   case `val`(modifiers: List[Modifier])
   case `var`(modifiers: List[Modifier])
   case `given`(modifiers: List[Modifier])
+  case `extension`(params: Syntax, `def`: Definition.`def`, modifiers: List[Modifier] = Nil)
 
-  def keyword: Text = this match
-    case _: `package`            => t"package"
-    case _: `object`             => t"object"
-    case _: `case object`        => t"case object"
-    case _: `enum.case`          => t"case"
-    case `def`(Unset, _)         => t"def"
-    case _: `val`                => t"val"
-    case _: `var`                => t"var"
-    case _: `given`              => t"given"
-    case `def`(param: Syntax, _) => t"extension ${param.show} def"
+  def keyword: Syntax = Syntax.Symbolic:
+    this match
+      case _: `package`            => t"package"
+      case _: `object`             => t"object"
+      case _: `case object`        => t"case object"
+      case _: `enum.case`          => t"case"
+      case _: `def`                => t"def"
+      case _: `val`                => t"val"
+      case _: `var`                => t"var"
+      case _: `given`              => t"given"
+      case _: `extension`          => t"extension"
 
   def modifiers: List[Modifier]
-  def text: Text = modifiers.map(_.keyword).join(t"", t" ", t" "+keyword)
+
+  def syntax: Syntax = this match
+    case `extension`(param, definition, _) =>
+      Syntax(0, Syntax.Symbolic(t"extension"), Syntax.Space, param, Syntax.Space, definition.syntax)
+    case other =>
+      Syntax.sequence(other.modifiers.map(_.keyword), Syntax.Space)
+      . let(Syntax(0, _, Syntax.Space, keyword))
+      . or(keyword)
 
 export Definition.*
 
@@ -370,15 +383,19 @@ enum Template:
 
   def extensions: List[Syntax]
 
-  def keyword: Text = this match
-    case _: `case class` => t"case class"
-    case _: `class`      => t"class"
-    case _: `trait`      => t"trait"
-    case _: `enum`       => t"enum"
-    case _: `case`       => t"case"
-    case _: `type`       => t"type"
+  def keyword: Syntax.Symbolic = Syntax.Symbolic:
+    this match
+      case _: `case class` => t"case class"
+      case _: `class`      => t"class"
+      case _: `trait`      => t"trait"
+      case _: `enum`       => t"enum"
+      case _: `case`       => t"case"
+      case _: `type`       => t"type"
 
   def modifiers: List[Modifier]
-  def definition: Text = modifiers.map(_.keyword).join(t"", t" ", t" "+keyword)
+
+  def syntax: Syntax =
+    Syntax.sequence(modifiers.map(_.keyword), Syntax.Space).let(Syntax(0, _, Syntax.Space, keyword))
+    . or(keyword)
 
 export Template.*
