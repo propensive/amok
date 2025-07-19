@@ -27,12 +27,9 @@ def httpServer()(using Stdio): Unit raises ServerError raises ClasspathError = t
               val index = Index.decode(name)
 
               Page.simple
-               (index match
-                  case Index.Top(entity) =>
-                    H1.pkg(Code(B(entity)))
-
+               (index.only:
                   case Index.Entity(parent, isType, entity) =>
-                    H1.pkg(Code(parent.html, symbol), Code(B(entity))),
+                    H1.pkg(Code(parent.html, symbol)),
 
                 H1(Code(entity)),
                 node.template.let: kind =>
