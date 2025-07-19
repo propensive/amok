@@ -47,6 +47,8 @@ theme.addEventListener('click', () => {
 iframe.addEventListener('load', () => {
   const url = iframe.contentWindow.location;
   const detailsId = "menu_"+decodeURIComponent(url.pathname.slice(8));
+  const oldLocation = window.location.origin+"/api/";
+  history.replaceState(null, '', oldLocation+url.pathname.slice(8));
 
   if (!detailsId) return;
 
@@ -60,24 +62,7 @@ iframe.addEventListener('load', () => {
     el = el.parentElement.closest('details');
   }
 
-  // Optional: close unrelated <details> sections
-  closeOtherDetails(detailsId);
-});
-
-function computeMenuIdFromUrl(url) {
-  // Example: match path to a known ID
-  const path = new URL(url).pathname;
-  const map = {
-    '/a1.html': 'menu-a1',
-    '/b.html': 'menu-b',
-  };
-  return map[path];
-}
-
-function closeOtherDetails(keepId) {
   document.querySelectorAll('details').forEach(d => {
-    if (!d.contains(document.getElementById(keepId))) {
-      d.open = false;
-    }
+    if (!d.contains(document.getElementById(detailsId))) { d.open = false; }
   });
-}
+});

@@ -117,10 +117,10 @@ h1, h2, h3, h4, h5, p, table
   { margin: 1.25rem 3rem 1.25rem 0; line-height: 1.4em; letter-spacing: 0.05em; padding: 0 1rem; }
 
 h1 { font-weight: 100; font-size: 3rem; margin: 0 0 0 -0.05em; }
-h1.pkg { font-size: 1rem; }
-h2 { font-size: 1.5rem; font-weight: 375; margin: 0.25em 0 0; }
-h3 { font-size: 1.3rem; font-weight: 433; }
-h4 { font-size: 1.1rem; font-weight: 511; }
+h1.pkg { font-size: 1rem; font-weight: 570; }
+h2 { font-size: 1.5rem; font-weight: 380; margin: 0.25em 0 0; }
+h3 { font-size: 1.3rem; font-weight: 430; }
+h4 { font-size: 1.1rem; font-weight: 510; }
 
 table { border-collapse: collapse; min-width: 50%; border-top: solid 1px #9992; }
 
@@ -195,7 +195,6 @@ details
 
 code
   { font-family: var(--mono-font);
-    font-weight: 300;
     & span
       { transition: background-color ease 0.3s;
         display:    inline-block;
