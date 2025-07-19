@@ -44,6 +44,6 @@ class Node(parent0: Optional[Node] = Unset):
     Details(name = group.urlEncode, id = DomId(t"menu_${path}"))
      (if members2.isEmpty then Summary(A(href = % / "entity" / path, target = id"main")(name))
       else Summary.full(A(href = % / "entity" / path, target = id"main")(name)),
-      Div.content:
+      Div:
         members2.map: (member, node) =>
           node.tree(member.text, path, path+member.safe))

@@ -16,7 +16,7 @@ object Page:
              Li(A(href = % / "glossary")(t"GLOSSARY")),
              Li(A(href = % / "context")(t"CONTEXT")),
              Li(Button(id = id"theme")))),
-          Main(Nav(Div.menu(nav*)), Article(article)),
+          Main(Aside(Nav(nav*)), Article(article)),
           Footer(t"© Copyright 2025, Propensive OÜ")))
 
   def simple(content: Html[Flow]*): HtmlDoc = HtmlDoc:

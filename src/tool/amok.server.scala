@@ -27,7 +27,13 @@ def httpServer()(using Stdio): Unit raises ServerError raises ClasspathError = t
               val index = Index.decode(name)
 
               Page.simple
-               (H1.pkg(Code(index.parent.html, symbol), Code(B(entity))),
+               (index match
+                  case Index.Top(entity) =>
+                    H1.pkg(Code(B(entity)))
+
+                  case Index.Entity(parent, isType, entity) =>
+                    H1.pkg(Code(parent.html, symbol), Code(B(entity))),
+
                 H1(Code(entity)),
                 node.template.let: kind =>
                   val exts =
@@ -35,7 +41,7 @@ def httpServer()(using Stdio): Unit raises ServerError raises ClasspathError = t
                     else Syntax.sequence(kind.extensions).let(_.html)
 
                   Div
-                   (H2(Code(kind.definition, t" ", entity, t" extends ".unless(kind.extensions.length == 0), exts)),
+                   (H2(Code(kind.definition, t" ", entity, t" extends ".unless(kind.extensions.isEmpty), exts)),
                     if node.types.isEmpty then P(Em(t"No type members."))
                     else Table.members:
                       node.types.to(List).flatMap: (name, template) =>

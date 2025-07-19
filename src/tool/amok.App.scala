@@ -17,10 +17,8 @@ val Serve  = Subcommand(t"serve",  e"serve the documentation on a local HTTP ser
 var model = Model()
 
 given Imports(Set
-       (Index.decode(t"scala"),
-        Index.decode(t"scala.Predef"),
+       (Index.decode(t"scala.Predef"),
         Index.decode(t"prepositional"),
-        Index.decode(t"scala.lang"),
         Index.decode(t"java.lang")))
 
 @main
@@ -30,7 +28,7 @@ def application(): Unit = cli:
   arguments match
     case About() :: _ => execute:
       recover:
-        case SerializationError(_, _) => Out.println(m"Failed to deserialize")
+        case SerializationError(_, _) => panic(m"Failed to deserialize")
 
       . within:
           Out.println()
