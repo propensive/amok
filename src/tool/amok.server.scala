@@ -128,7 +128,7 @@ def httpServer()(using Stdio): Unit raises ServerError raises ClasspathError = t
             Div:
               model(pkg).members.filter(!_(1).hidden).map: (member, node) =>
                 node.tree(member.text, pkg, pkg+member.safe)),
-          List(Iframe(id = id"api", name = t"main", src = rootLocation, width = 700)))
+          List(Iframe(id = id"api", name = t"main", src = rootLocation)))
 
     case _ =>
       Http.Response(t"Hello")
