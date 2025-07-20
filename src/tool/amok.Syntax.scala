@@ -134,28 +134,30 @@ object Syntax:
         apply(tpe)
 
       case typeRef@TypeRef(NoPrefix(), name) =>
-        Syntax.Simple(Index(typeRef.typeSymbol.fullName.tt), true)
+        if name.tt.starts(t"_$$") then Syntax.Member(name.tt.skip(2))
+        else Syntax.Simple(Index(typeRef.typeSymbol.fullName.tt), true)
 
-      case typeRef@TypeRef(prefix, name) => apply(prefix) match
-        case simple@Syntax.Simple(index, isTerm) =>
-          val module = typeRef.typeSymbol.flags.is(Flags.Module)
+      case typeRef@TypeRef(prefix, name) =>
+        apply(prefix) match
+          case simple@Syntax.Simple(index, isTerm) =>
+            val module = typeRef.typeSymbol.flags.is(Flags.Module)
 
-          val name2 = if module then name.tt.skip(1, Rtl) else name.tt
-          if name2.ends(t"$$package") || name2 == t"package" then simple
-          else
-            if name2.contains(t"package") then Out.println(t"Package: ${name2}")
-            Syntax.Simple(Index.Entity(index, !isTerm, name2), module)
+            val name2 = if module then name.tt.skip(1, Rtl) else name.tt
+            if name2.ends(t"$$package") || name2 == t"package" then simple
+            else
+              if name2.contains(t"package") then Out.println(t"Package: ${name2}")
+              Syntax.Simple(Index.Entity(index, !isTerm, name2), module)
 
-        case compound: Syntax.Compound =>
-          if compound.precedence < 10 then Syntax(10, compound, Dot, Syntax.Member(name.tt))
-          else Syntax(10, OpenParens, compound, CloseParens, Dot, Syntax.Member(name.tt))
+          case compound: Syntax.Compound =>
+            if compound.precedence < 10 then Syntax(10, compound, Dot, Syntax.Member(name.tt))
+            else Syntax(10, OpenParens, compound, CloseParens, Dot, Syntax.Member(name.tt))
 
-        case refined@Syntax.Refined(base, members) =>
-          if members.contains(name) then members(name.tt)
-          else Syntax(10, OpenParens, refined, CloseParens, Project, Syntax.Member(name.tt))
+          case refined@Syntax.Refined(base, members) =>
+            if members.contains(name) then members(name.tt)
+            else Syntax(10, OpenParens, refined, CloseParens, Project, Syntax.Member(name.tt))
 
-        case other =>
-          Out.println(t"OTHER: ${other.toString}") yet Syntax.Constant(t"<unknown>")
+          case other =>
+            Out.println(t"OTHER: ${other.toString}") yet Syntax.Constant(t"<unknown>")
 
       case termRef@TermRef(NoPrefix(), name) =>
         Syntax.Simple(Index(termRef.termSymbol.fullName.tt), true)
@@ -163,21 +165,22 @@ object Syntax:
       case termRef@TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), name) =>
         Syntax.Simple(Index(termRef.termSymbol.fullName.tt), true)
 
-      case termRef@TermRef(prefix, name) => apply(prefix) match
-        case simple@Syntax.Simple(index, isTerm) =>
-          if name.tt.ends(t"$$package") || name == t"package" then simple
-          else Syntax.Simple(Index.Entity(index, !isTerm, name), true)
+      case termRef@TermRef(prefix, name) =>
+        apply(prefix) match
+          case simple@Syntax.Simple(index, isTerm) =>
+            if name.tt.ends(t"$$package") || name == t"package" then simple
+            else Syntax.Simple(Index.Entity(index, !isTerm, name), true)
 
-        case compound: Syntax.Compound =>
-          if compound.precedence < 10 then Syntax(10, compound, Dot, Syntax.Member(name.tt))
-          else Syntax(10, OpenParens, compound, CloseParens, Dot, Syntax.Member(name.tt))
+          case compound: Syntax.Compound =>
+            if compound.precedence < 10 then Syntax(10, compound, Dot, Syntax.Member(name.tt))
+            else Syntax(10, OpenParens, compound, CloseParens, Dot, Syntax.Member(name.tt))
 
-        case refined@Syntax.Refined(base, members) =>
-          if members.contains(name) then members(name.tt)
-          else Syntax(10, OpenParens, refined, CloseParens, Project, Syntax.Member(name.tt))
+          case refined@Syntax.Refined(base, members) =>
+            if members.contains(name) then members(name.tt)
+            else Syntax(10, OpenParens, refined, CloseParens, Project, Syntax.Member(name.tt))
 
-        case other =>
-          Out.println(t"OTHER: ${other.toString}") yet Syntax.Constant(t"<unknown>")
+          case other =>
+            Out.println(t"OTHER: ${other.toString}") yet Syntax.Constant(t"<unknown>")
 
       case AnnotatedType(tpe, annotation) =>
         // FIXME: We don't have access to `into` information, so this is hack

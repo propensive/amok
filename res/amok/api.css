@@ -143,8 +143,8 @@ table
     border-top:      solid var(--thin) #9992;
     border-bottom:   solid var(--thin) #9992; }
 
-td, th { text-align: left; padding: 0.2rem 0.5rem; }
-th     { font-weight: 600; border-top: solid var(--thin) #9992; border-bottom: solid var(--thin) #9992; }
+td, th { text-align: left; padding: 0.3rem 0.5rem; line-height: 1.5em; vertical-align: top; }
+th     { font-weight: 500; border-top: solid var(--thin) #9992; border-bottom: solid var(--thin) #9992; }
 
 td
   { &.kind { text-align: right; }

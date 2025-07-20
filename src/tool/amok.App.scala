@@ -10,6 +10,7 @@ given Tactic[CodlError] => Tactic[CodlReadError] => Translator =
 
 val About  = Subcommand(t"about",  e"find out about Amok")
 val Load   = Subcommand(t"load",   e"load definitions from a .jar or .amok file")
+val Boot   = Subcommand(t"boot",   e"start Amok using the .amok file in the current directory")
 val Clear  = Subcommand(t"clear",  e"clear definitions from a JAR file")
 val Quit   = Subcommand(t"quit",   e"shutdown Amok")
 val Serve  = Subcommand(t"serve",  e"serve the documentation on a local HTTP server")
@@ -56,26 +57,7 @@ def application(): Unit = cli:
       Exit.Ok
 
     case Load() :: Pathname(file) :: _ =>
-      execute:
-        if file.name.ends(t".jar") then
-          recover:
-            case IoError(_, _, _) => Exit.Fail(1)
-            case StreamError(_)   => Exit.Fail(1)
-
-          . within:
-              model.load(file)
-              Exit.Ok
-
-        else if file.name.ends(t".amok") then
-          recover:
-            case exception: Error =>
-              Out.println(exception.stackTrace.teletype)
-              Exit.Fail(1)
-          . within:
-              model.overlay(Amox.read(file))
-              Exit.Ok
-
-        else Exit.Ok
+      execute(load(file))
 
     case Clear() :: Nil =>
       execute:
@@ -97,9 +79,38 @@ def application(): Unit = cli:
           Out.println(e"Listening on $Bold(http://localhost:8080)")
           Exit.Ok
 
+    case Boot() :: _ => execute:
+      load(unsafely(workingDirectory[Path on Linux]) / ".amok")
+
     case command :: _ =>
       execute(Out.println(m"Unknown command: ${command()}") yet Exit.Fail(1))
 
+    case Nil =>
+      execute(Out.println(m"Please specify a command") yet Exit.Fail(1))
+
+
+def load(file: Path on Linux)(using Stdio): Exit =
+  if file.name.ends(t".jar") then
+    recover:
+      case IoError(_, _, _) => Exit.Fail(1)
+      case StreamError(_)   => Exit.Fail(1)
+
+    . within:
+        model.load(file)
+        Exit.Ok
+  else if file.name.ends(t".amok") then
+    recover:
+      case exception: Error =>
+        Out.println(exception.stackTrace.teletype)
+        Exit.Fail(1)
+
+    . within:
+        model.overlay(Amox.read(file))
+        Exit.Ok
+
+  else
+    Out.println(m"Path $file was not of the right type")
+    Exit.Fail(1)
 
 object Member:
   given ordering: Ordering[Member] = Ordering.by[Member, String]:
@@ -218,7 +229,6 @@ class Model():
               !(left =:= right) && left <:< right
 
             given TypeRepr is Showable = Syntax(_).show
-            import dagStyles.default
             val caseClass = flags.is(Case)
             val dag = Poset(parents*).dag
 

@@ -1,6 +1,5 @@
 package amok
 
-import scala.quoted.*
 import scala.collection.mutable as scm
 import scala.collection.immutable.ListMap
 
