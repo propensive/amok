@@ -42,9 +42,6 @@ object Index:
 
       List(recur(index))
 
-case class Imports(indexes: Set[Index]):
-  def has(index: Index): Boolean = indexes.contains(index)
-
 enum Index:
   case Top(name: Text)
   case Entity(parent0: Index, isType: Boolean, name: Text)
