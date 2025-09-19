@@ -1,0 +1,3 @@
+load out/amok/tool/upstreamAssembly2_0.dest/out.jar
+load example/hallucination.amok
+load example/chiaroscuro.amok

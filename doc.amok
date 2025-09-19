@@ -1,0 +1,33 @@
+#!/usr/bin/env amok
+version  1
+title    Tutorial for Wisteria
+format   documentation
+##
+
+# Wisteria Tutorial
+
+## About Generic Derivation
+
+
+```amok
+version
+    val path = filename.decode[Path]
+    val text = path.read[Text]
+    val json = Json.parse(text)
+version
+    val path: Path = filename.decode[Path]
+    val text: Text = path.read[Text]
+    val json: Json = Json.parse(text)
+version
+    val path: Try[Path] = filename.decode[Path]
+    val text: Try[Text] = path.flatMap(_.read[Text])
+    val json: Try[Json] = text.flatMap(Json.parse(_))
+version
+    val path = filename.decode[Path]
+    val text = path.flatMap(_.read[Text])
+    val json = text.flatMap(Json.parse(_))
+version
+    for path <- filename.decode[Path]
+        text <- path.read[Text]
+    yield Json.parse(text)
+```

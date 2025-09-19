@@ -1,0 +1,11 @@
+
+term anticipation
+  info A project for working with 
+  type GenericDuration
+    info     A generic duration
+    content
+        Typeclass defining a single method for working with a duration
+      
+    until 3.3
+        
+      

@@ -40,12 +40,15 @@ import soundness.{is as _, Node as _, *}
 given Tactic[CodlError] => Tactic[CodlReadError] => Translator =
   HtmlTranslator(AmokEmbedding(false), ScalaEmbedding)
 
-val About  = Subcommand(t"about",  e"find out about Amok")
-val Load   = Subcommand(t"load",   e"load definitions from a .jar or .amok file")
-val Boot   = Subcommand(t"boot",   e"start Amok using the .amok file in the current directory")
-val Clear  = Subcommand(t"clear",  e"clear definitions from a JAR file")
-val Quit   = Subcommand(t"quit",   e"shutdown Amok")
-val Serve  = Subcommand(t"serve",  e"serve the documentation on a local HTTP server")
+val About   = Subcommand("about",   e"find out about Amok")
+val Load    = Subcommand("load",    e"load definitions from a .jar or .amok file")
+val Present = Subcommand("present", e"give a presentation from a .amok file")
+val Boot    = Subcommand("boot",    e"start Amok using the .amok file in the current directory")
+val Clear   = Subcommand("clear",   e"clear definitions from a JAR file")
+val Quit    = Subcommand("quit",    e"shutdown Amok")
+val Serve   = Subcommand("serve",   e"serve the documentation on a local HTTP server")
+
+val UrlPath = Flag("path", false, List('p'), "the path at which to serve the presentation")
 
 var model = Model()
 
@@ -76,7 +79,7 @@ def application(): Unit = cli:
           val build = unsafely((Classpath / "build.id").read[Text].trim)
 
           Out.println(e"$Bold(Amok) prerelease version, build $build: $Italic(a documentation compiler for Scala)")
-          Out.println(e"© Copyright 2025, Propensive OÜ")
+          Out.println(e"© Copyright 2025 Propensive OÜ")
           Out.println()
           Out.println(e"Memory usage: $memory MiB")
           Out.println()
@@ -85,6 +88,54 @@ def application(): Unit = cli:
 
     case Load() :: Pathname(file) :: _ =>
       execute(load(file))
+
+    case Present() :: Pathname(file) :: _ =>
+
+      val urlPath = UrlPath[Text]()
+
+      execute:
+        Out.println(m"Loading ${file.name}...")
+        recover:
+          case IoError(path, _, _) =>
+            Out.println(m"Failed to open file ${path.name}") yet Exit.Fail(1)
+
+          case StreamError(memory) =>
+            Out.println(m"Failed to read file after $memory") yet Exit.Fail(1)
+
+          case error@CodlReadError(_) =>
+            Out.println(m"CoDL read error (${error.toString.tt}) in ${file.name}") yet Exit.Fail(5)
+
+          case error@CodlError(_, _, _, _) =>
+            Out.println(m"CoDL error (${error.toString.tt}) in ${file.name}") yet Exit.Fail(5)
+
+          case NumberError(_, _) =>
+            Out.println(m"Not a number") yet Exit.Fail(1)
+
+          case MarkdownError(_) =>
+            Out.println(m"Markdown error") yet Exit.Fail(1)
+
+        . within:
+            val text = file.open(_.read[Text])
+            val stripped = text.cut(t"\n").dropWhile(_ != "##").tail.join(t"\n")
+            val doc = Codl.read[AmokDoc](text)
+
+            val sections = Markdown.parse(stripped).broken.map(_.html).zipWithIndex.map: (content, index) =>
+              html5.Section(id = DomId(t"slide${index + 1}"))(content)
+
+            import html5.*
+
+            val htmlDoc =
+              HtmlDoc:
+                Html
+                 (Head
+                   (html5.Link.Stylesheet(href = t"/code.css"),
+                    html5.Script(src = t"/navigate.js"),
+                    Title(doc.title)),
+                  Body(Div.visible(id = id"overlay"), Main(sections*)))
+
+            Server.register(urlPath.or(t"/"), _ => Http.Response(htmlDoc))
+
+            Exit.Ok
 
     case Clear() :: Nil =>
       execute:
@@ -102,7 +153,9 @@ def application(): Unit = cli:
           panic(m"Expected to find $path on the classpath")
 
       . within:
-          httpServer()
+          tcp"8080".serve:
+            Server.mappings.keySet.find(request.location.starts(_)).show
+
           Out.println(e"Listening on $Bold(http://localhost:8080)")
           Exit.Ok
 
@@ -118,6 +171,8 @@ def application(): Unit = cli:
 
 def load(file: Path on Linux)(using Stdio): Exit =
   if file.name.ends(t".jar") then
+    Out.println(m"Loading JAR file ${file.name}")
+
     recover:
       case IoError(_, _, _) => Exit.Fail(1)
       case StreamError(_)   => Exit.Fail(1)

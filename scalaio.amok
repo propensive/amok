@@ -1,0 +1,115 @@
+version  1
+title    A Higher Standard of Standard Library
+format   presentation
+##
+
+# A HIGHER STANDARD
+## of
+# STANDARD LIBRARY
+
+---
+
+## The Soundness Backstory
+
+---
+
+## Two Golden Rules
+
+- Impossible states must be unrepresentable
+- Transitions between states must be total
+
+---
+
+## Modules
+
+- `cli` — command line applications
+- `web` — web applications
+- `test` — tools for testing
+- `dev` — tools for application developers
+- `sci` — scientific representations and utilities
+- `data` — for working with data in various forms
+
+---
+
+## `Optional` values
+
+---
+
+## `Text`
+
+- `Text` is a typesafe string
+
+---
+
+## Error handling
+
+---
+
+## Quality of life
+
+```amok
+version
+    if -1.0 < x && x < 1.0 then x
+    else raise(RangeError(x, -1.0, 1.0))
+version
+    if -1.0 < x < 1.0 then x
+    else raise(RangeError(x, -1.0, 1.0))
+```
+
+---
+
+## Ordinals
+
+Radical idea: Let's use different types for _cardinal_ and _ordinal_ numbers
+
+- Use `Int` for _cardinal_ numbers, like the `size` of a `List`
+- Use `Ordinal` for _ordinal_ numbers, like `Array` indices
+
+---
+
+## Ordinals
+
+### New literals
+
+`Prim`, `Sec`, `Ter`, `Quat`, `Quin`, `Sen`, ...
+
+---
+
+## New restrictions
+
+```amok
+version
+    val x = 2 + 1
+version
+    val x: Int = 2 + 1
+version
+    val x: Int = Sec + 1 // type error
+version
+    val x: Ordinal = Sec + 1
+version
+    val x: Ordinal = Sec + Prim // type error
+version
+    val x: Ordinal = Sec - Prim // type error
+version
+    val x: Int = Sec - Prim
+version
+    val x: Int = Sec - 1 // type error
+version
+    val x: Ordinal = Sec - 1
+```
+
+---
+
+## Generic Derivation
+
+---
+
+## Command Line Interface
+
+---
+
+### Tabulation
+
+---
+
+### Interactivity

@@ -1,0 +1,23 @@
+#!/usr/bin/env amok
+version  1
+title    Principled Metaprogramming with Scala 3
+format   presentation
+##
+
+# Principled Metaprogramming
+## in Scala 3
+
+---
+
+# Part I
+## Inlining
+
+---
+
+# Part II
+## Quotes and Splices
+
+---
+
+# Part III
+## TASTy Trees

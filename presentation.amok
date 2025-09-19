@@ -1,0 +1,1442 @@
+#!/usr/bin/env amok
+version  1
+title    Exceptions are back
+format   slides
+##
+
+### TYPESAFE and TOTAL
+### ELEGANT and EXPRESSIVE
+### COMPOSITIONAL and CORRECT
+# EXCEPTIONS ARE BACK!
+### Jon Pretty
+### 12 May 2025
+
+---
+
+# Errors
+
+---
+
+## Motivation
+
+- Software should be safe
+- Code should be elegant and readable
+- Programmers should have confidence
+
+---
+
+## Golden Rules
+- **Impossible** states should be **unrepresentable**
+- **Transitions** between states should be **total**
+
+---
+
+## Example
+
+Let's take a filename, interpret it as a path, read its content as text, and parse it as JSON.
+
+```amok
+version
+    @main
+    def run(filename: Text): Unit =
+      val json: Json = Json.parse(filename.decode[Path].read[Text])
+```
+
+---
+
+## Example
+
+There are three possible failures:
+- `_.decode[Path]` might fail if the path is invalid
+- `_.read[Text]` might fail if there's a disk I/O error
+- `Json.parse(_)` might fail if the content is invalid
+
+---
+
+## Representing failure
+
+_How_ should we represent these failures?
+
+---
+
+## _Monadic_ Approaches
+
+- `Option[success]`
+- `Try[success]`
+- `Either[failure, success]`
+- `ZIO[?, failure, success]`
+
+---
+
+## Give it a `Try`
+
+Let's write,
+```amok
+context  term
+version  Json.parse(filename.decode[Path].read[Text])
+```
+more safely using `Try`.
+
+---
+
+## Safety through Monads
+
+```amok
+context  term
+version  Json.parse(filename.decode[Path].read[Text])
+```
+
+```amok
+version
+    val path = filename.decode[Path]
+    val text = path.read[Text]
+    val json = Json.parse(text)
+version
+    val path: Path = filename.decode[Path]
+    val text: Text = path.read[Text]
+    val json: Json = Json.parse(text)
+version
+    val path: Try[Path] = filename.decode[Path]
+    val text: Try[Text] = path.flatMap(_.read[Text])
+    val json: Try[Json] = text.flatMap(Json.parse(_))
+version
+    val path = filename.decode[Path]
+    val text = path.flatMap(_.read[Text])
+    val json = text.flatMap(Json.parse(_))
+version
+    for path <- filename.decode[Path]
+        text <- path.read[Text]
+    yield Json.parse(text)
+```
+---
+
+## Dynamic JSON access
+
+```amok
+context  term
+version  json.users(0).roles(0).as[Role]
+version  json.users.flatMap(_(0)).roles(0).as[Role]
+version  json.users.flatMap(_(0)).flatMap(_.roles)(0).as[Role]
+version  json.users.flatMap(_(0)).flatMap(_.roles).flatMap(_(0)).as[Role]
+version  json.users.flatMap(_(0)).flatMap(_.roles).flatMap(_(0)).flatMap(_.as[Role])
+version
+    for role <- json.users.flatMap(_(0)).flatMap(_.roles).flatMap(_(0)).flatMap(_.as[Role])
+    yield role
+version
+    for users <- json.users
+        role  <- users(0).flatMap(_.roles).flatMap(_(0)).flatMap(_.as[Role])
+    yield role
+version
+    for users <- json.users
+        user  <- users(0)
+        role  <- user.roles.flatMap(_(0)).flatMap(_.as[Role])
+    yield role
+version
+    for users <- json.users
+        user  <- users(0)
+        roles <- user.roles
+        role  <- roles(0).flatMap(_.as[Role])
+    yield role
+version
+    for users <- json.users
+        user  <- users(0)
+        roles <- user.roles
+        role0 <- roles(0)
+        role  <- role0.as[Role]
+    yield role
+```
+
+---
+
+## The Monadic Approach
+
+Encoding success and failure in the result type abides by the golden rules. However:
+
+- We have lost the ability to compose functions without combinators like `map` and `flatMap`.
+- We had to perform a significant rewrite to make the code safe.
+- We pay the cost of this friction in almost every expression.
+
+---
+
+## Error representation
+
+- Not all monads can precisely represent failure types
+- Libraries must decide what kind of monad to use
+- Different libraries use different monads
+- If different methods return different monads, we must also transform them, e.g. with `traverse`.
+- End-users now need to work even harder to transform monads
+- The "happy path" is not much more "blessed" than the error paths
+
+---
+
+## So Why Monads?
+
+- They are demonstrably _safe_
+- Most alternative approaches are _unsafe_
+- Functional programmers have learned that they _work_
+  - and learned to accept the syntactic friction
+- We get safety, but at a high cost
+
+---
+
+## Error representation
+
+How can we represent errors _without_ monads?
+
+We would need:
+- direct _success_ types returned,
+- **and** precise error types represented in the return type.
+
+---
+
+## What about Exceptions?
+
+Exceptions look like the wrong solution because they break the second rule: transitions between
+states should be total.
+
+---
+
+## Counterproposal
+
+We will use the Scala compiler to ensure that they don't break the second rule!
+
+---
+
+## Context Functions
+
+Scala 3 introduces a new feature called **context functions**.
+
+- These are just the value-level representation of methods with `using` (implicit) parameters.
+- They are written `domain ?=> range` instead of `domain => range`
+
+---
+
+## Context Functions
+
+```amok
+version
+    def append(text: Text, buffer: Buffer): Unit =
+      buffer += text
+version
+    def append(text: Text, buffer: Buffer): Unit =
+      buffer += text
+
+    val buffer: Buffer = Buffer()
+version
+    def append(text: Text, buffer: Buffer): Unit =
+      buffer += text
+
+    val buffer: Buffer = Buffer()
+    append(t"Hello world", buffer)
+version
+    def append(text: Text, buffer: Buffer): Unit =
+      buffer += text
+
+    val buffer: Buffer = Buffer()
+    append(t"Hello world", buffer)
+    buffer.result
+version
+    def append(text: Text)(buffer: Buffer): Unit =
+      buffer += text
+
+    val buffer: Buffer = Buffer()
+    append(t"Hello world")(buffer)
+    buffer.result
+version
+    def append(text: Text): Buffer => Unit =
+      buffer => buffer += text
+
+    val buffer: Buffer = Buffer()
+    append(t"Hello world")(buffer)
+    buffer.result
+version
+    def append(text: Text)(buffer: Buffer): Unit =
+      buffer += text
+
+    val buffer: Buffer = Buffer()
+    append(t"Hello world")(buffer)
+    buffer.result
+version
+    def append(text: Text)(using buffer: Buffer): Unit =
+      buffer += text
+
+    val buffer: Buffer = Buffer()
+    append(t"Hello world")(using buffer)
+    buffer.result
+version
+    def append(text: Text)(using buffer: Buffer): Unit =
+      buffer += text
+
+    given buffer: Buffer = Buffer()
+    append(t"Hello world")
+    buffer.result
+version
+    def append(text: Text)(using Buffer): Unit =
+      summon[Buffer] += text
+
+    given buffer: Buffer = Buffer()
+    append(t"Hello world")
+    buffer.result
+version
+    def append(text: Text)(using Buffer): Unit =
+      summon[Buffer] += text
+
+    def buffered(block: Buffer => Unit): Text =
+      val buffer: Buffer = Buffer()
+      block(buffer)
+      buffer.result
+version
+    def append(text: Text)(using Buffer): Unit =
+      summon[Buffer] += text
+
+    def buffered(block: Buffer => Unit): Text =
+      val buffer: Buffer = Buffer()
+      block(buffer)
+      buffer.result
+
+    buffered: buffer =>
+      append(t"Hello world")(using buffer)
+version
+    def append(text: Text)(using Buffer): Unit =
+      summon[Buffer] += text
+
+    def buffered(block: Buffer ?=> Unit): Text =
+      val buffer: Buffer = Buffer()
+      block(using buffer)
+      buffer.result
+
+    buffered: buffer ?=>
+      append(t"Hello world")(using buffer)
+version
+    def append(text: Text)(using Buffer): Unit =
+      summon[Buffer] += text
+
+    def buffered(block: Buffer ?=> Unit): Text =
+      given buffer: Buffer = Buffer()
+      block
+      buffer.result
+
+    buffered: buffer ?=>
+      append(t"Hello world")(using buffer)
+version
+    def append(text: Text)(using Buffer): Unit =
+      summon[Buffer] += text
+
+    def buffered(block: Buffer ?=> Unit): Text =
+      given buffer: Buffer = Buffer()
+      block
+      buffer.result
+
+    buffered:
+      append(t"Hello world")
+##
+```
+
+---
+
+## Context functions are _keen_
+
+- They are compelled to apply their contextual parameters.
+  - just like `using` (implicit) parameters get applied
+- An instance of `domain ?=> range` _wants_ to be a `range` whenever it is referenced
+- We can't store a field or local `val` of `domain ?=> range`
+  - ...unless we explicitly specify its type as `domain ?=> range`
+
+---
+
+## Comparison with by-name parameters
+
+```amok
+version
+    given Context = ???
+version
+    given Context = ???
+
+    def fn(action: Unit): Unit =
+      action
+version
+    given Context = ???
+
+    def fn(action: Unit): Unit =
+      action
+
+    fn(println("hi!"))  // evaluated here
+version
+    given Context = ???
+
+    def fn(action: => Unit): Unit =
+      action  // automatically applied; hi!
+
+    fn(println("hi!"))
+version
+    given Context = ???
+
+    def fn(action: Context => Unit): Unit =
+      action  // nothing happens!
+
+    fn { context => println("hi!") }
+version
+    given Context = ???
+
+    def fn(action: Context => Unit): Unit =
+      action(summon[Context])  // hi!
+
+    fn { context => println("hi!") }
+version
+    given Context = ???
+
+    def fn(action: Context ?=> Unit): Unit =
+      action  // automatically applied; hi!
+
+    fn(println("hi!"))
+```
+---
+
+## Seamless Transformation
+```amok
+version
+    val fn: (A, B, C) ?=> D = action()
+version
+    val fn: (A, B, C) ?=> D = action()
+    val fn2: (A, B, C) ?=> D = fn
+version
+    val fn: (A, B, C) ?=> D = action()
+    val fn2: (A, B) ?=> C ?=> D = fn
+version
+    val fn: (A, B, C) ?=> D = action()
+    val fn2: A ?=> B ?=> C ?=> D = fn
+version
+    val fn: (A, B, C) ?=> D = action()
+    val fn2: A ?=> (B, C) ?=> D = fn
+version
+    val fn: (A, B, C) ?=> D = action()
+    val fn2: A ?=> (C, B) ?=> D = fn
+version
+    val fn: (A, B, C) ?=> D = action()
+    val fn2: (C, B) ?=> A ?=> D = fn
+version
+    val fn: (A, B, C) ?=> D = action()
+    val fn2: (C, B, A) ?=> D = fn
+```
+
+---
+
+## Context Functions
+
+Context functions represent _deferred execution_ within an _environment_ specified by its domain
+parameters.
+
+- _Semantically_, they are just functions
+- _Syntactically_, they look like by-name values
+- Their types encode both return types and the environments they need to run
+- We just need to encode "the capability to raise `error`s" as that environment
+
+---
+
+## `Tactic`s
+
+- We will use a type, `Tactic[error]` to represent the _capability_ of handling `error`s.
+- We will use a context function, `Tactic[error] ?=> result` to represent the deferred execution
+  in an environment that can handle `error`s.
+- For example `Tactic[JsonError] ?=> Json`
+- This says, "you can only reference it in a environment which has a `Tactic[JsonError]`".
+- We can actually have different implementations of `Tactic`s which handle errors in different ways.
+
+---
+
+```amok
+version
+    object Json:
+      def parse(content: Text): Json = ???
+version
+    object Json:
+      def parse(content: Text)(using Tactic[JsonError]): Json = ???
+version
+    object Json:
+      def parse(content: Text): Tactic[JsonError] ?=> Json = ???
+```
+
+---
+
+## Infix types
+
+Infix types provide more elegant syntax for complex types.
+
+```amok
+context  type
+version
+    Array[Byte] is Encodable
+version
+    is[Array[Byte], Encodable]
+version
+    Encodable { type Self = Array[Byte] }
+```
+
+---
+
+## `raises` types
+
+```amok
+version
+    infix type raises [result, error <: Exception] =
+      Tactic[error] ?=> result
+```
+
+```amok
+version
+    object Json:
+      def parse(content: Text): Json raises JsonError = ???
+version
+    object Json:
+      def parse(content: Text): Tactic[JsonError] ?=> Json = ???
+version
+    object Json:
+      def parse(content: Text)(using Tactic[JsonError]): Json = ???
+version
+    object Json:
+      def parse(content: Text): Json raises JsonError = ???
+```
+
+---
+
+## `Tactic` definition
+### (simplified)
+
+```amok
+version
+    trait Tactic[-error <: Exception]:
+      def abort(value: error): Nothing
+
+    inline def abort[tactic <: Exception: Tactic](error: tactic) =
+      tactic.abort(error)
+```
+---
+
+## Aborting
+
+```amok
+version  throw UserError(m"There was a problem")
+version  abort(UserError(m"There was a problem"))
+```
+
+---
+
+## `Tactic`s
+
+```amok
+version
+    def buffered(block: Buffer ?=> Unit): Text =
+      given buffer: Buffer = Buffer()
+      block
+      buffer.result
+version
+    def handle(block: Buffer ?=> Unit): Text =
+      given buffer: Buffer = Buffer()
+      block
+      buffer.result
+version
+    def handle(block: Context ?=> Unit): Text =
+      given context: Context = Context()
+      block
+      context.finish()
+version
+    def handle[result](block: Context ?=> result): result =
+      given context: Context = Context()
+      block
+version
+    def handle[result](block: Tactic[UserError] ?=> result): result =
+      given tactic: Tactic[UserError] = ???
+      block
+version
+    def handle[result](block: Tactic[UserError] ?=> result): result =
+      given tactic: Tactic[UserError] = ???
+      block
+
+    def action()(using Tactic[UserError]): Unit =
+      if math.random < 0.5 then abort(UserError(t"Unlucky!"))
+version
+    def handle[result](block: Tactic[UserError] ?=> result): result =
+      given tactic: Tactic[UserError] = ???
+      block
+
+    def action()(using Tactic[UserError]): Unit =
+      if math.random < 0.5 then abort(UserError(t"Unlucky!"))
+
+    handle:
+      action()
+version
+    handle:
+      action()
+version
+    def run(): Unit =
+      handle:
+        action()
+version
+    def run(): Unit =
+      recover:
+        case UserError(message) => println(message)
+
+      . within:
+          action()
+version
+    def run(): Unit =
+      recover:
+        case UserError(message)      => println(message)
+        case DataError(reason, kind) => println(m"Data error because $reason")
+
+      . within:
+          action()
+version
+    def run(): Unit =
+      recover:
+        case UserError(message)      => abort(ActionError())
+        case DataError(reason, kind) => abort(ActionError())
+
+      . within:
+          action()
+version
+    def run(): Unit raises ActionError =
+      recover:
+        case UserError(message)      => abort(ActionError())
+        case DataError(reason, kind) => abort(ActionError())
+
+      . within:
+          action()
+version
+    def run(): Unit raises ActionError =
+      mitigate:
+        case UserError(message)      => ActionError()
+        case DataError(reason, kind) => ActionError()
+
+      . within:
+          action()
+```
+
+---
+
+## Mitigation Example
+
+```amok
+context  term
+version
+    Json.parse(filename.decode[Path].read[Text])
+version
+    mitigate:
+      case JsonError(_, _, _) => ReadError()
+    . within:
+        Json.parse(filename.decode[Path].read[Text])
+version
+    mitigate:
+      case JsonError(_, _, _) => ReadError()
+      case PathError(_, _)    => ReadError()
+      case IoError(_, _)      => ReadError()
+    . within:
+        Json.parse(filename.decode[Path].read[Text])
+version
+    mitigate:
+      case JsonError(_, _, _) => ReadError(Reason.BadJson)
+      case PathError(_, _)    => ReadError(Reason.BadPath)
+      case IoError(_, _)      => ReadError(Reason.Io)
+    . within:
+        Json.parse(filename.decode[Path].read[Text])
+version
+    mitigate:
+      case JsonError(_, _, _) => ReadError(Reason.BadJson)
+      case PathError(path, _) => ReadError(Reason.BadPath(path))
+      case IoError(reason, _) => ReadError(Reason.Io(reason))
+    . within:
+        Json.parse(filename.decode[Path].read[Text])
+version
+    safely(Json.parse(filename.decode[Path].read[Text]))
+version
+    safely(Json.parse(filename.decode[Path].read[Text]))
+    . or(j"{}")
+version
+    unsafely:
+      Json.parse(filename.decode[Path].read[Text])
+version
+    import strategies.throwUnsafely
+    Json.parse(filename.decode[Path].read[Text])
+```
+
+---
+
+## Prototype to Production
+
+- import `strategies.throwUnsafely` globally
+- adapt to use `unsafely` in more local scopes
+- replace `unsafely` with `safely` and handle the failure case
+- change `safely` to `recover` to distinguish between errors
+- enrich the errors with more feedback for end-users, or logs
+- aggregate low-level errors into higher-level errors with `mitigate`
+- create a rich, multi-layered error handling with precise logging
+- achieve all this without changing the code on the happy path
+
+---
+
+## Generic Derivation
+
+Imagine we have these datatypes,
+
+```amok
+version
+    case class Config(font: Font, theme: Theme)
+version
+    case class Config(font: Font, theme: Theme)
+
+    case class Font(face: Text, size: Int, italic: Boolean)
+version
+    case class Config(font: Font, theme: Theme)
+
+    case class Font(face: Text, size: Int, italic: Boolean)
+
+    enum Theme:
+      case Dark, Light
+```
+and we want an `Encodable` typeclass instance for `Config`.
+
+---
+
+## Generic Derivation
+
+Generic derivation says we can derive an instance of `Config is Encodable` if we have instances of,
+- `Theme is Encodable`
+- `Font is Encodable`
+
+---
+
+And we can derive a `Font is Encodable` if we have,
+
+- `Text is Encodable`
+- `Int is Encodable`
+- `Boolean is Encodable`
+
+---
+
+...provided we have some generic "glue" code to combine instances.
+
+---
+
+## "Glue" code for Generic Derivation
+
+```amok
+version
+    object EncodableDerivation extends Derivable[Encodable]:
+      inline def join[value <: Product: ProductReflection]: value is Encodable = ???
+      inline def split[value: SumReflection]: value is Encodable = ???
+```
+
+---
+
+## Generic Derivation
+
+```amok
+version
+    Config(Font(t"Times", 12, false), Theme.Dark)
+version
+    Config(Font(t"Times", 12, false), Theme.Dark).json
+version
+    Config(Font(t"Times", 12, false), Theme.Dark).json
+     (using summon[Config is Encodable])
+version
+    given Config is Encodable =
+      Encodable.derive[Config]
+
+    Config(Font(t"Times", 12, false), Theme.Dark).json
+     (using summon[Config is Encodable])
+version
+    given Config is Encodable =
+      Encodable.join[Config]
+       (summon[Font is Encodable],
+        summon[Theme is Encodable])
+
+    Config(Font(t"Times", 12, false), Theme.Dark).json
+     (using summon[Config is Encodable])
+version
+    given Font is Encodable =
+      Encodable.derive[Font]
+
+    given Config is Encodable =
+      Encodable.join[Config]
+       (summon[Font is Encodable],
+        summon[Theme is Encodable])
+
+    Config(Font(t"Times", 12, false), Theme.Dark).json
+     (using summon[Config is Encodable])
+version
+    given Font is Encodable =
+      Encodable.derive[Font]
+
+    given Theme is Encodable =
+      Encodable.derive[Theme]
+
+    given Config is Encodable =
+      Encodable.join[Config]
+       (summon[Font is Encodable],
+        summon[Theme is Encodable])
+
+    Config(Font(t"Times", 12, false), Theme.Dark).json
+     (using summon[Config is Encodable])
+version
+    given Font is Encodable =
+      Encodable.join[Font]
+       (using summon[Text is Encodable],
+              summon[Int is Encodable],
+              summon[Boolean is Encodable])
+
+    given Theme is Encodable =
+      Encodable.derive[Theme]
+
+    given Config is Encodable =
+      Encodable.join[Config]
+       (using summon[Font is Encodable],
+              summon[Theme is Encodable])
+
+    Config(Font(t"Times", 12, false), Theme.Dark).json
+     (using summon[Config is Encodable])
+version
+    given Font is Encodable =
+      Encodable.join[Font]
+       (using summon[Text is Encodable],
+              summon[Int is Encodable],
+              summon[Boolean is Encodable])
+
+    given Theme is Encodable =
+      Encodable.split[Font]
+       (using summon[Theme.Dark is Encodable],
+              summon[Theme.Light is Encodable])
+
+    given Config is Encodable =
+      Encodable.join[Config]
+       (using summon[Font is Encodable],
+              summon[Theme is Encodable])
+
+    Config(Font(t"Times", 12, false), Theme.Dark).json
+     (using summon[Config is Encodable])
+version
+    given Theme.Dark is Encodable =
+      Encodable.enumeration[Theme.Dark]
+
+    given Font is Encodable =
+      Encodable.join[Font]
+       (using summon[Text is Encodable],
+              summon[Int is Encodable],
+              summon[Boolean is Encodable])
+
+    given Theme is Encodable =
+      Encodable.split[Font]
+       (using summon[Theme.Dark is Encodable],
+              summon[Theme.Light is Encodable])
+
+    given Config is Encodable =
+      Encodable.join[Config]
+       (using summon[Font is Encodable],
+              summon[Theme is Encodable])
+
+    Config(Font(t"Times", 12, false), Theme.Dark).json
+     (using summon[Config is Encodable])
+version
+    given Theme.Dark is Encodable =
+      Encodable.enumeration[Theme.Dark]
+
+    given Theme.Light is Encodable =
+      Encodable.enumeration[Theme.Light]
+
+    given Font is Encodable =
+      Encodable.join[Font]
+       (using summon[Text is Encodable],
+              summon[Int is Encodable],
+              summon[Boolean is Encodable])
+
+    given Theme is Encodable =
+      Encodable.split[Font]
+       (using summon[Theme.Dark is Encodable],
+              summon[Theme.Light is Encodable])
+
+    given Config is Encodable =
+      Encodable.join[Config]
+       (using summon[Font is Encodable],
+              summon[Theme is Encodable])
+
+    Config(Font(t"Times", 12, false), Theme.Dark).json
+     (using summon[Config is Encodable])
+version
+    Config(Font(t"Times", 12, false), Theme.Dark).json
+```
+
+---
+
+## Generic Derivation and Errors
+
+- Encoding to JSON is _usually_ safe...
+- ...but decoding is _usually_ unsafe
+
+---
+
+## How should we define a safe decoder for JSON?
+
+```amok
+version
+    trait Encodable:
+      type Self
+      def encode(value: Self): Json
+version
+    trait Decodable:
+      type Self
+      def decode(json: Json): Self
+version
+    trait Decodable:
+      type Self
+      def decode(json: Json): Option[Self]
+version
+    trait Decodable:
+      type Self
+      def decode(json: Json): Try[Self]
+version
+    trait Decodable:
+      type Self
+      def decode(json: Json): Either[Exception, Self]
+version
+    trait Decodable:
+      type Self
+      type Fail
+      def decode(json: Json): Either[Fail, Self]
+version
+    trait Decodable:
+      type Self
+      type Fail
+      def decode(json: Json): Self raises Fail
+```
+---
+
+```amok
+version
+    given Email is Decodable
+version
+    given Email is Decodable:
+      def decode(json: Json): Email =
+        Email.parse(json.as[Text])
+version
+    given Email is Decodable:
+      type Fail = EmailError
+
+      def decode(json: Json): Email raises EmailError =
+        Email.parse(json.as[Text])
+version
+    given Email is Decodable:
+      type Fail = EmailError | JsonError
+
+      def decode(json: Json): Email raises EmailError | JsonError =
+        Email.parse(json.as[Text])
+version
+    given Email is Decodable:
+      type Fail = EmailError | JsonError
+
+      def decode(json: Json): Email raises EmailError | JsonError =
+        mitigate:
+          case JsonError(_, _, _) => EmailError()
+
+        . within:
+            Email.parse(json.as[Text])
+version
+    given Email is Decodable:
+      type Fail = EmailError
+
+      def decode(json: Json): Email raises EmailError =
+        mitigate:
+          case JsonError(_, _, _) => EmailError()
+
+        . within:
+            Email.parse(json.as[Text])
+version
+    given Email is Decodable:
+      def decode(json: Json): Email =
+        mitigate:
+          case JsonError(_, _, _) => EmailError()
+
+        . within:
+            Email.parse(json.as[Text])
+version
+    given Tactic[EmailError] ?=> Email is Decodable:
+      def decode(json: Json): Email =
+        mitigate:
+          case JsonError(_, _, _) => EmailError()
+
+        . within:
+            Email.parse(json.as[Text])
+version
+    given Tactic[EmailError] ?=> Email is Decodable:
+      def decode(json: Json): Email =
+        val text =
+          mitigate:
+            case JsonError(_, _, _) => EmailError()
+
+          . within:
+              json.as[Text]
+
+        Json.parse(text)
+version
+    given Tactic[EmailError] ?=> Email is Decodable:
+      def decode(json: Json): Email =
+        val text =
+          mitigate:
+            case JsonError(_, _, _) => EmailError()
+
+          . within:
+              val decoder = summon[Text is Decodable]
+              json.as[Text](using decoder)
+
+        Json.parse(text)
+version
+    given (Tactic[EmailError], Text is Decodable) ?=> Email is Decodable:
+      def decode(json: Json): Email =
+        val text =
+          mitigate:
+            case JsonError(_, _, _) => EmailError()
+
+          . within:
+              val decoder = summon[Text is Decodable]
+              json.as[Text](using decoder)
+
+        Json.parse(text)
+version
+    given (Tactic[EmailError], Text is Decodable) ?=> Email is Decodable:
+      def decode(json: Json): Email =
+        val text = json.as[Text](using summon[Text is Decodable])
+        Json.parse(text)
+version
+    given (Tactic[EmailError], Text is Decodable) ?=> Email is Decodable:
+      def decode(json: Json): Email =
+        val text = json.as[Text]
+        Json.parse(text)
+version
+    given (Tactic[EmailError], Text is Decodable) ?=> Email is Decodable:
+      def decode(json: Json): Email =
+        Json.parse(json.as[Text])
+version
+    given (Tactic[EmailError], Text is Decodable) ?=> Email is Decodable =
+      json => Json.parse(json.as[Text])
+version
+    given (Tactic[EmailError], Text is Decodable) => Email is Decodable =
+      json => Json.parse(json.as[Text])
+```
+---
+
+## We were right first time!
+
+```amok
+version
+    trait Decodable:
+      type Self
+      def decode(json: Json): Self
+```
+---
+
+## Typeclasses
+
+- We can define typeclasses naïvely, in the simplest possible way
+- We lose no generality
+- Any typeclass _instance_ can require any environment
+- No more difficult decisions on representation of errors or compromises
+- Typeclasses become fully polymorphic in their environment
+
+---
+
+## Decoding JSON
+
+Now let's decode a JSON value,
+
+`{ "font": { "face": "Times", "size": 12, "italic": false }, "theme": "dark" }`
+
+---
+
+## Step-by-Step Mitigation
+
+```amok
+version
+    def config(filename: Text): Config =
+      filename.decode[Path]
+version
+    def config(filename: Text): Config raises ConfigError =
+      filename.decode[Path]
+version
+    def config(filename: Text): Config raises ConfigError =
+      mitigate:
+        case PathError(_, _)    => ConfigError(BadPath)
+
+      . within:
+          filename.decode[Path]
+version
+    def config(filename: Text): Config raises ConfigError =
+      mitigate:
+        case PathError(_, _)    => ConfigError(BadPath)
+
+      . within:
+          filename.decode[Path].read[Text]
+version
+    def config(filename: Text): Config raises ConfigError =
+      mitigate:
+        case PathError(_, _)    => ConfigError(BadPath)
+        case IoError(_, _)      => ConfigError(BadFile)
+
+      . within:
+          filename.decode[Path].read[Text]
+version
+    def config(filename: Text): Config raises ConfigError =
+      mitigate:
+        case PathError(_, _)    => ConfigError(BadPath)
+        case IoError(_, _)      => ConfigError(BadFile)
+
+      . within:
+          Json.parse(filename.decode[Path].read[Text])
+version
+    def config(filename: Text): Config raises ConfigError =
+      mitigate:
+        case PathError(_, _)    => ConfigError(BadPath)
+        case IoError(_, _)      => ConfigError(BadFile)
+        case JsonError(_, _, _) => ConfigError(BadJson)
+
+      . within:
+          Json.parse(filename.decode[Path].read[Text])
+version
+    def config(filename: Text): Config raises ConfigError =
+      mitigate:
+        case PathError(_, _)    => ConfigError(BadPath)
+        case IoError(_, _)      => ConfigError(BadFile)
+        case JsonError(_, _, _) => ConfigError(BadJson)
+
+      . within:
+          Json.parse(filename.decode[Path].read[Text]).as[Config]
+version
+    def config(filename: Text): Config raises ConfigError =
+      mitigate:
+        case PathError(_, _)    => ConfigError(BadPath)
+        case IoError(_, _)      => ConfigError(BadFile)
+        case JsonError(_, _, _) => ConfigError(BadJson)
+        case ThemeError(theme)  => ConfigError(BadTheme(theme))
+
+      . within:
+          Json.parse(filename.decode[Path].read[Text]).as[Config]
+version
+    def config(filename: Text): Config raises ConfigError =
+      mitigate:
+        case PathError(_, _)    => ConfigError(BadPath)
+        case IoError(_, _)      => ConfigError(BadFile)
+        case JsonError(_, _, _) => ConfigError(BadJson)
+        case ThemeError(theme)  => ConfigError(BadTheme(theme))
+        case FontError(font)    => ConfigError(BadFont(font))
+
+      . within:
+          Json.parse(filename.decode[Path].read[Text]).as[Config]
+```
+---
+
+```amok
+version
+    case class Config(font: Font, theme: Theme)
+
+    case class Font(face: Text, size: Int, italic: Boolean)
+
+    enum Theme:
+      case Dark, Light
+version
+    case class Config(font: Font, theme: Theme)
+
+    case class Font(face: Text, size: 2 ~ 72, italic: Boolean)
+
+    enum Theme:
+      case Dark, Light
+```
+
+---
+
+```amok
+version
+    inline given [min <: Int, max <: Int]
+           => Int is Decodable
+           => min ~ max is Decodable:
+
+      def decode(json: Json): min ~ max =
+        val (min, max) = (constValue[min], constValue[max])
+        val int = json.as[Int]
+
+        if man <= int <= max then int
+        else abort(RangeError(int, min, max))
+version
+    inline given [min <: Int, max <: Int]
+           => Int is Decodable
+           => Tactic[RangeError]
+           => min ~ max is Decodable:
+
+      def decode(json: Json): min ~ max =
+        val (min, max) = (constValue[min], constValue[max])
+        val int = json.as[Int]
+
+        if man <= int <= max then int
+        else abort(RangeError(int, min, max))
+```
+
+---
+
+```amok
+version
+    def config(filename: Text): Config raises ConfigError =
+      mitigate:
+        case PathError(_, _)    => ConfigError(BadPath)
+        case IoError(_, _)      => ConfigError(BadFile)
+        case JsonError(_, _, _) => ConfigError(BadJson)
+        case ThemeError(theme)  => ConfigError(BadTheme(theme))
+        case FontError(font)    => ConfigError(BadFont(font))
+
+      . within:
+          Json.parse(filename.decode[Path].read[Text]).as[Config]
+version
+    def config(filename: Text): Config raises ConfigError =
+      mitigate:
+        case PathError(_, _)     => ConfigError(BadPath)
+        case IoError(_, _)       => ConfigError(BadFile)
+        case JsonError(_, _, _)  => ConfigError(BadJson)
+        case ThemeError(theme)   => ConfigError(BadTheme(theme))
+        case FontError(font)     => ConfigError(BadFont(font))
+        case RangeError(_, _, _) => ConfigError(BadFontSize)
+
+      . within:
+          Json.parse(filename.decode[Path].read[Text]).as[Config]
+```
+
+---
+
+## Validation
+
+---
+
+## `Tactic`
+
+```amok
+version
+    trait Tactic[-exception <: Exception]:
+      def abort(error: exception): Nothing
+
+    inline def abort[tactic <: Exception: Tactic](error: tactic): Nothing =
+      tactic.abort(error)
+version
+    trait Tactic[-exception <: Exception]:
+      def abort(error: exception): Nothing
+      def record(error: exception): Unit
+
+    inline def abort[tactic <: Exception: Tactic](error: tactic): Nothing =
+      tactic.abort(error)
+version
+    trait Tactic[-exception <: Exception]:
+      def abort(error: exception): Nothing
+      def record(error: exception): Unit
+
+    inline def abort[tactic <: Exception: Tactic](error: tactic): Nothing =
+      tactic.abort(error)
+
+    inline def raise[error <: Exception: Tactic](error: tactic): Unit =
+      tactic.record(error)
+```
+
+---
+
+## `validate`ing
+
+```amok
+version
+    def config(filename: Text): Config raises ConfigError =
+      mitigate:
+        case PathError(_, _)     => ConfigError(BadPath)
+        case IoError(_, _)       => ConfigError(BadFile)
+        case JsonError(_, _, _)  => ConfigError(BadJson)
+        case ThemeError(theme)   => ConfigError(BadTheme(theme))
+        case FontError(font)     => ConfigError(BadFont(font))
+        case RangeError(_, _, _) => ConfigError(BadFontSize)
+
+      . within:
+          Json.parse(filename.decode[Path].read[Text]).as[Config]
+version
+    def config(filename: Text): Config raises ConfigError =
+      validate:
+        case PathError(_, _)     => ConfigError(BadPath)
+        case IoError(_, _)       => ConfigError(BadFile)
+        case JsonError(_, _, _)  => ConfigError(BadJson)
+        case ThemeError(theme)   => ConfigError(BadTheme(theme))
+        case FontError(font)     => ConfigError(BadFont(font))
+        case RangeError(_, _, _) => ConfigError(BadFontSize)
+
+      . within:
+          Json.parse(filename.decode[Path].read[Text]).as[Config]
+version
+    def config(filename: Text): Config raises ConfigError =
+      validate(ConfigError()):
+        case PathError(_, _)     => ConfigError(BadPath)
+        case IoError(_, _)       => ConfigError(BadFile)
+        case JsonError(_, _, _)  => ConfigError(BadJson)
+        case ThemeError(theme)   => ConfigError(BadTheme(theme))
+        case FontError(font)     => ConfigError(BadFont(font))
+        case RangeError(_, _, _) => ConfigError(BadFontSize)
+
+      . within:
+          Json.parse(filename.decode[Path].read[Text]).as[Config]
+version
+    def config(filename: Text): Config raises ConfigError =
+      validate(ConfigError()):
+        case PathError(_, _)     => BadPath
+        case IoError(_, _)       => BadFile
+        case JsonError(_, _, _)  => BadJson
+        case ThemeError(theme)   => BadTheme(theme)
+        case FontError(font)     => BadFont(font)
+        case RangeError(_, _, _) => BadFontSize
+
+      . within:
+          Json.parse(filename.decode[Path].read[Text]).as[Config]
+```
+
+---
+
+
+## Collecting Errors
+
+- We can capture multiple errors in a validation style
+- Those errors can be heterogeneous, from different libraries
+- The compiler forces us to handle any error that might occur
+- The "happy path" is identical to the prototype version
+- Everything is typesafe
+
+---
+
+## But wait!
+
+- If we get a `RangeError`, how do we know where it happened?
+- `RangeError` has no fields for JSON position
+  - It exists for a completely orthogonal purpose
+  - It was not designed with JSON in mind
+- In other contexts, we would want different position representations, for example,
+  - XML node
+  - index when decoding elements in a `List`
+  - byte range in a source file
+  - node ID in a directed acyclic graph
+- So we need to abstract over _focus_
+
+---
+
+```amok
+version
+    def config: Config raises ConfigError =
+      validate(ConfigError()):
+        case PathError(_, _)        => BadPath
+        case IoError(_, _)          => BadFile
+        case JsonError(_, _, _)     => BadJson(m"parsing")
+        case ThemeError(theme)      => BadJson(m"bad theme $theme")
+        case FontError(font)        => BadJson(m"unknown font $font")
+        case RangeError(size, _, _) => BadJson(m"bad font size $size")
+
+      . within:
+          Json.parse(filename.decode[Path].read[Text]).as[Config]
+version
+    def config: Config raises ConfigError =
+      validate[JsonPointer](ConfigError()):
+        case PathError(_, _)        => BadPath
+        case IoError(_, _)          => BadFile
+        case JsonError(_, _, _)     => BadJson(m"parsing")
+        case ThemeError(theme)      => BadJson(m"bad theme $theme")
+        case FontError(font)        => BadJson(m"unknown font $font")
+        case RangeError(size, _, _) => BadJson(m"bad font size $size")
+
+      . within:
+          Json.parse(filename.decode[Path].read[Text]).as[Config]
+version
+    def config: Config raises ConfigError =
+      validate[JsonPointer](ConfigError()):
+        case PathError(_, _)        => BadPath
+        case IoError(_, _)          => BadFile
+        case JsonError(_, _, _)     => BadJson(m"parsing")
+        case ThemeError(theme)      => BadJson(m"bad theme $theme at $focus")
+        case FontError(font)        => BadJson(m"unknown font $font at $focus")
+        case RangeError(size, _, _) => BadJson(m"bad font size $size at $focus")
+
+      . within:
+          Json.parse(filename.decode[Path].read[Text]).as[Config]
+```
+
+---
+
+## Tracking
+
+```amok
+version
+    class Json():
+      def as[result: Encodable]: result raises JsonError
+version
+    class Json():
+      def as[result: Encodable]: result raises JsonError tracks JsonPointer
+```
+---
+
+## Performance
+
+- Exceptions can be quite expensive to construct
+- This is almost entirely the result of constructing the stack trace
+- Stack trace construction can be turned off with an import
+- The only stack traces you see are the ones you didn't handle
+
+---
+
+## Advantages
+
+- Write in composable, direct-style Scala
+- Achieve the safety of monads, without compromising on syntax
+- Seamlessly transition from prototype to production
+- Maintain typesafety under maintenance
+- No compromise on performance
+- Error handling, exception types and focus types are orthogonal and independent
+
+---
+
+## Disadvantages
+
+- Error messages with generic derivation could be more helpful sometimes
+- It's possible to capture environments unsafely
+
+---
+
+## Capture checking
+
+- There is ongoing research at EPFL into capture and escape analysis in Scala
+- Scala 3.7.0 was released last week
+- This represents the biggest change to Scala since Scala 3.0
+  - but the new features are entirely "opt-in"
+- I will retrofit capture checking to _Contingency_ when it's ready
+  - this is necessary for concurrency-safety
+
+---
+
+## Current Status
+
+- Fully implemented in the _Contingency_ module of _Soundness_
+  - Version `0.27.0` is available on Maven Central now
+  - More details about _Soundness_ are available at https://soundness.dev/
+- The design has evolved over the last three years
+- I have successfully implemented complex web and command-line applications with it
+- Soundness includes dozens of modules which embrace this direct-style of Scala
+- There are other promising projects which are looking again at exceptions for representing errors
+  - Raise4s in Scala
+  - Effectful and Bluefin in Haskell
+
+---
+
+## What is it _actually_ like to use?
+
+- I almost never see certain kinds of exception
+  - except when I'm using `strategies.throwUnsafely` for prototypes
+- The exceptions I see come from other libraries
+  - Java
+  - Scala collections
+  - division by zero
+
+---
+
+## Thank you
+
+_Never put off until **runtime** what you can do at **compiletime**._

@@ -34,13 +34,15 @@ package amok
 
 import soundness.{is as _, Node as _, *}
 
-def httpServer()(using Stdio): Unit raises ServerError raises ClasspathError = tcp"8080".serve:
-  request.location match
-    case _ /: t"api.css"  => Http.Response(Classpath/"amok"/"api.css")
-    case _ /: t"utils.js" => Http.Response(Classpath/"amok"/"utils.js")
-    case _ /: t"logo.svg" => Http.Response(Classpath/"amok"/"logo.svg")
+case class JvmFolio():
+  def handle(request: Http.Request): Http.Response = request.location match
+    case _ /: t"api.css"  => Http.Response(Classpath / "amok" / "api.css")
+    case _ /: t"code.css"  => Http.Response(Classpath / "amok" / "code.css")
+    case _ /: t"utils.js" => Http.Response(Classpath / "amok" / "utils.js")
+    case _ /: t"navigate.js" => Http.Response(Classpath / "amok" / "navigate.js")
+    case _ /: t"logo.svg" => Http.Response(Classpath / "amok" / "logo.svg")
 
-    case _ /: t"entity" /: (name: Text) =>
+    case _ /: t"_entity" /: (name: Text) =>
       val (symbol, entity, node) = model.resolve(name)
 
       Http.Response:
@@ -72,7 +74,7 @@ def httpServer()(using Stdio): Unit raises ServerError raises ClasspathError = t
                   (Tr(Th(Code(kind.syntax.html)), Th(colspan = 2)(Code(entity, t" extends ".unless(kind.extensions.isEmpty), exts))),
                   if node.types.isEmpty then Tr(Td(colspan = 3)((Em(t"This type has no members."))))
                   else node.types.to(List).flatMap: (name, template) =>
-                    val link: Path on Rfc3986 = (% / "entity" / index.child(name, true).id).on[Rfc3986]
+                    val link: Path on Rfc3986 = (% / "_entity" / index.child(name, true).id).on[Rfc3986]
                     List
                       (Tr(Td,
                           Td.kind(Code(template.definition.let(_.syntax.html))),
@@ -106,7 +108,7 @@ def httpServer()(using Stdio): Unit raises ServerError raises ClasspathError = t
                         List
                          (List(Tr(Th, Th(colspan = 2)(Code(t"extension ", subject.html)))),
                           defs.flatMap: (_, term, name, memo) =>
-                            val link: Path on Rfc3986 = (% / "entity" / index.child(name, false).id).on[Rfc3986]
+                            val link: Path on Rfc3986 = (% / "_entity" / index.child(name, false).id).on[Rfc3986]
 
                             List
                              (Tr(Td, Td.kind(Code(term.html)), Th(Code(A(href = link)(name)))),
@@ -117,7 +119,7 @@ def httpServer()(using Stdio): Unit raises ServerError raises ClasspathError = t
                       term.definition match
                         case `extension`(_, _, _) => Nil
                         case definition =>
-                          val link: Path on Rfc3986 = (% / "entity" / index.child(name, false).id).on[Rfc3986]
+                          val link: Path on Rfc3986 = (% / "_entity" / index.child(name, false).id).on[Rfc3986]
 
                           List
                            (Tr(Td, Td.kind(Code(definition.let(_.syntax).let(_.html))),
@@ -128,9 +130,9 @@ def httpServer()(using Stdio): Unit raises ServerError raises ClasspathError = t
 
               detail.let(_.html).let(Div(_)))
 
-    case _ /: t"api" =>
+    case _ /: t"_api" =>
       import html5.*
-      val rootLocation: Path on Rfc3986 = % / "entity"
+      val rootLocation: Path on Rfc3986 = % / "_entity"
 
       Http.Response:
         Page
@@ -139,13 +141,13 @@ def httpServer()(using Stdio): Unit raises ServerError raises ClasspathError = t
            (H2(t"All Packages"),
             Ul.all
              (model.root.members.filter(!_(1).hidden).map: (member, _) =>
-                val link: Path on Rfc3986 = (% / "api" / member.text.skip(1)).on[Rfc3986]
+                val link: Path on Rfc3986 = (% / "_api" / member.text.skip(1)).on[Rfc3986]
                 Li(Code(A(href = link)(member.text.skip(1)))))))
 
-    case _ /: t"api" /: (pkg: Text) =>
+    case _ /: t"_api" /: (pkg: Text) =>
       import html5.*
 
-      val rootLocation: Path on Rfc3986 = % / "entity" / pkg
+      val rootLocation: Path on Rfc3986 = % / "_entity" / pkg
 
       Http.Response:
         Page
@@ -162,4 +164,5 @@ def httpServer()(using Stdio): Unit raises ServerError raises ClasspathError = t
           List(Iframe(id = id"api", name = t"main", src = rootLocation)))
 
     case _ =>
-      Http.Response(t"Hello")
+      Server(request.pathText).let(_.handle(request)).or:
+        Http.Response(NotFound(t"Not found"))

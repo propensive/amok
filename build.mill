@@ -70,12 +70,7 @@ object amok extends ProjectModule {
       )
   }
 
-  /*object runner extends Submodule {
-    def sources = Task.Sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "src" / "runner")))
-    def moduleDeps = Seq(web)
-  }
-
-  object core extends Submodule {
+  /*object core extends Submodule {
     def sources = Task.Sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "src" / "core")))
     def ivyDeps = Agg(ivy"org.scala-lang::scala3-tasty-inspector:3.6.2")
     def moduleDeps = Seq(model)

@@ -59,7 +59,7 @@ import filesystemOptions.createNonexistent.enabled
 import filesystemOptions.createNonexistentParents.enabled
 
 given Tactic[CodlError] => Tactic[CodlReadError] => Translator =
-  HtmlTranslator(AmokEmbedding(), ScalaEmbedding)
+  HtmlTranslator(AmokEmbedding(autoScale = true), ScalaEmbedding)
 
 case class AmokError()(using Diagnostics) extends Error(m"There was a problem")
 
@@ -83,6 +83,7 @@ def amok(): Unit = cli:
       case NameError(a, b, c) =>
         Out.println(m"Invalid filename: ${a.toString} / ${b.toString} / ${c.toString}")
         Exit.Fail(4)
+
       case PathError(a, b) =>
         Out.println(m"Invalid filename ${a.toString} / ${b.toString}")
         Exit.Fail(4)
