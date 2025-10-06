@@ -42,7 +42,7 @@ object Index:
 
   def decode(text: Text): Index =
     def entity(start: Ordinal, end: Ordinal, isType: Boolean, parent: Optional[Index]): Index =
-      val part = text.segment(start ~ end)
+      val part = text.segment(start thru end)
       parent.lay(Index.Top(part))(Index.Entity(_, isType, part))
 
     def recur(position: Ordinal, start: Ordinal, isType: Boolean, index: Optional[Index]): Index =

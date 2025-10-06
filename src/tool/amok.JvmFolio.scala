@@ -34,13 +34,13 @@ package amok
 
 import soundness.{is as _, Node as _, *}
 
-case class JvmFolio():
-  def handle(request: Http.Request): Http.Response = request.location match
-    case _ /: t"api.css"  => Http.Response(Classpath / "amok" / "api.css")
-    case _ /: t"code.css"  => Http.Response(Classpath / "amok" / "code.css")
-    case _ /: t"utils.js" => Http.Response(Classpath / "amok" / "utils.js")
-    case _ /: t"navigate.js" => Http.Response(Classpath / "amok" / "navigate.js")
-    case _ /: t"logo.svg" => Http.Response(Classpath / "amok" / "logo.svg")
+case class JvmFolio(location: Text, var model: Model = Model()) extends Folio(location):
+  def handle(request: Http.Request): Http.Response = request.path match
+    case _ /: t"api.css"     => unsafely(Http.Response(Classpath / "amok" / "api.css"))
+    case _ /: t"code.css"    => unsafely(Http.Response(Classpath / "amok" / "code.css"))
+    case _ /: t"utils.js"    => unsafely(Http.Response(Classpath / "amok" / "utils.js"))
+    case _ /: t"navigate.js" => unsafely(Http.Response(Classpath / "amok" / "navigate.js"))
+    case _ /: t"logo.svg"    => unsafely(Http.Response(Classpath / "amok" / "logo.svg"))
 
     case _ /: t"_entity" /: (name: Text) =>
       val (symbol, entity, node) = model.resolve(name)
@@ -60,7 +60,7 @@ case class JvmFolio():
             val index = Index.decode(name)
 
             Page.simple
-              (index.only:
+             (index.only:
                 case Index.Entity(parent, isType, entity) =>
                   H1.pkg(Code(parent.html, symbol)),
 
@@ -71,7 +71,7 @@ case class JvmFolio():
                   else Syntax.sequence(kind.extensions, Syntax.Comma).let(_.html)
 
                 Table.members
-                  (Tr(Th(Code(kind.syntax.html)), Th(colspan = 2)(Code(entity, t" extends ".unless(kind.extensions.isEmpty), exts))),
+                 (Tr(Th(Code(kind.syntax.html)), Th(colspan = 2)(Code(entity, t" extends ".unless(kind.extensions.isEmpty), exts))),
                   if node.types.isEmpty then Tr(Td(colspan = 3)((Em(t"This type has no members."))))
                   else node.types.to(List).flatMap: (name, template) =>
                     val link: Path on Rfc3986 = (% / "_entity" / index.child(name, true).id).on[Rfc3986]
@@ -164,5 +164,5 @@ case class JvmFolio():
           List(Iframe(id = id"api", name = t"main", src = rootLocation)))
 
     case _ =>
-      Server(request.pathText).let(_.handle(request)).or:
+      Server(request.location).let(_.handle(request)).or:
         Http.Response(NotFound(t"Not found"))

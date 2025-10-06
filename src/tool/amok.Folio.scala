@@ -34,5 +34,11 @@ package amok
 
 import soundness.{is as _, Node as _, *}
 
-trait Folio:
+object Folio:
+  given Folio is Tabulable[Text] = () =>
+    Table[Folio, Text](Column(t"", TextAlignment.Left, Unset, columnar.Prose):
+      case folio: JvmFolio => t"jvm"
+      case folio           => t"content")
+
+trait Folio(val path: Text):
   def handle(request: Http.Request): Http.Response

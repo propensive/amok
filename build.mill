@@ -57,7 +57,7 @@ object amok extends ProjectModule {
   object web extends Submodule {
     def sources = Task.Sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "src" / "web")))
     def moduleDeps = Seq()
-    def ivyDeps = Agg(ivy"dev.soundness:soundness-all:0.39.0")
+    def ivyDeps = Agg(ivy"dev.soundness:soundness-all:0.42.0")
   }
 
   object tool extends Submodule {

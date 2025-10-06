@@ -43,5 +43,5 @@ case class Replacement
 
   def apply(text: Text): Text = `match`.findIn(text).lay(text): (start, end) =>
     if delete.present then t"${text.s.substring(0, start).nn}${text.s.substring(end).nn}" else
-      val text2 = t"${prefix.or(t"")}${replacement.or(text.segment(Ordinal.zerary(start) ~ Ordinal.natural(end)))}${suffix.or(t"")}"
+      val text2 = t"${prefix.or(t"")}${replacement.or(text.segment(start.z till end.z))}${suffix.or(t"")}"
       t"${text.s.substring(0, start).nn}$text2${text.s.substring(end).nn}"

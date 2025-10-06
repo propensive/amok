@@ -33,6 +33,12 @@
 package amok
 
 import soundness.{is as _, Node as _, *}
+import errorDiagnostics.stackTraces
+
+case class LoadError(file: Path on Linux, reason: Error)(using Diagnostics)
+extends Error(m"could not load the file $file because ${reason.message}")
+
+case class FiletypeError()(using Diagnostics) extends Error(m"the file was not the right type")
 
 object Amox:
   case class Base
@@ -58,7 +64,12 @@ object Amox:
 
   case class Rename(version: Text, name: Text)
 
-  def read(file: Path on Linux)(using Stdio)
-  : Base raises CodlError raises CodlReadError raises IoError raises StreamError =
+  def read(file: Path on Linux)(using Stdio): Base raises LoadError =
+    mitigate:
+      case error@IoError(path, operation, reason) => LoadError(file, error)
+      case error@CodlError(_, _, _, _)            => LoadError(file, error)
+      case error@CodlReadError(_)                 => LoadError(file, error)
+      case error@StreamError(total)               => LoadError(file, error)
 
-      file.open(Codl.read[Base](_))
+    . within:
+        file.open(Codl.read[Base](_))

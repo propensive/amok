@@ -36,6 +36,11 @@ import scala.tasty.*, inspector.*
 import scala.quoted.*
 
 import soundness.{is as _, Node as _, *}
+import errorDiagnostics.stackTraces
+import textMetrics.uniform
+import tableStyles.horizontal
+import columnAttenuation.ignore
+import enumIdentification.kebabCase
 
 given Tactic[CodlError] => Tactic[CodlReadError] => Translator =
   HtmlTranslator(AmokEmbedding(false), ScalaEmbedding)
@@ -47,14 +52,43 @@ val Boot    = Subcommand("boot",    e"start Amok using the .amok file in the cur
 val Clear   = Subcommand("clear",   e"clear definitions from a JAR file")
 val Quit    = Subcommand("quit",    e"shutdown Amok")
 val Serve   = Subcommand("serve",   e"serve the documentation on a local HTTP server")
+val Folios  = Subcommand("list",    e"list all deployed endpoints")
 
-val UrlPath = Flag("path", false, List('p'), "the path at which to serve the presentation")
+val FolioArg = Flag("folio", false, List('f'), "the URL path at which to serve the folio, e.g. /tutorials")
 
-var model = Model()
+enum Number:
+  case One, Two, Three, Four, Five, Six, Seven
+
+def load(endpoint: Text, file: Path on Linux)(using Stdio): Folio raises LoadError =
+  val folio: Optional[Folio] = Server(endpoint)
+  if file.name.ends(t".jar") then
+    Out.println(m"Loading JAR file ${file.name}")
+    folio.or(JvmFolio(endpoint)).match
+      case folio: JvmFolio => folio
+      case folio           =>
+        Out.println(m"Replacing pre-existing folio at ${folio.path}")
+        JvmFolio(endpoint)
+
+    . tap(_.model.load(file))
+
+  else if file.name.ends(t".amok") then
+    val amox = Amox.read(file)
+
+    folio.match
+      case Unset           => JvmFolio(endpoint)
+      case folio: JvmFolio => folio
+      case folio           =>
+        Out.println(m"Replacing pre-existing folio${folio.let(t" at "+_.path).or(t"")}")
+        JvmFolio(endpoint)
+
+    . tap(_.model.overlay(amox))
+
+  else abort(LoadError(file, FiletypeError()))
 
 @main
 def application(): Unit = cli:
-  idempotent(effectful(safely(TabCompletions.install())))
+  // Try to install tab-completions only once
+  Completions.ensure()
 
   arguments match
     case About() :: _ => execute:
@@ -78,7 +112,7 @@ def application(): Unit = cli:
           val memory = Heap.used/1.mib
           val build = unsafely((Classpath / "build.id").read[Text].trim)
 
-          Out.println(e"$Bold(Amok) prerelease version, build $build: $Italic(a documentation compiler for Scala)")
+          Out.println(e"$Bold(Amok) prerelease version, build $build: $Italic(a documentation engine for Scala)")
           Out.println(e"© Copyright 2025 Propensive OÜ")
           Out.println()
           Out.println(e"Memory usage: $memory MiB")
@@ -86,12 +120,31 @@ def application(): Unit = cli:
 
       Exit.Ok
 
+    case Folios() :: _ =>
+      val number = Flag("number", false, List('n'), "just a number")
+      safely(number[Number]())
+
+      execute:
+        Out.println(safely(number[Number]()).let(_.show).or(t"-"))
+        Out.println(Server.mappings.to(List).table)
+        Exit.Ok
+
     case Load() :: Pathname(file) :: _ =>
-      execute(load(file))
+      safely(FolioArg[Number]())
+      execute:
+        recover:
+          case error@LoadError(_, _) =>
+            Out.println(error.message)
+            Exit.Fail(1)
+        . within:
+            FolioArg[Text]().let: endpoint =>
+              Server.register(endpoint, load(endpoint, file))
+              Exit.Ok
+            . or:
+                Exit.Fail(1)
 
     case Present() :: Pathname(file) :: _ =>
-
-      val urlPath = UrlPath[Text]()
+      safely(FolioArg[Number]())
 
       execute:
         Out.println(m"Loading ${file.name}...")
@@ -124,24 +177,19 @@ def application(): Unit = cli:
 
             import html5.*
 
-            val htmlDoc =
-              HtmlDoc:
-                Html
-                 (Head
-                   (html5.Link.Stylesheet(href = t"/code.css"),
-                    html5.Script(src = t"/navigate.js"),
-                    Title(doc.title)),
-                  Body(Div.visible(id = id"overlay"), Main(sections*)))
+            val folio = new Folio(t"/"):
+              def handle(request: Http.Request): Http.Response = Http.Response:
+                HtmlDoc:
+                  Html
+                   (Head
+                     (html5.Link.Stylesheet(href = t"/code.css"),
+                      html5.Script(src = t"/navigate.js"),
+                      Title(doc.title)),
+                    Body(Div.visible(id = id"overlay"), Main(sections*)))
 
-            Server.register(urlPath.or(t"/"), _ => Http.Response(htmlDoc))
+            Server.register(t"/", folio)
 
             Exit.Ok
-
-    case Clear() :: Nil =>
-      execute:
-        model = Model()
-        Out.println(m"Documentation database has been cleared")
-        Exit.Ok
 
     case Quit() :: _ => execute(service.shutdown() yet Exit.Ok)
 
@@ -149,47 +197,20 @@ def application(): Unit = cli:
       recover:
         case ServerError(port) =>
           Out.println(m"Can't start a server on port $port") yet Exit.Fail(1)
+
         case ClasspathError(path) =>
           panic(m"Expected to find $path on the classpath")
 
       . within:
           tcp"8080".serve:
-            Server.mappings.keySet.find(request.location.starts(_)).show
+            Http.Response:
+              Server.mappings.keySet.find(request.location.starts(_)).map(_.show).optional.or(t"-")
 
           Out.println(e"Listening on $Bold(http://localhost:8080)")
           Exit.Ok
-
-    case Boot() :: _ => execute:
-      load(unsafely(workingDirectory[Path on Linux]) / ".amok")
 
     case command :: _ =>
       execute(Out.println(m"Unknown command: ${command()}") yet Exit.Fail(1))
 
     case Nil =>
       execute(Out.println(m"Please specify a command") yet Exit.Fail(1))
-
-
-def load(file: Path on Linux)(using Stdio): Exit =
-  if file.name.ends(t".jar") then
-    Out.println(m"Loading JAR file ${file.name}")
-
-    recover:
-      case IoError(_, _, _) => Exit.Fail(1)
-      case StreamError(_)   => Exit.Fail(1)
-
-    . within:
-        model.load(file)
-        Exit.Ok
-  else if file.name.ends(t".amok") then
-    recover:
-      case exception: Error =>
-        Out.println(exception.stackTrace.teletype)
-        Exit.Fail(1)
-
-    . within:
-        model.overlay(Amox.read(file))
-        Exit.Ok
-
-  else
-    Out.println(m"Path $file was not of the right type")
-    Exit.Fail(1)

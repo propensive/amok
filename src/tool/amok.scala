@@ -38,8 +38,8 @@ import soundness.{is as _, Node as _, *}
 
 export executives.completions
 export unhandledErrors.stackTrace
-export parameterInterpretation.posix
-export threadModels.platform
+export interpreters.posix
+export threading.platform
 export workingDirectories.daemonClient
 export logging.silent
 export filesystemOptions.dereferenceSymlinks.{enabled as dereferencingEnabled}
@@ -49,7 +49,7 @@ export filesystemOptions.createNonexistent.{disabled as creationDisabled}
 export alphabets.base64.standard
 export treeStyles.default
 export httpServers.stdlibPublic
-export asyncTermination.cancel
+export codicils.cancel
 export supervisors.global
 export charEncoders.utf8
 export charDecoders.utf8
