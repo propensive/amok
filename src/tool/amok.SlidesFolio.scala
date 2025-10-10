@@ -32,5 +32,22 @@
                                                                                                   */
 package amok
 
-enum Visibility:
-  case Private, Protected, Public
+import soundness.{is as _, Node as _, *}
+
+import html5.*
+
+class SlidesFolio(base: Mountpoint, doc: AmokDoc, source: Text, sections: List[Html[Flow]])
+extends Folio(base, t"slides", source):
+
+  def handle(using Http.Request): Http.Response = subpath match
+    case _ /: t"code.css"    => unsafely(Http.Response(Classpath / "amok" / "code.css"))
+    case _ /: t"navigate.js" => unsafely(Http.Response(Classpath / "amok" / "navigate.js"))
+    case _ =>
+      Http.Response:
+        HtmlDoc:
+          Html
+           (Head
+             (html5.Link.Stylesheet(href = t"code.css"),
+              html5.Script(src = t"navigate.js"),
+              Title(doc.title)),
+            Body(Div.visible(id = id"overlay"), Main(sections*)))

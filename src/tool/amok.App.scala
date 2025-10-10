@@ -32,56 +32,87 @@
                                                                                                   */
 package amok
 
-import scala.tasty.*, inspector.*
-import scala.quoted.*
-
 import soundness.{is as _, Node as _, *}
 import errorDiagnostics.stackTraces
 import textMetrics.uniform
 import tableStyles.horizontal
 import columnAttenuation.ignore
-import enumIdentification.kebabCase
 
-given Tactic[CodlError] => Tactic[CodlReadError] => Translator =
+given Tactic[CodlError] => Tactic[ParseError] => Translator =
   HtmlTranslator(AmokEmbedding(false), ScalaEmbedding)
 
 val About   = Subcommand("about",   e"find out about Amok")
 val Load    = Subcommand("load",    e"load definitions from a .jar or .amok file")
-val Present = Subcommand("present", e"give a presentation from a .amok file")
 val Boot    = Subcommand("boot",    e"start Amok using the .amok file in the current directory")
 val Clear   = Subcommand("clear",   e"clear definitions from a JAR file")
 val Quit    = Subcommand("quit",    e"shutdown Amok")
 val Serve   = Subcommand("serve",   e"serve the documentation on a local HTTP server")
-val Folios  = Subcommand("list",    e"list all deployed endpoints")
+val Folios  = Subcommand("list",    e"list all deployed mountpoints")
 
-val FolioArg = Flag("folio", false, List('f'), "the URL path at which to serve the folio, e.g. /tutorials")
+val MountpointArg = Flag[Mountpoint]("mountpoint", false, List('m'), "the URL at which to serve the folio, e.g. /tutorials")
+
+object Mountpoint:
+  given Mountpoint is Interpretable =
+    case Argument(Mountpoint(value)) :: _ => value
+    case _                                => Unset
+
+  def unapply(path: Text): Option[Mountpoint] =
+    val path2 = if path.starts("/") then path.skip(1) else path
+    val path3 = if path2.ends("/") then path2.skip(1, Rtl) else path2
+    Some(Mountpoint(path3.cut(t"/")*))
+
+  given Mountpoint is Showable = _.text
+
+case class Mountpoint(parts: Text*):
+  val text = parts.join(t"/", t"/", t"")
+  def contains(path: Text): Boolean = path.starts(text)
 
 enum Number:
   case One, Two, Three, Four, Five, Six, Seven
 
-def load(endpoint: Text, file: Path on Linux)(using Stdio): Folio raises LoadError =
-  val folio: Optional[Folio] = Server(endpoint)
+def load(mountpoint: Mountpoint, file: Path on Linux)(using Stdio): Folio raises LoadError =
+  val folio: Optional[Folio] = Server(mountpoint)
   if file.name.ends(t".jar") then
     Out.println(m"Loading JAR file ${file.name}")
-    folio.or(JvmFolio(endpoint)).match
+
+    folio.or(JvmFolio(mountpoint, file.encode)).match
       case folio: JvmFolio => folio
       case folio           =>
-        Out.println(m"Replacing pre-existing folio at ${folio.path}")
-        JvmFolio(endpoint)
+        Out.println(m"Replacing pre-existing folio")
+        JvmFolio(mountpoint, file.encode)
 
     . tap(_.model.load(file))
 
   else if file.name.ends(t".amok") then
-    val amox = Amox.read(file)
+    val amox = safely(Amox.read(file))
 
-    folio.match
-      case Unset           => JvmFolio(endpoint)
-      case folio: JvmFolio => folio
-      case folio           =>
-        Out.println(m"Replacing pre-existing folio${folio.let(t" at "+_.path).or(t"")}")
-        JvmFolio(endpoint)
+    amox.let: amox =>
+      folio.match
+        case Unset           => JvmFolio(mountpoint, file.encode)
+        case folio: JvmFolio => folio
+        case folio           =>
+          Out.println(m"Replacing pre-existing folio")
+          JvmFolio(mountpoint, file.encode)
 
-    . tap(_.model.overlay(amox))
+      . tap(_.model.overlay(amox))
+    . or:
+        mitigate:
+          case error@IoError(path, _, _)   => LoadError(file, error)
+          case error@StreamError(memory)   => LoadError(file, error)
+          case error@ParseError(_, _, _)   => LoadError(file, error)
+          case error@CodlError(_)          => LoadError(file, error)
+          case error@NumberError(_, _)     => LoadError(file, error)
+          case error@MarkdownError(_)      => LoadError(file, error)
+
+        . within:
+            val text = file.open(_.read[Text])
+            val stripped = text.cut(t"\n").dropWhile(_ != "##").tail.join(t"\n")
+            val doc = Codl.read[AmokDoc](text)
+
+            val sections = Markdown.parse(stripped).broken.map(_.html).zipWithIndex.map: (content, index) =>
+              html5.Section(id = DomId(t"slide${index + 1}"))(content)
+
+            SlidesFolio(mountpoint, doc, file.encode, sections)
 
   else abort(LoadError(file, FiletypeError()))
 
@@ -120,76 +151,39 @@ def application(): Unit = cli:
 
       Exit.Ok
 
-    case Folios() :: _ =>
-      val number = Flag("number", false, List('n'), "just a number")
-      safely(number[Number]())
+    case Folios() :: _ => execute:
+      val table =
+        Table[Folio]
+         (Column(e"$Bold(Mountpoint)")(_.base.show),
+          Column(e"$Bold(Source)")(_.source),
+          Column(e"$Bold(Type)")(_.kind))
 
-      execute:
-        Out.println(safely(number[Number]()).let(_.show).or(t"-"))
-        Out.println(Server.mappings.to(List).table)
-        Exit.Ok
+      recover:
+        case TerminalError() =>
+          Out.println(table.tabulate(Server.mappings.values.to(List)).grid(100))
+      . within:
+          interactive:
+            Out.println(table.tabulate(Server.mappings.values.to(List)).grid(terminal.columns.or(100)))
+
+      Exit.Ok
 
     case Load() :: Pathname(file) :: _ =>
-      safely(FolioArg[Number]())
+      safely(MountpointArg())
       execute:
-        recover:
-          case error@LoadError(_, _) =>
-            Out.println(error.message)
-            Exit.Fail(1)
-        . within:
-            FolioArg[Text]().let: endpoint =>
-              Server.register(endpoint, load(endpoint, file))
+        try
+          recover:
+            case error@LoadError(_, _) =>
+              Out.println(error.message)
+              Exit.Fail(1)
+          . within:
+              val mountpoint = MountpointArg().or(Mountpoint())
+              Out.println(m"Serving $file at $mountpoint".teletype)
+              Server.register(load(mountpoint, file))
               Exit.Ok
-            . or:
-                Exit.Fail(1)
 
-    case Present() :: Pathname(file) :: _ =>
-      safely(FolioArg[Number]())
-
-      execute:
-        Out.println(m"Loading ${file.name}...")
-        recover:
-          case IoError(path, _, _) =>
-            Out.println(m"Failed to open file ${path.name}") yet Exit.Fail(1)
-
-          case StreamError(memory) =>
-            Out.println(m"Failed to read file after $memory") yet Exit.Fail(1)
-
-          case error@CodlReadError(_) =>
-            Out.println(m"CoDL read error (${error.toString.tt}) in ${file.name}") yet Exit.Fail(5)
-
-          case error@CodlError(_, _, _, _) =>
-            Out.println(m"CoDL error (${error.toString.tt}) in ${file.name}") yet Exit.Fail(5)
-
-          case NumberError(_, _) =>
-            Out.println(m"Not a number") yet Exit.Fail(1)
-
-          case MarkdownError(_) =>
-            Out.println(m"Markdown error") yet Exit.Fail(1)
-
-        . within:
-            val text = file.open(_.read[Text])
-            val stripped = text.cut(t"\n").dropWhile(_ != "##").tail.join(t"\n")
-            val doc = Codl.read[AmokDoc](text)
-
-            val sections = Markdown.parse(stripped).broken.map(_.html).zipWithIndex.map: (content, index) =>
-              html5.Section(id = DomId(t"slide${index + 1}"))(content)
-
-            import html5.*
-
-            val folio = new Folio(t"/"):
-              def handle(request: Http.Request): Http.Response = Http.Response:
-                HtmlDoc:
-                  Html
-                   (Head
-                     (html5.Link.Stylesheet(href = t"/code.css"),
-                      html5.Script(src = t"/navigate.js"),
-                      Title(doc.title)),
-                    Body(Div.visible(id = id"overlay"), Main(sections*)))
-
-            Server.register(t"/", folio)
-
-            Exit.Ok
+        catch case error: Throwable =>
+          Out.println(error.stackTrace.teletype)
+          Out.println(m"Error: ${error.toString}") yet Exit.Ok
 
     case Quit() :: _ => execute(service.shutdown() yet Exit.Ok)
 
@@ -203,8 +197,8 @@ def application(): Unit = cli:
 
       . within:
           tcp"8080".serve:
-            Http.Response:
-              Server.mappings.keySet.find(request.location.starts(_)).map(_.show).optional.or(t"-")
+            Server.at(request.location).lay(Http.Response(NotFound(Page.simple(t"There is no page at ${request.location}")))): folio =>
+              folio.handle(using request)
 
           Out.println(e"Listening on $Bold(http://localhost:8080)")
           Exit.Ok

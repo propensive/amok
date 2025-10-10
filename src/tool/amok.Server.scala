@@ -35,7 +35,11 @@ package amok
 import soundness.{is as _, Node as _, *}
 
 object Server:
-  var mappings: Map[Text, Folio] = Map()
+  var mappings: Map[Mountpoint, Folio] = Map()
 
-  def register(url: Text, folio: Folio): Unit = mappings = mappings.updated(url, folio)
-  def apply(path: Text): Optional[Folio] = mappings.at(path)
+  def register(folio: Folio): Unit = mappings = mappings.updated(folio.base, folio)
+  def apply(mountpoint: Mountpoint): Optional[Folio] = mappings.at(mountpoint)
+
+  def at(path: Text): Optional[Folio] =
+    val matching = mappings.keySet.filter(_.contains(path))
+    if matching.isEmpty then Unset else apply(matching.maxBy(_.text.length))

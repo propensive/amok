@@ -32,8 +32,6 @@
                                                                                                   */
 package amok
 
-import scala.quoted.*
-
 import soundness.{is as _, Node as _, *}
 
 export executives.completions

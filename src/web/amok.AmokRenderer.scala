@@ -85,8 +85,7 @@ object AmokEmbedding:
       if autoScale then html5.Div.amok(style = t"font-size: ${fontSize}vw")(radios, html5.Pre(code))
       else html5.Div.amok(radios, html5.Pre(code))
 
-class AmokEmbedding(autoScale: Boolean)(using Tactic[CodlError], Tactic[CodlReadError])
-extends Embedding(t"amok"):
+class AmokEmbedding(autoScale: Boolean)(using Tactic[CodlError], Tactic[ParseError]) extends Embedding(t"amok"):
   def render(meta: Optional[Text], content: Text): Seq[Html["div"]] =
     val preamble = Codl.read[Preamble](content)
 

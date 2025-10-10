@@ -50,8 +50,8 @@ object Amox:
                entry:    List[Entry])
 
   object Entry:
-    given decoder: Void => CodlDecoder[Entry] = CodlDecoder.derived
-    given encoder: Void => CodlEncoder[Entry] = CodlEncoder.derived
+    given decoder: Void => Entry is CodlDecodable = CodlDecodable.derived
+    given encoder: Void => Entry is CodlEncodable = CodlEncodable.derived
 
   case class Entry
               (name:     Text,
@@ -67,8 +67,8 @@ object Amox:
   def read(file: Path on Linux)(using Stdio): Base raises LoadError =
     mitigate:
       case error@IoError(path, operation, reason) => LoadError(file, error)
-      case error@CodlError(_, _, _, _)            => LoadError(file, error)
-      case error@CodlReadError(_)                 => LoadError(file, error)
+      case error@CodlError(_)                     => LoadError(file, error)
+      case error@ParseError(_, _, _)              => LoadError(file, error)
       case error@StreamError(total)               => LoadError(file, error)
 
     . within:

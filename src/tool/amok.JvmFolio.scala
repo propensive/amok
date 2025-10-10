@@ -34,8 +34,10 @@ package amok
 
 import soundness.{is as _, Node as _, *}
 
-case class JvmFolio(location: Text, var model: Model = Model()) extends Folio(location):
-  def handle(request: Http.Request): Http.Response = request.path match
+class JvmFolio(mountpoint: Mountpoint, source: Text, var model: Model = Model())
+extends Folio(mountpoint, t"jvm", source):
+
+  def handle(using Http.Request): Http.Response = subpath match
     case _ /: t"api.css"     => unsafely(Http.Response(Classpath / "amok" / "api.css"))
     case _ /: t"code.css"    => unsafely(Http.Response(Classpath / "amok" / "code.css"))
     case _ /: t"utils.js"    => unsafely(Http.Response(Classpath / "amok" / "utils.js"))
@@ -48,7 +50,7 @@ case class JvmFolio(location: Text, var model: Model = Model()) extends Folio(lo
       Http.Response:
         import html5.*
         recover:
-          case MarkdownError(_) | CodlError(_, _, _, _) | CodlReadError(_) =>
+          case MarkdownError(_) | CodlError(_) | ParseError(_, _, _) =>
             Page.simple(H2(t"Error"), P(t"The page contained errors"))
 
         . within:
@@ -74,7 +76,7 @@ case class JvmFolio(location: Text, var model: Model = Model()) extends Folio(lo
                  (Tr(Th(Code(kind.syntax.html)), Th(colspan = 2)(Code(entity, t" extends ".unless(kind.extensions.isEmpty), exts))),
                   if node.types.isEmpty then Tr(Td(colspan = 3)((Em(t"This type has no members."))))
                   else node.types.to(List).flatMap: (name, template) =>
-                    val link: Path on Rfc3986 = (% / "_entity" / index.child(name, true).id).on[Rfc3986]
+                    val link: Relative on UrlSpace = (? / "_entity" / index.child(name, true).id).on[UrlSpace]
                     List
                       (Tr(Td,
                           Td.kind(Code(template.definition.let(_.syntax.html))),
@@ -108,7 +110,7 @@ case class JvmFolio(location: Text, var model: Model = Model()) extends Folio(lo
                         List
                          (List(Tr(Th, Th(colspan = 2)(Code(t"extension ", subject.html)))),
                           defs.flatMap: (_, term, name, memo) =>
-                            val link: Path on Rfc3986 = (% / "_entity" / index.child(name, false).id).on[Rfc3986]
+                            val link: Relative on UrlSpace = (? / "_entity" / index.child(name, false).id).on[UrlSpace]
 
                             List
                              (Tr(Td, Td.kind(Code(term.html)), Th(Code(A(href = link)(name)))),
@@ -119,7 +121,7 @@ case class JvmFolio(location: Text, var model: Model = Model()) extends Folio(lo
                       term.definition match
                         case `extension`(_, _, _) => Nil
                         case definition =>
-                          val link: Path on Rfc3986 = (% / "_entity" / index.child(name, false).id).on[Rfc3986]
+                          val link: Relative on UrlSpace = (? / "_entity" / index.child(name, false).id).on[UrlSpace]
 
                           List
                            (Tr(Td, Td.kind(Code(definition.let(_.syntax).let(_.html))),
@@ -132,7 +134,7 @@ case class JvmFolio(location: Text, var model: Model = Model()) extends Folio(lo
 
     case _ /: t"_api" =>
       import html5.*
-      val rootLocation: Path on Rfc3986 = % / "_entity"
+      val rootLocation: Relative on UrlSpace = ? / "_entity"
 
       Http.Response:
         Page
@@ -141,13 +143,13 @@ case class JvmFolio(location: Text, var model: Model = Model()) extends Folio(lo
            (H2(t"All Packages"),
             Ul.all
              (model.root.members.filter(!_(1).hidden).map: (member, _) =>
-                val link: Path on Rfc3986 = (% / "_api" / member.text.skip(1)).on[Rfc3986]
+                val link: Relative on UrlSpace = (? / "_api" / member.text.skip(1)).on[UrlSpace]
                 Li(Code(A(href = link)(member.text.skip(1)))))))
 
     case _ /: t"_api" /: (pkg: Text) =>
       import html5.*
 
-      val rootLocation: Path on Rfc3986 = % / "_entity" / pkg
+      val rootLocation: Relative on UrlSpace = ? / "_entity" / pkg
 
       Http.Response:
         Page
@@ -164,5 +166,5 @@ case class JvmFolio(location: Text, var model: Model = Model()) extends Folio(lo
           List(Iframe(id = id"api", name = t"main", src = rootLocation)))
 
     case _ =>
-      Server(request.location).let(_.handle(request)).or:
+      Server.at(request.location).let(_.handle(using request)).or:
         Http.Response(NotFound(t"Not found"))

@@ -41,15 +41,15 @@ object Page:
     HtmlDoc:
       Html
        (Head
-         (Script(src = % / "utils.js", defer = true), Link.Stylesheet(href = % / "api.css")),
+         (Script(src = t"utils.js", defer = true), Link.Stylesheet(href = t"api.css")),
         Body
          (Header(Nav(Ul
-            (Li(A(href = % / "api")(t"API")),
-             Li(A(href = % / "glossary")(t"GLOSSARY")),
-             Li(A(href = % / "context")(t"CONTEXT")),
-             Li(Button(id = id"theme"))))),
+           (Li(A(href = t"api")(t"API")),
+            Li(A(href = t"glossary")(t"GLOSSARY")),
+            Li(A(href = t"context")(t"CONTEXT")),
+            Li(Button(id = id"theme"))))),
           Main(Aside(Nav(nav*)), Article(article)),
           Footer(t"© Copyright 2025, Propensive OÜ")))
 
   def simple(content: Html[Flow]*): HtmlDoc = HtmlDoc:
-    Html(Head(Link.Stylesheet(href = % / "api.css")), Body(content*))
+    Html(Head(Link.Stylesheet(href = t"api.css")), Body(content*))

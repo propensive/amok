@@ -40,5 +40,8 @@ object Folio:
       case folio: JvmFolio => t"jvm"
       case folio           => t"content")
 
-trait Folio(val path: Text):
-  def handle(request: Http.Request): Http.Response
+trait Folio(val base: Mountpoint, val kind: Text, val source: Text):
+  def subpath(using Http.Request): Relative on UrlSpace =
+    request.location.skip(base.show.length).decode[Relative on UrlSpace]
+
+  def handle(using Http.Request): Http.Response
