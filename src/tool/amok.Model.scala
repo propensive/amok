@@ -209,17 +209,24 @@ class Model():
             val preClauses = if ext then groups0.take(split) else Nil
             val paramClauses = if ext then groups0.drop(split) else groups0
 
-            child.params = Syntax(10, paramClauses.map(Syntax.clause(_))*)
+            child.params =
+              if isGiven then Unset else Syntax(10, paramClauses.map(Syntax.clause(_, true))*)
+
             child.definition =
               if isGiven then `given`(flags.has(`inline`, `transparent`, `erased`))
               else
                 val definition: amok.Definition.`def` =
                   `def`(flags.has(`abstract`, `override`, `private`, `protected`, `erased`, `final`, `infix`, `transparent`, `inline`))
 
-                if ext then `extension`(Syntax(10, preClauses.map(Syntax.clause(_))*), definition)
+                if ext then `extension`(Syntax(10, preClauses.map(Syntax.clause(_, true))*), definition)
                 else definition
 
-            child.returnType = Syntax(rtn.tpe)
+            child.returnType =
+              if isGiven then
+                Syntax(10, paramClauses.flatMap: clause =>
+                  List(Syntax.clause(clause, false), Syntax.Symbolic(t" => "))
+                :+ Syntax(rtn.tpe)*)
+              else Syntax(rtn.tpe)
 
           case typeDef@TypeDef(name, _) if name != "MirroredMonoType" =>
             val flags = typeDef.symbol.flags
@@ -232,8 +239,8 @@ class Model():
             case RenameSelector(_, name) => node(of(name.tt))
             case other: Selector         => Out.println(t"Found a different kind of selector")
 
-          case other =>
-            //Out.println(t"OTHER: ${other.toString}")
+          case other if other.symbol.flags.is(Private) =>
+          case other  =>
 
       tastys.each: tasty =>
         walk(tasty.ast, root, true)

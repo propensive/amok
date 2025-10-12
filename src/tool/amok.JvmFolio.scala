@@ -85,14 +85,24 @@ extends Folio(mountpoint, t"jvm", source):
                   else Syntax.sequence(kind.extensions, Syntax.Comma).let(_.html)
 
                 val colon = if node.types.isEmpty then Nil else List(Code(t":"))
+
                 Table.members
                  (Tr(Th(colspan = 6)(Code(kind.syntax.html), Code(t" "), Code(Em(entity), t" extends ".unless(kind.extensions.isEmpty), exts), colon)),
                   node.types.to(List).flatMap: (name, template) =>
                     val link: Path on UrlSpace = (mountpoint / "_entity" / index.child(name, true).id).on[UrlSpace]
+
+                    val templateEntry: Optional[Html["tr"]] =
+                      template.template.let: template =>
+                        Tr(Td.kind(Code(template.syntax.html)), Th(colspan = 5)(Code(A(href = link)(name))))
+
+                    val definitionEntry: Optional[Html["tr"]] =
+                      template.definition.let: definition =>
+                        Tr(Td.kind(Code(definition.syntax.html)), Th(colspan = 5)(Code(A(href = link)(name))))
+
                     List
-                      (Tr(Td.kind(Code(template.definition.let(_.syntax.html))),
-                          Th(colspan = 5)(Code(A(href = link)(name)))),
-                      template.memo.let { memo => Tr(Td, Td.memo(memo.html)) })),
+                     (templateEntry,
+                      definitionEntry,
+                      template.memo.let { memo => Tr(Td, Td.memo(memo.html)) }).compact),
 
               node.definition.let: kind =>
                 val colon = if node.terms.isEmpty then Nil else List(Code(t":"))
@@ -120,7 +130,7 @@ extends Folio(mountpoint, t"jvm", source):
                             Nil
                       . groupBy(_(0)).to(List).flatMap: (subject, defs) =>
                           List
-                           (List(Tr(Td.extension(Code(t"extension ", subject.html)), Td(colspan = 5))),
+                           (List(Tr(Td.extension(Code(Span(t"extension"))), Td.extension2(colspan = 5)(Code(subject.html)))),
                             defs.flatMap: (_, term, name, memo) =>
                               val link = (mountpoint / "_entity" / index.child(name, false).id).on[UrlSpace]
 

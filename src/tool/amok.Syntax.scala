@@ -64,8 +64,8 @@ object Syntax:
   val Qmark = Syntax.Symbolic(t"?")
   val Dot = Syntax.Symbolic(t"\u200b.")
   val Project = Syntax.Symbolic(t"#")
-  val LowerBound = Syntax.Symbolic(t"?\u00a0\u200b>:\u00a0")
-  val UpperBound = Syntax.Symbolic(t"?\u00a0\u200b<:\u00a0")
+  val LowerBound = Syntax.Symbolic(t"\u00a0\u200b>:\u00a0")
+  val UpperBound = Syntax.Symbolic(t"\u00a0\u200b<:\u00a0")
   val AndUpperBound = Syntax.Symbolic(t"\u00a0\u200b<:\u00a0")
 
   def apply(outer: Int, syntax: Syntax*): Syntax.Compound =
@@ -130,7 +130,7 @@ object Syntax:
     case '|'  => 1
     case char => if char.isLetter then 0 else 9
 
-  def clause(using quotes: Quotes)(clause: quotes.reflect.ParamClause)(using Stdio): Syntax =
+  def clause(using quotes: Quotes)(clause: quotes.reflect.ParamClause, showUsing: Boolean)(using Stdio): Syntax =
     import quotes.reflect.*
     clause match
       case TermParamClause(termDefs) =>
@@ -146,7 +146,7 @@ object Syntax:
             else syntax
 
 
-        val usingKeyword = if contextual then List(Syntax.Symbolic(t"using ")) else Nil
+        val usingKeyword = if contextual && showUsing then List(Syntax.Symbolic(t"using ")) else Nil
         Syntax(10, OpenParens +: (usingKeyword ++ defs.dropRight(1)) :+ CloseParens*)
 
       case TypeParamClause(typeDefs) =>
@@ -166,6 +166,14 @@ object Syntax:
   def apply(using quotes: Quotes)(repr: quotes.reflect.TypeRepr)(using Stdio)
   : Syntax = cache.establish(repr):
     import quotes.reflect.*
+
+    def typeBounds(sub: Syntax, lb: TypeRepr, ub: TypeRepr): Syntax =
+      if lb == ub then apply(lb)
+      else if lb.typeSymbol == defn.NothingClass && ub.typeSymbol == defn.AnyClass
+      then Syntax(10, sub)
+      else if lb.typeSymbol == defn.NothingClass then Syntax(10, sub, UpperBound, apply(ub))
+      else if lb.typeSymbol == defn.AnyClass then Syntax(10, sub, LowerBound, apply(lb))
+      else Syntax(10, sub, LowerBound, apply(lb), AndUpperBound, apply(ub))
 
     repr.absolve match
       case ThisType(tpe) =>
@@ -260,34 +268,42 @@ object Syntax:
         case NullConstant()         => Syntax.Constant(t"null")
         case ClassOfConstant(cls)   => Syntax(10, ClassOf, apply(cls), CloseBracket)
 
-      case Refinement(base, name, member) => apply(base) match
-        case Syntax.Refined(base, members) =>
-          Syntax.Refined(base, members.updated(name, apply(member)))
+      case Refinement(base, name, member) =>
+        if name == "Self" then Syntax(10, apply(base), Syntax.Constant(t" is "), apply(member))
+        else apply(base) match
+          case Syntax.Refined(base, members) =>
+            Syntax.Refined(base, members.updated(name, apply(member)))
 
-        case other =>
-          if base.isFunctionType && name == "apply" then other
-          else Syntax.Refined(other, ListMap(name.tt -> apply(member)))
+          case other =>
+            if base.typeSymbol.fullName == "scala.PolyFunction" && name == "apply"
+            then apply(member)
+
+            else if base.isFunctionType && name == "apply" then other
+            else Syntax.Refined(other, ListMap(name.tt -> apply(member)))
 
       case TypeBounds(lb, ub) =>
-        if lb == ub then apply(lb)
-        else if lb.typeSymbol == defn.NothingClass && ub.typeSymbol == defn.AnyClass
-        then Syntax(10, Qmark)
-        else if lb.typeSymbol == defn.NothingClass then Syntax(10, UpperBound, apply(ub))
-        else if lb.typeSymbol == defn.AnyClass then Syntax(10, LowerBound, apply(lb))
-        else Syntax(10, LowerBound, apply(lb), AndUpperBound, apply(ub))
+        typeBounds(Qmark, lb, ub)
 
       case method@MethodType(args0, types, result) =>
+        val unnamed = args0.forall(_.startsWith("x$"))
         val args =
           if args0.isEmpty then Nil
+          else if unnamed then types.flatMap(apply(_) :: Comma :: Nil).dropRight(1)
           else args0.zip(types).flatMap(Syntax.Member(_) :: Colon :: apply(_) :: Comma :: Nil).dropRight(1)
 
         val arrow = if method.isContextFunctionType then ContextualArrow else FunctionArrow
-        Syntax(0, OpenParens +: args :+ CloseParens :+ arrow :+ apply(result)*)
+        if unnamed && args0.length == 1
+        then Syntax(0, args :+ arrow :+ apply(result)*)
+        else Syntax(0, OpenParens +: args :+ CloseParens :+ arrow :+ apply(result)*)
 
-      case PolyType(args0, types, result) =>
+      case typ@PolyType(args0, types, result) =>
         val args =
-          if args0.isEmpty then Nil
-          else args0.zip(types).flatMap(Syntax.Member(_) :: Colon :: apply(_) :: Comma :: Nil).dropRight(1)
+          if args0.isEmpty then Nil else
+            args0.zip(types).flatMap:
+              case (name, TypeBounds(lb, ub)) =>
+              typeBounds(Syntax.Member(name), lb, ub) :: Comma :: Nil
+
+            . dropRight(1)
 
         Syntax(0, OpenBracket +: args :+ CloseBracket :+ FunctionArrow :+ apply(result)*)
 
@@ -316,5 +332,5 @@ object Syntax:
       //   Syntax.Constant(t"...lazy ref...")
 
       case other =>
-        Out.println(t"Other kind of type: ${other.toString}")
+        //Out.println(t"Other kind of type: ${other.toString}")
         Syntax.Constant(t"...other: ${other.toString}...")

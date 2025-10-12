@@ -151,6 +151,7 @@ th     { font-weight: 500; border-bottom: solid var(--thin) #9992; }
 td
   { &.kind, &.extension { text-align: right; padding-left: 4ch; }
     &.extension { padding-top: 4ch; }
+    &.extension2 { padding-top: 4ch; text-align: left; }
     &>*    { margin: 0; padding: 0; } }
 
 a
