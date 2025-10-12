@@ -37,19 +37,19 @@ import soundness.{is as _, Node as _, *}
 object Page:
   import html5.*
 
-  def apply(nav: List[Html[Flow]], article: List[Html[Flow]]): HtmlDoc =
+  def apply(mountpoint: Mountpoint, nav: List[Html[Flow]], article: List[Html[Flow]]): HtmlDoc =
     HtmlDoc:
       Html
        (Head
-         (Script(src = t"utils.js", defer = true), Link.Stylesheet(href = t"api.css")),
+         (Script(src = mountpoint / "utils.js", defer = true), Link.Stylesheet(href = mountpoint / "api.css")),
         Body
          (Header(Nav(Ul
-           (Li(A(href = t"api")(t"API")),
-            Li(A(href = t"glossary")(t"GLOSSARY")),
-            Li(A(href = t"context")(t"CONTEXT")),
+           (Li(A(href = mountpoint / "_api")(t"API")),
+            Li(A(href = mountpoint / "_glossary")(t"GLOSSARY")),
+            Li(A(href = mountpoint / "_context")(t"CONTEXT")),
             Li(Button(id = id"theme"))))),
           Main(Aside(Nav(nav*)), Article(article)),
           Footer(t"© Copyright 2025, Propensive OÜ")))
 
-  def simple(content: Html[Flow]*): HtmlDoc = HtmlDoc:
-    Html(Head(Link.Stylesheet(href = t"api.css")), Body(content*))
+  def simple(mountpoint: Mountpoint, content: Html[Flow]*): HtmlDoc = HtmlDoc:
+    Html(Head(Link.Stylesheet(href = mountpoint / "api.css")), Body(content*))

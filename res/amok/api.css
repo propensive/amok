@@ -137,6 +137,8 @@ h2 { font-size: 1.5rem; font-weight: 380; }
 h3 { font-size: 1.3rem; font-weight: 430; }
 h4 { font-size: 1.1rem; font-weight: 510; }
 
+table.members { border-top: solid 1px #666; margin-bottom: 1em; justify-self: start; }
+
 table
   { margin:          1em 1rem;
     border-collapse: collapse;
@@ -144,16 +146,17 @@ table
     border-bottom:   solid var(--thin) #9992; }
 
 td, th { text-align: left; padding: 0.3rem 0.5rem; line-height: 1.5em; vertical-align: top; }
-th     { font-weight: 500; border-top: solid var(--thin) #9992; border-bottom: solid var(--thin) #9992; }
+th     { font-weight: 500; border-bottom: solid var(--thin) #9992; }
 
 td
-  { &.kind { text-align: right; }
+  { &.kind, &.extension { text-align: right; padding-left: 4ch; }
+    &.extension { padding-top: 4ch; }
     &>*    { margin: 0; padding: 0; } }
 
 a
   { transition: color 0.2s ease;
     color:                     var(--fg-color);
-    text-decoration:           underline dashed;
+    text-decoration:           underline dotted;
     text-underline-offset:     0.3em;
     text-decoration-color:     var(--accent-mid);
     text-decoration-thickness: var(--thin);
@@ -171,6 +174,7 @@ ul.all
     line-height: 1.5em;
     list-style:  none;
     padding:     1rem;
+    margin:      1em;
 
     a { text-decoration: none; } }
 

@@ -34,8 +34,10 @@ package amok
 
 import soundness.{is as _, Node as _, *}
 
-class JvmFolio(mountpoint: Mountpoint, source: Text, var model: Model = Model())
+class JvmFolio(mountpoint: Mountpoint, source: Path on Linux, var model: Model = Model())
 extends Folio(mountpoint, t"jvm", source):
+
+  given Mountpoint = mountpoint
 
   def handle(using Http.Request): Http.Response = subpath match
     case _ /: t"api.css"     => unsafely(Http.Response(Classpath / "amok" / "api.css"))
@@ -51,7 +53,7 @@ extends Folio(mountpoint, t"jvm", source):
         import html5.*
         recover:
           case MarkdownError(_) | CodlError(_) | ParseError(_, _, _) =>
-            Page.simple(H2(t"Error"), P(t"The page contained errors"))
+            Page.simple(mountpoint, H2(t"Error"), P(t"The page contained errors"))
 
         . within:
             import Markdown.renderable
@@ -60,9 +62,19 @@ extends Folio(mountpoint, t"jvm", source):
               node.detail.let(Markdown.parse(_))
 
             val index = Index.decode(name)
+            val prnt = index.only { case Index.Entity(parent, isType, entity) => parent }.option
+
+            given Imports(Set
+                   (Index.decode(t"scala.Predef"),
+                    Index.decode(t"scala.collection"),
+                    Index.decode(t"scala.collection.immutable"),
+                    Index.decode(t"scala"),
+                    Index.decode(t"prepositional"),
+                    Index.decode(t"java.lang")) ++ prnt)
+
 
             Page.simple
-             (index.only:
+             (mountpoint, index.only:
                 case Index.Entity(parent, isType, entity) =>
                   H1.pkg(Code(parent.html, symbol)),
 
@@ -72,61 +84,61 @@ extends Folio(mountpoint, t"jvm", source):
                   if kind.extensions.length == 0 then Unset
                   else Syntax.sequence(kind.extensions, Syntax.Comma).let(_.html)
 
+                val colon = if node.types.isEmpty then Nil else List(Code(t":"))
                 Table.members
-                 (Tr(Th(Code(kind.syntax.html)), Th(colspan = 2)(Code(entity, t" extends ".unless(kind.extensions.isEmpty), exts))),
-                  if node.types.isEmpty then Tr(Td(colspan = 3)((Em(t"This type has no members."))))
-                  else node.types.to(List).flatMap: (name, template) =>
-                    val link: Relative on UrlSpace = (? / "_entity" / index.child(name, true).id).on[UrlSpace]
+                 (Tr(Th(colspan = 6)(Code(kind.syntax.html), Code(t" "), Code(Em(entity), t" extends ".unless(kind.extensions.isEmpty), exts), colon)),
+                  node.types.to(List).flatMap: (name, template) =>
+                    val link: Path on UrlSpace = (mountpoint / "_entity" / index.child(name, true).id).on[UrlSpace]
                     List
-                      (Tr(Td,
-                          Td.kind(Code(template.definition.let(_.syntax.html))),
-                          Th(Code(A(href = link)(name)))),
-                      template.memo.let { memo => Tr(Td(colspan = 2), Td.memo(memo.html)) })),
+                      (Tr(Td.kind(Code(template.definition.let(_.syntax.html))),
+                          Th(colspan = 5)(Code(A(href = link)(name)))),
+                      template.memo.let { memo => Tr(Td, Td.memo(memo.html)) })),
 
               node.definition.let: kind =>
+                val colon = if node.terms.isEmpty then Nil else List(Code(t":"))
+
                 Table.members
                  (Tr
-                   (Th.kind(Code(kind.syntax.html)),
-                    Th(colspan = 2)
-                     (Code.typed
+                   (Th(colspan = 6)
+                     (Code(kind.syntax.html), Code(t" "), Code.typed
                      (Em(entity),
                       node.params.let(_.html),
                       t": ".unless(node.returnType.absent),
-                      node.returnType.let(_.html)))),
+                      node.returnType.let(_.html),
+                      colon))),
 
-                  if node.terms.isEmpty
-                  then List(Tr(Td(colspan = 3)(Em(t"This term has no members."))))
+                  if false
+                  then List(Tr(Td(colspan = 6)(Em(t"This term has no members."))))
                   else
-                    val extensions: List[(Syntax, Syntax, Text, Optional[InlineMd])] =
+
+                    val grouped: Seq[Html["tr"]] =
                       node.terms.to(List).flatMap: (name, node) =>
                         node.definition match
                           case `extension`(subject, definition, modifiers) =>
                             List((subject, definition.syntax, name, node.memo))
                           case _ =>
                             Nil
+                      . groupBy(_(0)).to(List).flatMap: (subject, defs) =>
+                          List
+                           (List(Tr(Td.extension(Code(t"extension ", subject.html)), Td(colspan = 5))),
+                            defs.flatMap: (_, term, name, memo) =>
+                              val link = (mountpoint / "_entity" / index.child(name, false).id).on[UrlSpace]
 
-                    val grouped: Seq[Html["tr"]] =
-                      extensions.groupBy(_(0)).to(List).flatMap: (subject, defs) =>
-                        List
-                         (List(Tr(Th, Th(colspan = 2)(Code(t"extension ", subject.html)))),
-                          defs.flatMap: (_, term, name, memo) =>
-                            val link: Relative on UrlSpace = (? / "_entity" / index.child(name, false).id).on[UrlSpace]
-
-                            List
-                             (Tr(Td, Td.kind(Code(term.html)), Th(Code(A(href = link)(name)))),
-                              memo.let { memo => Tr(Td(colspan = 2), Td.memo(memo.html)) }))
-                        . flatten
+                              List
+                               (Tr(Td.kind(Code(term.html)), Th(colspan = 5)(Code(A(href = link)(name)))),
+                                memo.let { memo => Tr(Td(colspan = 6), Td.memo(memo.html)) }))
+                          . flatten
 
                     val members: Seq[Html["tr"]] = node.terms.to(List).flatMap: (name, term) =>
                       term.definition match
                         case `extension`(_, _, _) => Nil
                         case definition =>
-                          val link: Relative on UrlSpace = (? / "_entity" / index.child(name, false).id).on[UrlSpace]
+                          val link: Path on UrlSpace = (mountpoint / "_entity" / index.child(name, false).id).on[UrlSpace]
 
                           List
-                           (Tr(Td, Td.kind(Code(definition.let(_.syntax).let(_.html))),
-                            Th(Code(A(href = link)(name)))),
-                            term.memo.let { memo => Tr(Td(colspan = 2), Td.memo(memo.html)) })
+                           (Tr(Td.kind(Code(definition.let(_.syntax).let(_.html))),
+                            Th(colspan = 5)(Code(A(href = link)(name)))),
+                            term.memo.let { memo => Tr(Td, Td.memo(colspan = 5)(memo.html)) })
 
                     members ++ grouped),
 
@@ -134,26 +146,28 @@ extends Folio(mountpoint, t"jvm", source):
 
     case _ /: t"_api" =>
       import html5.*
-      val rootLocation: Relative on UrlSpace = ? / "_entity"
+      val rootLocation: Path on UrlSpace = mountpoint / "_entity"
 
       Http.Response:
         Page
-         (Nil,
+         (mountpoint,
+          Nil,
           List
            (H2(t"All Packages"),
             Ul.all
              (model.root.members.filter(!_(1).hidden).map: (member, _) =>
-                val link: Relative on UrlSpace = (? / "_api" / member.text.skip(1)).on[UrlSpace]
+                val link: Path on UrlSpace = (mountpoint / "_api" / member.text.skip(1)).on[UrlSpace]
                 Li(Code(A(href = link)(member.text.skip(1)))))))
 
     case _ /: t"_api" /: (pkg: Text) =>
       import html5.*
 
-      val rootLocation: Relative on UrlSpace = ? / "_entity" / pkg
+      val rootLocation: Path on UrlSpace = mountpoint / "_entity" / pkg
 
       Http.Response:
         Page
-         (List
+         (mountpoint,
+          List
            (Details.imports
              (Summary(B(t"import")),
               Div(Details(Summary(t"scala.*"))),

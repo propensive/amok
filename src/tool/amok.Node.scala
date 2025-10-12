@@ -67,13 +67,13 @@ class Node(parent0: Optional[Node] = Unset):
       Node(this).tap: node =>
         membersMap(member) = node
 
-  def tree(name: Text, group: Text, path: Text): Element["details"] =
+  def tree(name: Text, group: Text, path: Text)(using mountpoint: Mountpoint): Element["details"] =
     import html5.*
     val members2 = members.filter(!_(1).hidden)
 
     Details(name = group.urlEncode, id = DomId(t"menu_${path}"))
-     (if members2.isEmpty then Summary(A(href = % / "entity" / path, target = id"main")(name))
-      else Summary.full(A(href = % / "entity" / path, target = id"main")(name)),
+     (if members2.isEmpty then Summary(A(href = mountpoint / "_entity" / path, target = id"main")(name))
+      else Summary.full(A(href = mountpoint / "_entity" / path, target = id"main")(name)),
       Div:
         members2.map: (member, node) =>
           node.tree(member.text, path, path+member.safe))

@@ -53,8 +53,3 @@ export charEncoders.utf8
 export charDecoders.utf8
 export textSanitizers.skip
 export classloaders.threadContext
-
-given Imports(Set
-       (Index.decode(t"scala.Predef"),
-        Index.decode(t"prepositional"),
-        Index.decode(t"java.lang")))

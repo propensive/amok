@@ -6,9 +6,9 @@ var currentIndex = (match ? parseInt(match[1], 10) : 1) - 1;
 scrollToSlide(currentIndex + 1);
 
 (function poll() {
-  const pollingUrl = '/update'; // Replace with your actual URL
+  const pollingUrl = '/update';
 
-  fetch(pollingUrl, { method: 'GET', redirect: 'manual' }) // Prevent automatic redirect handling
+  fetch(pollingUrl, { method: 'GET', redirect: 'manual' })
     .then(response => {
       if (response.status === 200) {
         const baseUrl = window.location.origin + window.location.pathname;
@@ -19,14 +19,14 @@ scrollToSlide(currentIndex + 1);
           window.location.replace(baseUrl + uniqueQuery + "#slide" + (currentIndex + 1));
         }, 300);
       } else {
-        setTimeout(poll, 1); // adjust interval as needed
+        setTimeout(poll, 1);
       }
     })
     .catch(err => {
       console.error('Polling request failed:', err);
-      setTimeout(poll, 5000); // retry on failure after a longer delay
+      setTimeout(poll, 5000);
     });
-})();
+})/*()*/;
 
 window.addEventListener('load', function() {
   var sections = document.getElementsByTagName('section');

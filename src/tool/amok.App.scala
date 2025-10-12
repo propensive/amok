@@ -65,7 +65,11 @@ object Mountpoint:
 
 case class Mountpoint(parts: Text*):
   val text = parts.join(t"/", t"/", t"")
+  val path: Path on UrlSpace = Path.of(t"/", parts.reverse*)
   def contains(path: Text): Boolean = path.starts(text)
+
+  @targetName("child")
+  def / (text: String): Path on UrlSpace = path / text
 
 enum Number:
   case One, Two, Three, Four, Five, Six, Seven
@@ -75,11 +79,11 @@ def load(mountpoint: Mountpoint, file: Path on Linux)(using Stdio): Folio raises
   if file.name.ends(t".jar") then
     Out.println(m"Loading JAR file ${file.name}")
 
-    folio.or(JvmFolio(mountpoint, file.encode)).match
+    folio.or(JvmFolio(mountpoint, file)).match
       case folio: JvmFolio => folio
       case folio           =>
         Out.println(m"Replacing pre-existing folio")
-        JvmFolio(mountpoint, file.encode)
+        JvmFolio(mountpoint, file)
 
     . tap(_.model.load(file))
 
@@ -88,11 +92,11 @@ def load(mountpoint: Mountpoint, file: Path on Linux)(using Stdio): Folio raises
 
     amox.let: amox =>
       folio.match
-        case Unset           => JvmFolio(mountpoint, file.encode)
+        case Unset           => JvmFolio(mountpoint, file)
         case folio: JvmFolio => folio
         case folio           =>
           Out.println(m"Replacing pre-existing folio")
-          JvmFolio(mountpoint, file.encode)
+          JvmFolio(mountpoint, file)
 
       . tap(_.model.overlay(amox))
     . or:
@@ -112,7 +116,7 @@ def load(mountpoint: Mountpoint, file: Path on Linux)(using Stdio): Folio raises
             val sections = Markdown.parse(stripped).broken.map(_.html).zipWithIndex.map: (content, index) =>
               html5.Section(id = DomId(t"slide${index + 1}"))(content)
 
-            SlidesFolio(mountpoint, doc, file.encode, sections)
+            SlidesFolio(mountpoint, doc, file, sections)
 
   else abort(LoadError(file, FiletypeError()))
 
@@ -155,7 +159,7 @@ def application(): Unit = cli:
       val table =
         Table[Folio]
          (Column(e"$Bold(Mountpoint)")(_.base.show),
-          Column(e"$Bold(Source)")(_.source),
+          Column(e"$Bold(Source)")(_.source.relativeTo(unsafely(workingDirectory[Path on Linux])).encode),
           Column(e"$Bold(Type)")(_.kind))
 
       recover:
@@ -177,7 +181,7 @@ def application(): Unit = cli:
               Exit.Fail(1)
           . within:
               val mountpoint = MountpointArg().or(Mountpoint())
-              Out.println(m"Serving $file at $mountpoint".teletype)
+              Out.println(m"Deploying $file to $mountpoint".teletype)
               Server.register(load(mountpoint, file))
               Exit.Ok
 
@@ -197,7 +201,7 @@ def application(): Unit = cli:
 
       . within:
           tcp"8080".serve:
-            Server.at(request.location).lay(Http.Response(NotFound(Page.simple(t"There is no page at ${request.location}")))): folio =>
+            Server.at(request.location).lay(Http.Response(NotFound(Page.simple(Mountpoint(), t"There is no page at ${request.location}")))): folio =>
               folio.handle(using request)
 
           Out.println(e"Listening on $Bold(http://localhost:8080)")

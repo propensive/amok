@@ -46,9 +46,12 @@ theme.addEventListener('click', () => {
 
 iframe.addEventListener('load', () => {
   const url = iframe.contentWindow.location;
-  const detailsId = "menu_"+decodeURIComponent(url.pathname.slice(8));
-  const oldLocation = window.location.origin+"/api/";
-  history.replaceState(null, '', oldLocation+url.pathname.slice(8));
+  const base = url.pathname.indexOf("_entity");
+  const offset = base + 8;
+  const detailsId = "menu_"+decodeURIComponent(url.pathname.slice(offset));
+  console.log(detailsId);
+  const oldLocation = url.pathname.substring(0, base)+"_api/";
+  history.replaceState(null, '', oldLocation+url.pathname.slice(offset));
 
   if (!detailsId) return;
 

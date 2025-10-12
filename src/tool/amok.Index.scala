@@ -55,18 +55,21 @@ object Index:
 
     recur(Prim, Prim, false, Unset)
 
-  given (imports: Imports) => Index is Renderable:
+  given (imports: Imports, mountpoint: Mountpoint) => Index is Renderable:
     import html5.*
     type Result = Phrasing
 
     def html(index: Index): List[Html[Phrasing]] =
       def recur(index: Index): Html[Phrasing] =
         val ref = index.id
-        def link(name: Text) = A(href = % / "entity" / ref)(name)
+        def link(name: Text) = A(href = mountpoint / "_entity" / ref)(name)
 
         index match
           case Top(name) =>
             Span(link(name))
+
+          case Entity(_, _, name) if name.starts(t"_$$") =>
+            Span(name.skip(2))
 
           case Entity(parent, isType, name) =>
             if imports.has(parent) then Span(link(name))
@@ -94,5 +97,5 @@ enum Index:
     case Entity(parent, false, name) => t"${parent.text}.$name"
     case Entity(parent, true, name)  => t"${parent.text}⌗$name"
 
-  def apiLink: Path on UrlSpace = (% / "api" / text.skip(1)).on[UrlSpace]
-  def entityLink: Path on UrlSpace = (% / "entity" / text.skip(1)).on[UrlSpace]
+  def apiLink(using mountpoint: Mountpoint): Path on UrlSpace = (mountpoint / "_api" / text.skip(1)).on[UrlSpace]
+  def entityLink(using mountpoint: Mountpoint): Path on UrlSpace = (mountpoint / "_entity" / text.skip(1)).on[UrlSpace]

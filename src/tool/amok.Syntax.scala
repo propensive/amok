@@ -77,18 +77,24 @@ object Syntax:
 
     Syntax.Compound(outer, elements*)
 
-  given renderable: Imports => Syntax is Renderable:
+  given renderable: (Imports, Mountpoint) => Syntax is Renderable:
     import html5.*
     type Result = Phrasing
 
     def html(syntax: Syntax): List[Html[Phrasing]] = List:
       syntax match
-        case Simple(index, _)         => Span(index.html)
-        case Compound(_, syntaxes*)   => Span(syntaxes.flatMap(html(_)))
-        case Symbolic(text)           => text
-        case Member(text)             => Em(text)
-        case Constant(text)           => Strong(text)
-        case Refined(syntax, members) => Span(html(syntax), t"{ ... }")
+        case Simple(index, _)       => Span(index.html)
+        case Compound(_, syntaxes*) => Span(syntaxes.flatMap(html(_)))
+        case Symbolic(text)         => text
+        case Member(text)           => Em(text)
+        case Constant(text)         => Strong(text)
+        case Refined(base, members) =>
+
+          val inside = members.flatMap: (name, member) =>
+            List(Span(t"type ", name, " = ", html(member)), Span(t"; "))
+
+
+          Span(html(base), t"{ ", inside.to(List).init, t" }")
 
   given showable: Imports => Syntax is Showable:
     def text(syntax: Syntax): Text = syntax match
@@ -132,8 +138,8 @@ object Syntax:
         val defs = termDefs.flatMap:
           case valDef@ValDef(name, rtn, default) =>
             val syntax =
-              /*if name.tt.starts(t"evidence$$") || name.tt.starts(t"x$$") then List(apply(rtn.tpe), Comma)
-              else*/ List(Syntax.Member(name.tt), Colon, apply(rtn.tpe), Comma)
+              if name.tt.starts(t"evidence$$") || name.tt.starts(t"x$$") then List(apply(rtn.tpe), Comma)
+              else List(Syntax.Member(name.tt), Colon, apply(rtn.tpe), Comma)
 
             if valDef.symbol.flags.is(Flags.Inline)
             then Syntax.Member(t"inline\u00a0") :: syntax
@@ -175,9 +181,7 @@ object Syntax:
             val module = typeRef.typeSymbol.flags.is(Flags.Module)
 
             val name2 = if module then name.tt.skip(1, Rtl) else name.tt
-            if name2.ends(t"$$package") || name2 == t"package" then simple
-            else
-              if name2.contains(t"package") then Out.println(t"Package: ${name2}")
+            if name2.ends(t"$$package") || name2 == t"package" then simple else
               Syntax.Simple(Index.Entity(index, !isTerm, name2), module)
 
           case compound: Syntax.Compound =>
@@ -225,8 +229,15 @@ object Syntax:
       case ByNameType(tpe)       => Syntax(0, Arrow, apply(tpe))
       case FlexibleType(tpe)     => Syntax(0, apply(tpe), Qmark)
 
-      case AppliedType(base, args0) =>
-        if args0.length == 2 && repr.typeSymbol.flags.is(Flags.Infix)
+      case typ@AppliedType(base, args0) =>
+        if typ.isFunctionType then
+          val args = args0.init.flatMap(apply(_) :: Comma :: Nil).dropRight(1)
+          val result = args0.last
+          val arrow = if typ.isContextFunctionType then ContextualArrow else FunctionArrow
+          if args0.length == 2
+          then Syntax(0, args :+ arrow :+ apply(result)*)
+          else Syntax(0, OpenParens +: args :+ CloseParens :+ arrow :+ apply(result)*)
+        else if args0.length == 2 && repr.typeSymbol.flags.is(Flags.Infix)
         then Syntax(0, apply(args0(0)), Space, apply(base), Space, apply(args0(1)))
         else
           val args = args0.map(apply(_)).flatMap(List(_, Comma)).dropRight(1)
@@ -254,7 +265,8 @@ object Syntax:
           Syntax.Refined(base, members.updated(name, apply(member)))
 
         case other =>
-          Syntax.Refined(other, ListMap(name.tt -> apply(member)))
+          if base.isFunctionType && name == "apply" then other
+          else Syntax.Refined(other, ListMap(name.tt -> apply(member)))
 
       case TypeBounds(lb, ub) =>
         if lb == ub then apply(lb)
@@ -289,7 +301,6 @@ object Syntax:
         case MethodType(params, _, _) => Syntax.Member(params(n))
         case PolyType(params, _, _)   => Syntax.Member(params(n))
         case other =>
-          Out.println(t"Other kind of binder: ${other.toString}")
           Syntax.Constant(t"ParamRef")
 
       case classInfo: dotty.tools.dotc.core.Types.ClassInfo =>

@@ -36,7 +36,7 @@ import soundness.{is as _, Node as _, *}
 
 import html5.*
 
-class SlidesFolio(base: Mountpoint, doc: AmokDoc, source: Text, sections: List[Html[Flow]])
+class SlidesFolio(base: Mountpoint, doc: AmokDoc, source: Path on Linux, sections: List[Html[Flow]])
 extends Folio(base, t"slides", source):
 
   def handle(using Http.Request): Http.Response = subpath match
