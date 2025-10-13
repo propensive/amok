@@ -13,6 +13,14 @@ format   presentation
 
 ---
 
+## Soundness
+
+- over 100 libraries or modules
+- reimplements large parts of the Java and Scala standard libraries
+- goes much further than that
+
+---
+
 ## Two Golden Rules
 
 - Impossible states must be unrepresentable
@@ -20,28 +28,177 @@ format   presentation
 
 ---
 
+## Make it...
+
+- ... _work_
+- ... _correct_
+- ... _safe_
+- ... _elegant_
+- ... _fast_
+
+---
+
+## Ten Sample libraries
+
+- _Aviation_ — for working with time, in all its forms
+- _Baroque_ — for representing complex numbers
+- _Caesura_ — for reading, processing and writing CSV and TSV
+- _Dissonance_ — an implementation of Myers' _diff_ algorithm
+- _Escritoire_ — for writing tables (to the console)
+- _Fulminate_ — providing rich user-facing messages (e.g. for errors)
+- _Guillotine_ — for executing shell commands
+- _Hyperbole_ — decomposing and presenting TASTy trees
+- _Iridescence_ — for representing and transforming colors and color models
+- _Jacinta_ — another JSON library
+
+---
+
 ## Modules
 
-- `cli` — command line applications
-- `web` — web applications
-- `test` — tools for testing
-- `dev` — tools for application developers
+- `core` — some fundamentals
+- `cli` — for developing command line applications
+- `web` — for developing web applications
 - `sci` — scientific representations and utilities
+- `test` — for testing
+- `tool` — for tooling developers
 - `data` — for working with data in various forms
 
 ---
 
-## `Optional` values
+# `core`
+
+* safe error-handling
+* pretty-printing of stack traces
+* typesafe strings
+* representation of color
+* easy generic derivation
+* inline regular expressions
+* optional values
 
 ---
 
-## `Text`
-
-- `Text` is a typesafe string
+## Polymorphism
 
 ---
 
 ## Error handling
+
+Let's take a filename, interpret it as a path, read its content as text, and parse it as JSON.
+
+```amok
+version
+    @main
+    def info(filename: Text): Text =
+      val json: Json = Json.parse(filename.decode[Path on Linux].read[Text])
+      val person = json.companies(0).ceo.as[Person]
+
+      t"The CEO is ${person.name}."
+version
+    import strategies.throwUnsafely
+
+    @main
+    def info(filename: Text): Text =
+      val json: Json = Json.parse(filename.decode[Path on Linux].read[Text])
+      val person = json.companies(0).ceo.as[Person]
+
+      t"The CEO is ${person.name}."
+version
+    import strategies.throwUnsafely
+
+    @main
+    def info(filename: Text): Text =
+      val json: Json = Json.parse(filename.decode[Path on Linux].read[Text])
+      import dynamicJson.enabled
+      val person = json.companies(0).ceo.as[Person]
+
+      t"The CEO is ${person.name}."
+version
+    @main
+    def info(filename: Text): Text =
+      val json: Optional[Json] = safely(Json.parse(filename.decode[Path on Linux].read[Text]))
+      import dynamicJson.enabled
+      val person = json.let(_.companies(0).ceo.as[Person])
+
+      t"The CEO is ${person.lay("unknown")(_.name)}."
+```
+
+---
+
+## Example
+
+There are several possible failures:
+- `_.decode[Path on Linux]` might fail if the path is invalid
+- `_.read[Text]` might fail if there's a disk I/O error
+- `Json.parse(_)` might fail if the content is invalid
+
+---
+
+```amok
+context  term
+version  Json.parse(filename.decode[Path].read[Text])
+```
+
+```amok
+context  term
+version
+    val path = filename.decode[Path]
+    val text = path.read[Text]
+    val json = Json.parse(text)
+version
+    val path: Path = filename.decode[Path]
+    val text: Text = path.read[Text]
+    val json: Json = Json.parse(text)
+version
+    val path: Try[Path] = filename.decode[Path]
+    val text: Try[Text] = path.flatMap(_.read[Text])
+    val json: Try[Json] = text.flatMap(Json.parse(_))
+version
+    val path = filename.decode[Path]
+    val text = path.flatMap(_.read[Text])
+    val json = text.flatMap(Json.parse(_))
+version
+    for path <- filename.decode[Path]
+        text <- path.read[Text]
+    yield Json.parse(text)
+```
+
+---
+
+## Dynamic JSON access
+
+```amok
+context  term
+version  json.users(0).roles(0).as[Role]
+version  json.users.flatMap(_(0)).roles(0).as[Role]
+version  json.users.flatMap(_(0)).flatMap(_.roles)(0).as[Role]
+version  json.users.flatMap(_(0)).flatMap(_.roles).flatMap(_(0)).as[Role]
+version  json.users.flatMap(_(0)).flatMap(_.roles).flatMap(_(0)).flatMap(_.as[Role])
+version
+    for role <- json.users.flatMap(_(0)).flatMap(_.roles).flatMap(_(0)).flatMap(_.as[Role])
+    yield role
+version
+    for users <- json.users
+        role  <- users(0).flatMap(_.roles).flatMap(_(0)).flatMap(_.as[Role])
+    yield role
+version
+    for users <- json.users
+        user  <- users(0)
+        role  <- user.roles.flatMap(_(0)).flatMap(_.as[Role])
+    yield role
+version
+    for users <- json.users
+        user  <- users(0)
+        roles <- user.roles
+        role  <- roles(0).flatMap(_.as[Role])
+    yield role
+version
+    for users <- json.users
+        user  <- users(0)
+        roles <- user.roles
+        role0 <- roles(0)
+        role  <- role0.as[Role]
+    yield role
+```
 
 ---
 
@@ -100,16 +257,645 @@ version
 
 ---
 
+# `cli`
+
+* interactive CLI applications
+* rendering tree- and DAG-like data in the terminal
+* tab-completions for CLI applications
+* tabulating data for the terminal
+* bundling a Scala program for distribution
+* instantaneous startup for CLI apps
+* executing shell commands
+* filesystem monitoring
+
+---
+
+```amok
+version
+    @main
+    def run(): Unit = println("Hello world")
+version
+    @main
+    def run(): Unit = cli:
+      println("Hello world")
+version
+    @main
+    def run(): Unit = cli:
+      Out.println("Hello world")
+version
+    @main
+    def run(): Unit = cli:
+      execute:
+        Out.println("Hello world")
+version
+    @main
+    def run(): Unit = cli:
+      execute:
+        Out.println("Hello world")
+        Exit.Ok
+version
+    @main
+    def run(): Unit = cli:
+      Out.println("Hello world") // does not compile
+      execute:
+        Out.println("Hello world")
+        Exit.Ok
+version
+    @main
+    def run(): Unit = cli:
+      execute:
+        Out.println("Hello world")
+        Exit.Ok
+version
+    @main
+    def run(): Unit = cli:
+      execute:
+        Out.println("Hello world") yet Exit.Ok
+version
+    val Greet = Subcommand("greet")
+    @main
+    def run(): Unit = cli:
+      execute:
+        Out.println("Hello world") yet Exit.Ok
+version
+    val Greet = Subcommand("greet")
+    @main
+    def run(): Unit = cli:
+      arguments match
+        case Greet() :: _ =>
+          execute:
+            Out.println("Hello world") yet Exit.Ok
+version
+    val Greet = Subcommand("greet")
+    @main
+    def run(): Unit = cli:
+      arguments match
+        case Greet() :: _ =>
+          execute:
+            Out.println("Hello world") yet Exit.Ok
+        case _ =>
+          execute:
+            Out.println("Unrecognized command") yet Exit.Fail(1)
+version
+    val Greet = Subcommand("greet")
+    val Check = Subcommand("check")
+    @main
+    def run(): Unit = cli:
+      arguments match
+        case Greet() :: _ =>
+          execute:
+            Out.println("Hello world") yet Exit.Ok
+        case _ =>
+          execute:
+            Out.println("Unrecognized command") yet Exit.Fail(1)
+version
+    val Greet = Subcommand("greet")
+    val Check = Subcommand("check")
+    @main
+    def run(): Unit = cli:
+      arguments match
+        case Greet() :: _ =>
+          execute:
+            Out.println("Hello world") yet Exit.Ok
+        case Check() :: _ =>
+          execute:
+            Out.println("Checking something") yet Exit.Ok
+        case _ =>
+          execute:
+            Out.println("Unrecognized command") yet Exit.Fail(1)
+version
+    val Greet = Subcommand("greet", "give a friendly greeting")
+    val Check = Subcommand("check", "check something")
+    @main
+    def run(): Unit = cli:
+      arguments match
+        case Greet() :: _ =>
+          execute:
+            Out.println("Hello world") yet Exit.Ok
+        case Check() :: _ =>
+          execute:
+            Out.println("Checking something") yet Exit.Ok
+        case _ =>
+          execute:
+            Err.println("Unrecognized command") yet Exit.Fail(1)
+version
+    val Greet = Subcommand("greet", "give a friendly greeting")
+    val Check = Subcommand("check", "check something")
+    @main
+    def run(): Unit = cli:
+      arguments match
+        case Greet() :: name :: _ =>
+          execute:
+            Out.println(t"Hello ${name()}") yet Exit.Ok
+        case Check() :: _ =>
+          execute:
+            Out.println("Checking something") yet Exit.Ok
+        case _ =>
+          execute:
+            Err.println("Unrecognized command") yet Exit.Fail(1)
+version
+    val Greet = Subcommand("greet", "give a friendly greeting")
+    val Check = Subcommand("check", "check something")
+    @main
+    def run(): Unit = cli:
+      arguments match
+        case Greet() :: name :: _ =>
+          execute:
+            Out.println(t"Hello ${name()}") yet Exit.Ok
+        case Check() :: Nil =>
+          enum Color:
+            case Red, Green, Blue
+          Flag("color", List('c'))[Color]()
+          execute:
+            Out.println("Checking something") yet Exit.Ok
+        case _ =>
+          execute:
+            Err.println("Unrecognized command") yet Exit.Fail(1)
+```
+
+---
+
+# `data`
+
+* Myers' _diff_ algorithm
+* structural comparison of datatypes
+* libraries for working with JSON, XML and CSV/TSV
+* BASEn encoding
+* tools for working with record types
+* cryptographic digests
+* encryption and decryption tools
+
+---
+
 ## Generic Derivation
 
 ---
 
-## Command Line Interface
+# `sci`
+
+* representations of physical quantities
+* quantized quantities (e.g. feet and inches)
+* datatypes for working with directed acyclic graphs
+* representations of complex numbers
+* representations of chemical symbols
+* safe arithmetic tools
+* opaque types for unsigned arithmetic
+* vector and matrix algebra
 
 ---
 
-### Tabulation
+# `tool`
+
+* typesafe programmatic invocations of the Scala compiler
+* compiler-checked syntax highlighting
+* classpath manipulation
+* TASTy analysis
+* programmatic interface to Git
+* plugin for compile-time package-shading
+* Java bytecode decompiler
 
 ---
 
-### Interactivity
+# `test`
+
+* unit test runner
+* benchmarking
+* structured comparison of values
+* test compiletime error messages
+* provision of randomized data
+
+---
+
+## Direct-Style Scala
+
+```amok
+version
+    block:
+      action()
+version
+    block {
+      action()
+    }
+version
+    block { context ?=>
+      action()(using context)
+    }
+version
+    block:
+      action()
+```
+
+---
+
+## The Typeclass Dilemma
+
+```amok
+version
+    trait Decodable[result]:
+      def decode(text: Text): result
+version
+    trait Decodable:
+      type Self
+      def decode(text: Text): Self
+version
+    object Decodable:
+      given Text is Decodable = identity(_)
+
+    trait Decodable:
+      type Self
+      def decode(text: Text): Self
+version
+    object Decodable:
+      given Text is Decodable = identity(_)
+
+      given Int is Decodable:
+        def decode(text: Text): Int = ???
+
+    trait Decodable:
+      type Self
+      def decode(text: Text): Self
+version
+    object Decodable:
+      given Text is Decodable = identity(_)
+
+      given Int is Decodable:
+        def decode(text: Text): Int = _.toInt
+
+    trait Decodable:
+      type Self
+      def decode(text: Text): Self
+version
+    object Decodable:
+      given Text is Decodable = identity(_)
+
+      given Int is Decodable:
+        def decode(text: Text): Optional[Int] =
+          if isValidInt(text) then text.toInt else Unset
+
+    trait Decodable:
+      type Self
+      def decode(text: Text): Self
+version
+    object Decodable:
+      given Text is Decodable = identity(_)
+
+      given Int is Decodable:
+        def decode(text: Text): Optional[Int] =
+          if isValidInt(text) then text.toInt else Unset
+
+    trait Decodable:
+      type Self
+      def decode(text: Text): Optional[Self]
+version
+    object Decodable:
+      given Text is Decodable = identity(_)
+
+      given Int is Decodable:
+        def decode(text: Text): Optional[Int] =
+          if isValidInt(text) then text.toInt else Unset
+
+      given User is Decodable:
+        def decode(text: Text): Optional[User] = ???
+
+    trait Decodable:
+      type Self
+      def decode(text: Text): Optional[Self]
+version
+    object Decodable:
+      given Text is Decodable = identity(_)
+
+      given Int is Decodable:
+        def decode(text: Text): Optional[Int] =
+          if isValidInt(text) then text.toInt else Unset
+
+      given User is Decodable:
+        def decode(text: Text): Optional[User] =
+          summon[UserDb].lookup(text)
+
+    trait Decodable:
+      type Self
+      def decode(text: Text): Optional[Self]
+version
+    object Decodable:
+      given Text is Decodable = identity(_)
+
+      given Int is Decodable:
+        def decode(text: Text): Optional[Int] =
+          if isValidInt(text) then text.toInt else Unset
+
+      given User is Decodable:
+        def decode(text: Text)(using UserDb): Optional[User] =
+          summon[UserDb].lookup(text)
+
+    trait Decodable:
+      type Self
+      def decode(text: Text): Optional[Self]
+version
+    object Decodable:
+      given Text is Decodable:
+        def decode(text: Text)(using UserDb): Text = text
+
+      given Int is Decodable:
+        def decode(text: Text)(using UserDb): Optional[Int] =
+          if isValidInt(text) then text.toInt else Unset
+
+      given User is Decodable:
+        def decode(text: Text)(using UserDb): Optional[User] =
+          summon[UserDb].lookup(text)
+
+    trait Decodable:
+      type Self
+      def decode(text: Text)(using UserDb): Optional[Self]
+version
+    object Decodable:
+      given Text is Decodable:
+        def decode(text: Text)(using UserDb): Text = text
+
+      given Int is Decodable:
+        def decode(text: Text)(using UserDb): Optional[Int] =
+          if isValidInt(text) then text.toInt else Unset
+
+      given User is Decodable:
+        def decode(text: Text)(using UserDb): Optional[User] =
+          summon[UserDb].lookup(text)
+
+    trait Decodable:
+      type Self
+      def decode(text: Text): Self
+version
+    object Decodable:
+      given Text is Decodable = identity(_)
+
+      given Int is Decodable:
+        def decode(text: Text): Int =
+          if isValidInt(text) then text.toInt else Unset
+
+      given User is Decodable:
+        def decode(text: Text): User =
+          summon[UserDb].lookup(text)
+
+    trait Decodable:
+      type Self
+      def decode(text: Text): Self
+version
+    object Decodable:
+      given Text is Decodable = identity(_)
+
+      given Int is Decodable:
+        def decode(text: Text): Int =
+          if isValidInt(text) then text.toInt else raise(NumberError(text))
+
+      given User is Decodable:
+        def decode(text: Text): User =
+          summon[UserDb].lookup(text).or(raise(UserError(text)))
+
+    trait Decodable:
+      type Self
+      def decode(text: Text): Self
+version
+    object Decodable:
+      given Text is Decodable = identity(_)
+
+      given Tactic[NumberError] => Int is Decodable:
+        def decode(text: Text): Int =
+          if isValidInt(text) then text.toInt else raise(NumberError(text))
+
+      given Tactic[UserError] => User is Decodable:
+        def decode(text: Text): User =
+          summon[UserDb].lookup(text).or(raise(UserError(text)))
+
+    trait Decodable:
+      type Self
+      def decode(text: Text): Self
+version
+    object Decodable:
+      given Text is Decodable = identity(_)
+
+      given Tactic[NumberError] => Int is Decodable:
+        def decode(text: Text): Int =
+          if isValidInt(text) then text.toInt else raise(NumberError(text))
+
+      given UserDb => Tactic[UserError] => User is Decodable:
+        def decode(text: Text): User =
+          summon[UserDb].lookup(text).or(raise(UserError(text)))
+
+    trait Decodable:
+      type Self
+      def decode(text: Text): Self
+version
+    object Decodable:
+      given Text is Decodable = identity(_)
+
+      given Tactic[NumberError] => Int is Decodable:
+        def decode(text: Text): Int =
+          if isValidInt(text) then text.toInt else raise(NumberError(text))
+
+      given (db: UserDb) => Tactic[UserError] => User is Decodable:
+        def decode(text: Text): User =
+          db.lookup(text).or(raise(UserError(text)))
+
+    trait Decodable:
+      type Self
+      def decode(text: Text): Self
+version
+    object Decodable:
+      given Text is Decodable = identity(_)
+
+      given Tactic[NumberError] => Int is Decodable =
+        text => if isValidInt(text) then text.toInt else raise(NumberError(text))
+
+      given (db: UserDb) => Tactic[UserError] => User is Decodable =
+        text => db.lookup(text).or(raise(UserError(text)))
+
+    trait Decodable:
+      type Self
+      def decode(text: Text): Self
+version
+    trait Decodable:
+      type Self
+      def decode(text: Text): Self
+version
+    trait Decodable:
+      type Self
+      def decode(text: Json): Self
+version
+    trait Decodable:
+      type Self
+      type Form
+      def decode(text: Form): Self
+version
+    trait Decodable extends Typeclass:
+      type Form
+      def decode(text: Form): Self
+version
+    trait Decodable extends Typeclass, Formal:
+      def decode(text: Form): Self
+```
+
+---
+
+```amok
+context  type
+version  Int is Decodable in Json
+version  Int is Decodable { type Form = Json }
+version  Decodable { type Self = Int; type Form = Json }
+version
+    Int is Decodable in Json
+    StackTrace is Decodable in Xml
+version
+    Int is Decodable in Json
+    StackTrace is Decodable in Xml
+    HttpUrl is Encodable in Text
+version
+    Int is Decodable in Json
+    StackTrace is Decodable in Xml
+    HttpUrl is Encodable in Text
+```
+
+---
+
+## More
+
+---
+
+## More
+
+---
+
+How far will a car traveling at 100km/h and accelerating at 0.5m/s² travel in 1 minute?
+
+```amok
+version
+    val u = 100.0  // car traveling at 100km/h
+version
+    val u = 100.0  // car traveling at 100km/h
+    val a = 0.5    // acceleration of 0.5m/s²
+version
+    val u = 100.0  // car traveling at 100km/h
+    val a = 0.5    // acceleration of 0.5m/s²
+    val t = 1.0    // one minute
+version
+    val u = 100.0  // car traveling at 100km/h
+    val a = 0.5    // acceleration of 0.5m/s²
+    val t = 1.0    // one minute
+
+    val s = u*t + 0.5*a*t*t
+version
+    val u = 100.0*Kilo(Metre)/Hour
+    val a = 0.5    // acceleration of 0.5m/s²
+    val t = 1.0    // one minute
+
+    val s = u*t + 0.5*a*t*t
+version
+    val u = 100.0*Kilo(Metre)/Hour
+    val a = 0.5*Metre/Second/Second
+    val t = 1.0    // one minute
+
+    val s = u*t + 0.5*a*t*t
+version
+    val u = 100.0*Kilo(Metre)/Hour
+    val a = 0.5*Metre/Second/Second
+    val t = 1.0*Minute
+
+    val s = u*t + 0.5*a*t*t
+version
+    val u = 100.0*Kilo(Metre)/Hour
+    val a = 0.5*Metre/Second/Second
+    val t = 1.0*Minute
+
+    val s: Quantity[Metres[1]] = u*t + 0.5*a*t*t
+version
+    val u: Quantity[Metres[1] & Hours[-1]] = 100.0*Kilo(Metre)/Hour
+    val a: Quantity[Metres[1] & Seconds[-2]] = 0.5*Metre/Second/Second
+    val t: Quantity[Seconds[1]] = 1.0*Minute
+
+    val s: Quantity[Metres[1]] = u*t + 0.5*a*t*t
+version
+    val u = 100.0*Kilo(Metre)/Hour
+    val a = 0.5*Metre/Second/Second
+    val t = 1.0*Minute
+
+    val s = u*t + 0.5*a*t*t
+```
+---
+
+## Compiletime tests
+
+```amok
+version
+    test(m"check that 2 + 2 equals 4"):
+      2 + 2
+    . assert(_ == 4)
+version
+    test(m"check that 2 + 2 equals 4"):
+      2 + 2
+    . assert(_ == 4)
+
+    test(m"check that 2 + 2 equals 4 at compiletime"):
+      val x: 4 = 2 + 2
+    . assert()
+version
+    test(m"check that 2 + 2 equals 4"):
+      2 + 2
+    . assert(_ == 4)
+
+    test(m"check that 2 + 2 equals 4 at compiletime"):
+      val x: 4 = 2 + 2
+    . assert()
+
+    test(m"check that 2 + 2 does not equal 5"):
+      val x: 5 = 2 + 2
+    . assert()
+version
+    test(m"check that 2 + 2 equals 4"):
+      2 + 2
+    . assert(_ == 4)
+
+    test(m"check that 2 + 2 equals 4 at compiletime"):
+      val x: 4 = 2 + 2
+    . assert()
+
+    test(m"check that 2 + 2 does not equal 5"):
+      demilitarize:
+        val x: 5 = 2 + 2
+      . messages
+    . assert(_.length > 0)
+version
+    test(m"check that 2 + 2 does not equal 5"):
+      demilitarize:
+        val x: 5 = 2 + 2
+      . messages
+    . assert(_.length > 0)
+version
+    test(m"check that incompatible quantities cannot be added"):
+      demilitarize:
+        val x = 2*Metre + 2*Watt
+      . messages
+    . assert(_.length > 0)
+version
+    test(m"check that incompatible quantities cannot be added"):
+      demilitarize:
+        val x = 2*Metre + 2*Watt
+      . messages
+    . assert(_ == List(t"""quantitative: the left operand represents distance,
+                           but the right operand represents power; these are
+                           incompatible physical quantities"""))
+```
+
+---
+
+# `web`
+
+* correctly represent URLs and other network values
+* typesafe generation of HTML
+* generate forms from case classes
+* HTTP client and server
+* Markdown engine
+* SVG generation
+* Multilingual data structures
+* support for MIME types
+* read TTF/OTF font files
+* send emails
+* read and process JPEGs, GIFs, PNGs and BMPs
+
+---

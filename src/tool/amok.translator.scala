@@ -33,24 +33,20 @@
 package amok
 
 import soundness.{is as _, Node as _, *}
+import errorDiagnostics.stackTraces
+import textMetrics.uniform
+import tableStyles.horizontal
+import columnAttenuation.ignore
 
-object Page:
-  import html5.*
+given Tactic[CodlError] => Tactic[ParseError] => (model: Model) => Translator =
+  new HtmlTranslator(AmokEmbedding(false), ScalaEmbedding):
+    override def phrasing(node: Markdown.Ast.Inline): Seq[Html[html5.Phrasing]] = node match
+      case Markdown.Ast.Inline.SourceCode(code) =>
+        List:
+          html5.Code:
+            if code.starts(t".") then t"term: $code"
+            else if code.starts(t"#") then model.resolve(code.skip(1)) match
+              case (_, _, node) => node.template.let(_.syntax.html)
+            else code
 
-  def apply(mountpoint: Mountpoint, nav: List[Html[Flow]], article: List[Html[Flow]]): HtmlDoc =
-    HtmlDoc:
-      Html
-       (Head
-         (Script(src = mountpoint / "utils.js", defer = true),
-          Link.Stylesheet(href = mountpoint / "api.css")),
-        Body
-         (Header(Nav(Ul
-           (Li(A(href = mountpoint / "_api")(t"API")),
-            Li(A(href = mountpoint / "_glossary")(t"GLOSSARY")),
-            Li(A(href = mountpoint / "_context")(t"CONTEXT")),
-            Li(Button(id = id"theme"))))),
-          Main(Aside(Nav(nav*)), Article(article)),
-          Footer(t"© Copyright 2025, Propensive OÜ")))
-
-  def simple(mountpoint: Mountpoint, content: Html[Flow]*): HtmlDoc = HtmlDoc:
-    Html(Head(Link.Stylesheet(href = mountpoint / "api.css")), Body(content*))
+      case other => super.phrasing(other)

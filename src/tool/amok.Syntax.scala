@@ -151,7 +151,7 @@ object Syntax:
 
       case TypeParamClause(typeDefs) =>
         val defs = typeDefs.flatMap:
-          case typeDef@TypeDef(name, constraints) =>
+          case typeDef@TypeDef(name, bounds) =>
             val flags = typeDef.symbol.flags
 
             def variance(list: List[Syntax]): List[Syntax] =
@@ -159,21 +159,29 @@ object Syntax:
               else if flags.is(Flags.Contravariant) then (Syntax.Symbolic(t"-") :: list)
               else list
 
-            variance(List(Syntax.Member(name.tt), Comma))
+            bounds match
+              case TypeBoundsTree(lb, ub) =>
+                variance(List(Syntax.typeBounds(Syntax.Member(name.tt), lb.tpe, ub.tpe), Comma))
+              case LambdaTypeTree(typeDefs, other) =>
+                variance(List(Syntax.Member(name.tt), Comma))
+              case other =>
+                Out.println("Not type bounds: "+other)
+                variance(List(Syntax.Member(name.tt), Comma))
 
         Syntax(10, OpenBracket +: defs.dropRight(1) :+ CloseBracket*)
+
+  def typeBounds(using quotes: Quotes)(sub: Syntax, lb: quotes.reflect.TypeRepr, ub: quotes.reflect.TypeRepr)(using Stdio): Syntax =
+    import quotes.reflect.*
+    if lb == ub then apply(lb)
+    else if lb.typeSymbol == defn.NothingClass && ub.typeSymbol == defn.AnyClass
+    then Syntax(10, sub)
+    else if lb.typeSymbol == defn.NothingClass then Syntax(10, sub, UpperBound, apply(ub))
+    else if lb.typeSymbol == defn.AnyClass then Syntax(10, sub, LowerBound, apply(lb))
+    else Syntax(10, sub, LowerBound, apply(lb), AndUpperBound, apply(ub))
 
   def apply(using quotes: Quotes)(repr: quotes.reflect.TypeRepr)(using Stdio)
   : Syntax = cache.establish(repr):
     import quotes.reflect.*
-
-    def typeBounds(sub: Syntax, lb: TypeRepr, ub: TypeRepr): Syntax =
-      if lb == ub then apply(lb)
-      else if lb.typeSymbol == defn.NothingClass && ub.typeSymbol == defn.AnyClass
-      then Syntax(10, sub)
-      else if lb.typeSymbol == defn.NothingClass then Syntax(10, sub, UpperBound, apply(ub))
-      else if lb.typeSymbol == defn.AnyClass then Syntax(10, sub, LowerBound, apply(lb))
-      else Syntax(10, sub, LowerBound, apply(lb), AndUpperBound, apply(ub))
 
     repr.absolve match
       case ThisType(tpe) =>
@@ -243,10 +251,10 @@ object Syntax:
           val result = args0.last
           val arrow = if typ.isContextFunctionType then ContextualArrow else FunctionArrow
           if args0.length == 2
-          then Syntax(0, args :+ arrow :+ apply(result)*)
-          else Syntax(0, OpenParens +: args :+ CloseParens :+ arrow :+ apply(result)*)
+          then Syntax(4, args :+ arrow :+ apply(result)*)
+          else Syntax(10, OpenParens +: args :+ CloseParens :+ arrow :+ apply(result)*)
         else if args0.length == 2 && repr.typeSymbol.flags.is(Flags.Infix)
-        then Syntax(0, apply(args0(0)), Space, apply(base), Space, apply(args0(1)))
+        then Syntax(4, apply(args0(0)), Space, apply(base), Space, apply(args0(1)))
         else
           val args = args0.map(apply(_)).flatMap(List(_, Comma)).dropRight(1)
           if defn.isTupleClass(base.typeSymbol)
@@ -269,7 +277,7 @@ object Syntax:
         case ClassOfConstant(cls)   => Syntax(10, ClassOf, apply(cls), CloseBracket)
 
       case Refinement(base, name, member) =>
-        if name == "Self" then Syntax(10, apply(base), Syntax.Constant(t" is "), apply(member))
+        if name == "Self" then Syntax(10, apply(base), Syntax.Symbolic(t" is "), apply(member))
         else apply(base) match
           case Syntax.Refined(base, members) =>
             Syntax.Refined(base, members.updated(name, apply(member)))
@@ -289,12 +297,15 @@ object Syntax:
         val args =
           if args0.isEmpty then Nil
           else if unnamed then types.flatMap(apply(_) :: Comma :: Nil).dropRight(1)
-          else args0.zip(types).flatMap(Syntax.Member(_) :: Colon :: apply(_) :: Comma :: Nil).dropRight(1)
+          else
+            args0.zip(types).flatMap: (member, typ) =>
+              Syntax.Member(member) :: Colon :: Syntax(10, apply(typ)) :: Comma :: Nil
+            . dropRight(1)
 
         val arrow = if method.isContextFunctionType then ContextualArrow else FunctionArrow
         if unnamed && args0.length == 1
-        then Syntax(0, args :+ arrow :+ apply(result)*)
-        else Syntax(0, OpenParens +: args :+ CloseParens :+ arrow :+ apply(result)*)
+        then Syntax(4, args :+ arrow :+ apply(result)*)
+        else Syntax(10, OpenParens +: args :+ CloseParens :+ arrow :+ apply(result)*)
 
       case typ@PolyType(args0, types, result) =>
         val args =

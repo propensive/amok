@@ -137,16 +137,14 @@ h2 { font-size: 1.5rem; font-weight: 380; }
 h3 { font-size: 1.3rem; font-weight: 430; }
 h4 { font-size: 1.1rem; font-weight: 510; }
 
-table.members { border-top: solid 1px #666; margin-bottom: 1em; justify-self: start; }
+table.members { margin-bottom: 1em; justify-self: start; }
 
 table
   { margin:          1em 1rem;
-    border-collapse: collapse;
-    border-top:      solid var(--thin) #9992;
-    border-bottom:   solid var(--thin) #9992; }
+    border-collapse: collapse; }
 
 td, th { text-align: left; padding: 0.3rem 0.5rem; line-height: 1.5em; vertical-align: top; }
-th     { font-weight: 500; border-bottom: solid var(--thin) #9992; }
+th     { font-weight: 500; }
 
 td
   { &.kind, &.extension { text-align: right; padding-left: 4ch; }
@@ -242,140 +240,126 @@ p { text-align: justify; }
 
 span:has(> a:hover) { background-color: var(--accent-light); border-radius: 0.3em; }
 
+
+
+
+
+
+
+
+
+.s0:checked ~ pre .line code:not(.v0),
+.s1:checked ~ pre .line code:not(.v1),
+.s2:checked ~ pre .line code:not(.v2),
+.s3:checked ~ pre .line code:not(.v3),
+.s4:checked ~ pre .line code:not(.v4),
+.s5:checked ~ pre .line code:not(.v5),
+.s6:checked ~ pre .line code:not(.v6),
+.s7:checked ~ pre .line code:not(.v7),
+.s8:checked ~ pre .line code:not(.v8),
+.s9:checked ~ pre .line code:not(.v9),
+.s10:checked ~ pre .line code:not(.v10),
+.s11:checked ~ pre .line code:not(.v11),
+.s12:checked ~ pre .line code:not(.v12),
+.s13:checked ~ pre .line code:not(.v13),
+.s14:checked ~ pre .line code:not(.v14),
+.s15:checked ~ pre .line code:not(.v15),
+.s16:checked ~ pre .line code:not(.v16),
+.s17:checked ~ pre .line code:not(.v17),
+.s18:checked ~ pre .line code:not(.v18),
+.s19:checked ~ pre .line code:not(.v19),
+.s20:checked ~ pre .line code:not(.v20),
+.s21:checked ~ pre .line code:not(.v21),
+.s22:checked ~ pre .line code:not(.v22),
+.s23:checked ~ pre .line code:not(.v23),
+.s24:checked ~ pre .line code:not(.v24),
+.s25:checked ~ pre .line code:not(.v25),
+.s26:checked ~ pre .line code:not(.v26),
+.s27:checked ~ pre .line code:not(.v27),
+.s28:checked ~ pre .line code:not(.v28),
+.s29:checked ~ pre .line code:not(.v29),
+.s30:checked ~ pre .line code:not(.v30),
+.s31:checked ~ pre .line code:not(.v31),
+.s32:checked ~ pre .line code:not(.v32),
+.s33:checked ~ pre .line code:not(.v33),
+.s34:checked ~ pre .line code:not(.v34),
+.s35:checked ~ pre .line code:not(.v35),
+.s36:checked ~ pre .line code:not(.v36),
+.s37:checked ~ pre .line code:not(.v37),
+.s38:checked ~ pre .line code:not(.v38),
+.s39:checked ~ pre .line code:not(.v39),
+.s40:checked ~ pre .line code:not(.v40),
+.s41:checked ~ pre .line code:not(.v41),
+.s42:checked ~ pre .line code:not(.v42),
+.s43:checked ~ pre .line code:not(.v43),
+.s44:checked ~ pre .line code:not(.v44),
+.s45:checked ~ pre .line code:not(.v45),
+.s46:checked ~ pre .line code:not(.v46),
+.s47:checked ~ pre .line code:not(.v47),
+.s48:checked ~ pre .line code:not(.v48),
+.s49:checked ~ pre .line code:not(.v49),
+.s50:checked ~ pre .line code:not(.v50)
+ { opacity:          0;
+   text-shadow:      0 0 0.1em black, 0 0 0.3em #fffa;
+   font-weight:      600;
+   transition:       text-shadow  ease  0.25s  0s,
+                     font-weight  ease  0.25s  0s,
+                     opacity      ease  0.5s   1.25s,
+                     width        ease  0.5s   1.75s,
+                     height       ease  0.5s   1.75s;
+   width:            0 !important;
+   height:           0 !important }
+
+pre code
+ { opacity:     1;
+   display:     inline-block;
+   height:      1.5em;
+   line-height: 1.5em;
+   overflow:    hidden;
+   font-size:   2000%;
+   text-shadow: none;
+   transition:  width        ease  0.5s  1.75s,
+                height       ease  0.5s  1.75s,
+                opacity      ease  0.5s  2.25s,
+                font-weight  ease  3s    2.5s,
+                text-shadow  ease  3s    2.5s; }
+
+span.line { display: block; line-height: 0; font-size: 5%; }
+
+input[type="radio"]
+ { appearance: none;
+   width:            0.75em;
+   height:           0.75em;
+   border:           none;
+   border-radius:    50%;
+   display:          inline-block;
+   vertical-align:   middle;
+   background-color: #ffffff55;
+   cursor:           pointer;
+   margin:           0 1em 1.5em 0;
+   transition:       all 1.5s 0.5s; }
+
+ /* Show yellow filled circle when checked */
+input[type="radio"]:checked
+ { background-color: var(--accent);
+   box-shadow:       0 0 0.75em #ffffff;
+   transition:       all 0.75s 0s; }
+
 .amok
-  { margin:        0 0.5rem 0 0.5rem;
-    width:         var(--line-width);
-    padding:       1rem calc(var(--line-padding) - var(--shadow-width));
-    border-radius: 0.5rem;
+ { border-radius:    1vw;
+   background-color: #100020;
+   padding:          1em 2em 1.5em 2em;
+   width:            calc(100% - 6em);
+   margin:           1em 0;
 
-    &>pre
-      { color: #cb8;
-        border-radius:   0.5rem;
-        overflow-x:      auto;
-        scrollbar-color: #fff3 transparent;
-        scrollbar-width: thin;
-
-        &>.line
-          { padding:     0.05em 0;
-            display:     block;
-            height:      1.25em;
-            line-height: 1.25em;
-
-            &>.hi    { --caption-color: 187, 187, 255; }
-            &>.err   { --caption-color: 255, 0, 68; }
-            &>.warn  { --caption-color: 255, 170, 0; }
-            &>.param { font-style: italic; }
-
-            & code
-              { white-space: pre;
-                border-bottom: solid 1px rgba(var(--caption-color), 0.5);
-                background-color: rgba(var(--caption-color), 0.25);
-                display: inline-block;
-                margin: 0;
-                padding: 0;
-                vertical-align: middle; }
-
-            &>span:hover
-              { &>.caption
-                  { transition: height ease 0.2s 0.1s, width ease 0.2s;
-                    &>span { opacity: 1; transition: opacity ease 0.2s 0.2s; } } }
-
-            &>span:not(:hover)
-              { &>.caption
-                  { height: 0 !important; width: 0 !important;
-                    &>span { height: 0; transition: opacity ease 0.2s; } } }
-
-            &>span
-              { font-weight: 500;
-                cursor: pointer;
-
-                &>.caption
-                  { font-family: var(--mono-font);
-                    backdrop-filter:  blur(2px);
-                    position:         absolute;
-                    transition:       height ease 0.2s, width ease 0.2s 0.1s;
-                    margin-top:       1.92em;
-                    font-weight:      350;
-                    font-size:        0.55rem;
-                    color:          white;
-                    padding:          0;
-                    line-height:      1.5em;
-                    background-color: rgba(var(--caption-color), 0.25);
-                    border-bottom:    dotted 1px rgba(var(--caption-color), 0.5);
-
-                    &::after
-                      { background-color: rgb(var(--caption-color));
-                        content:          '';
-                        position:         absolute;
-                        bottom:           -2.5px;
-                        right:            -2.5px;
-                        width:            4px;
-                        height:           4px;
-                        border-radius:    50%; }
-
-                    &>span
-                      { opacity:  0;
-                        overflow: hidden;
-                        display:  inline-block;
-                        margin:   0 0.5ch; } } } } }
-
-    & input[type=radio] { display: none; }
-
-    & .fore:checked ~ pre
-      { & .one { opacity: 1; transition: height ease 1s 1s, width ease 1s 1s, opacity ease 1s 2s; }
-        & .two { opacity: 0; transition: height ease 1s 1s, width ease 1s 1s, opacity ease 1s; }
-        &>.two { height: 0; }
-        &>.line>.two { width: 0 !important; } }
-
-    & .aft:checked ~ pre
-      { & .one { opacity: 0; transition: height ease 1s 1s, width ease 1s 1s, opacity ease 1s; }
-        & .two { opacity: 1; transition: height ease 1s 1s, width ease 1s 1s, opacity ease 1s 2s; }
-        &>.one { height: 0; }
-        &>.line>.one { width: 0 !important; } }
-
-    & .fore:checked + label::after { background-color: #fc3; color: black; }
-    & .aft:checked + label::before { background-color: #fc3; color: black; }
-    & .fore + label                { width: 50%; text-align: right; }
-
-    & label
-      { cursor:         pointer;
-        font-size:      0.6rem;
-        color:          #fffc;
-        font-weight:    400;
-        display:        inline-block;
-        text-transform: uppercase;
-        padding:        0;
-        margin:         1em 0 0 0;
-
-        &::before, &::after
-          { transition:    background-color ease 0.3s, color ease 0.3s;
-            display:       inline-block;
-            width:         1.8em;
-            height :       1.7em;
-            color:         #fc2;
-            border-radius: 50%;
-            cursor:        pointer;
-            border:        solid 0.15em #fc2;
-            text-align:    center;
-            margin-left:   0.7em;
-            margin-right:  0.7em; }
-
-        &:hover::before          { background-color: #fc3; color: black; }
-        &:nth-of-type(1)::after  { content: '1'; }
-        &:nth-of-type(2)::before { content: '2'; } }
-
-    background: linear-gradient(135deg, #cdeedf40, #cfefdf50);
-    box-shadow: var(--shadow);
-    border:     solid 1px #c0e0d099;
-
-    & .error    { color: #990022; }
-    & .number   { color: #992244; }
-    & .modifier { color: #b34700; }
-    & .keyword  { color: #cc3300; }
-    & .ident    { color: #996633; }
-    & .term     { color: #996600; }
-    & .typed    { color: #006655; }
-    & .string   { color: #339966; }
-    & .parens   { color: #993366; }
-    & .symbol   { color: #992244; }
-    & .unparsed { color: #005577; } }
+   & .error    { color: #cc0033; }
+   & .number   { color: #cc3366; }
+   & .modifier { color: #ff9966; }
+   & .keyword  { color: #ff6633; }
+   & .ident    { color: #ffcc99; }
+   & .term     { color: #ffcc33; }
+   & .typed    { color: #00cc99; }
+   & .string   { color: #99ddbb; }
+   & .parens   { color: #cc6699; }
+   & .symbol   { color: #cc3366; }
+   & .unparsed { color: #2288aa; font-style: italic; } }

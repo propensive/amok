@@ -38,9 +38,6 @@ import textMetrics.uniform
 import tableStyles.horizontal
 import columnAttenuation.ignore
 
-given Tactic[CodlError] => Tactic[ParseError] => Translator =
-  HtmlTranslator(AmokEmbedding(false), ScalaEmbedding)
-
 val About   = Subcommand("about",   e"find out about Amok")
 val Load    = Subcommand("load",    e"load definitions from a .jar or .amok file")
 val Boot    = Subcommand("boot",    e"start Amok using the .amok file in the current directory")
@@ -55,6 +52,9 @@ object Mountpoint:
   given Mountpoint is Interpretable =
     case Argument(Mountpoint(value)) :: _ => value
     case _                                => Unset
+
+  given Mountpoint is Discoverable = _ => Server.mappings.keySet.map(_.text).map: path =>
+    Suggestion(path, t"a suggestion")
 
   def unapply(path: Text): Option[Mountpoint] =
     val path2 = if path.starts("/") then path.skip(1) else path
@@ -112,6 +112,8 @@ def load(mountpoint: Mountpoint, file: Path on Linux)(using Stdio): Folio raises
             val text = file.open(_.read[Text])
             val stripped = text.cut(t"\n").dropWhile(_ != "##").tail.join(t"\n")
             val doc = Codl.read[AmokDoc](text)
+
+            given Model()
 
             val sections = Markdown.parse(stripped).broken.map(_.html).zipWithIndex.map: (content, index) =>
               html5.Section(id = DomId(t"slide${index + 1}"))(content)
