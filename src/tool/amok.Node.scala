@@ -38,9 +38,8 @@ import scala.collection.immutable.ListMap
 import soundness.{is as _, Node as _, *}
 
 class Node(parent0: Optional[Node] = Unset):
-  val membersMap: scm.TreeMap[Member, Node] = scm.TreeMap()
-  def parent: Node = parent0.or(this)
   private var doc: Optional[Text] = Unset
+  val membersMap: scm.TreeMap[Member, Node] = scm.TreeMap()
   var template: Optional[Template] = Unset
   var definition: Optional[Definition] = Unset
   var memo: Optional[InlineMd] = Unset
@@ -49,18 +48,20 @@ class Node(parent0: Optional[Node] = Unset):
   var hidden: Boolean = false
   var returnType: Optional[Syntax] = Unset
 
+  def parent: Node = parent0.or(this)
   def members: List[(Member, Node)] = membersMap.to(List)
+
+  override def toString: String = members.map(_(0).text).join(t", ").s
 
   def terms: ListMap[Text, Node] =
     members.collect:
       case (Member.Root(name), node)   => name -> node
       case (Member.OfTerm(name), node) => name -> node
+
     . to(ListMap)
 
   def types: ListMap[Text, Node] =
     members.collect { case (Member.OfType(name), node) => name -> node }.to(ListMap)
-
-  override def toString: String = members.map(_(0).text).join(t", ").s
 
   def apply(member: Member): Node =
     membersMap.get(member).getOrElse:

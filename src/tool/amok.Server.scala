@@ -32,14 +32,18 @@
                                                                                                   */
 package amok
 
+import scala.collection.mutable as scm
+
 import soundness.{is as _, Node as _, *}
 
 object Server:
-  var mappings: Map[Mountpoint, Folio] = Map()
+  private val mappings: scm.HashMap[Mountpoint, Folio] = scm.HashMap()
 
-  def register(folio: Folio): Unit = mappings = mappings.updated(folio.base, folio)
+  def folios: List[Folio] = mappings.values.to(List)
+  def mountpoints: Set[Mountpoint] = mappings.keySet.to(Set)
+  def register(folio: Folio): Unit = mappings(folio.base) = folio
   def apply(mountpoint: Mountpoint): Optional[Folio] = mappings.at(mountpoint)
 
   def at(path: Text): Optional[Folio] =
-    val matching = mappings.keySet.filter(_.contains(path))
-    if matching.isEmpty then Unset else apply(matching.maxBy(_.text.length))
+    mountpoints.filter(_.contains(path)).occupied.let: matching =>
+      apply(matching.maxBy(_.text.length))

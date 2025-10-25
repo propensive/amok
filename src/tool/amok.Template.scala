@@ -56,7 +56,7 @@ enum Template:
   def modifiers: List[Modifier]
 
   def syntax: Syntax =
-    Syntax.sequence(modifiers.map(_.keyword), Syntax.Space).let(Syntax(0, _, Syntax.Space, keyword))
-    . or(keyword)
+    val modifiers2 = modifiers.flatMap(_.keyword :: Syntax.Symbolic(t" ") :: Nil)
+    if modifiers2.isEmpty then keyword else Syntax.Compound(modifiers2 ::: keyword :: Nil)
 
 export Template.*

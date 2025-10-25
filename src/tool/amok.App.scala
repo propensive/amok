@@ -48,80 +48,6 @@ val Folios  = Subcommand("list",    e"list all deployed mountpoints")
 
 val MountpointArg = Flag[Mountpoint]("mountpoint", false, List('m'), "the URL at which to serve the folio, e.g. /tutorials")
 
-object Mountpoint:
-  given Mountpoint is Interpretable =
-    case Argument(Mountpoint(value)) :: _ => value
-    case _                                => Unset
-
-  given Mountpoint is Discoverable = _ => Server.mappings.keySet.map(_.text).map: path =>
-    Suggestion(path, t"a suggestion")
-
-  def unapply(path: Text): Option[Mountpoint] =
-    val path2 = if path.starts("/") then path.skip(1) else path
-    val path3 = if path2.ends("/") then path2.skip(1, Rtl) else path2
-    Some(Mountpoint(path3.cut(t"/")*))
-
-  given Mountpoint is Showable = _.text
-
-case class Mountpoint(parts: Text*):
-  val text = parts.join(t"/", t"/", t"")
-  val path: Path on UrlSpace = Path.of(t"/", parts.reverse*)
-  def contains(path: Text): Boolean = path.starts(text)
-
-  @targetName("child")
-  def / (text: String): Path on UrlSpace = path / text
-
-enum Number:
-  case One, Two, Three, Four, Five, Six, Seven
-
-def load(mountpoint: Mountpoint, file: Path on Linux)(using Stdio): Folio raises LoadError =
-  val folio: Optional[Folio] = Server(mountpoint)
-  if file.name.ends(t".jar") then
-    Out.println(m"Loading JAR file ${file.name}")
-
-    folio.or(JvmFolio(mountpoint, file)).match
-      case folio: JvmFolio => folio
-      case folio           =>
-        Out.println(m"Replacing pre-existing folio")
-        JvmFolio(mountpoint, file)
-
-    . tap(_.model.load(file))
-
-  else if file.name.ends(t".amok") then
-    val amox = safely(Amox.read(file))
-
-    amox.let: amox =>
-      folio.match
-        case Unset           => JvmFolio(mountpoint, file)
-        case folio: JvmFolio => folio
-        case folio           =>
-          Out.println(m"Replacing pre-existing folio")
-          JvmFolio(mountpoint, file)
-
-      . tap(_.model.overlay(amox))
-    . or:
-        mitigate:
-          case error@IoError(path, _, _)   => LoadError(file, error)
-          case error@StreamError(memory)   => LoadError(file, error)
-          case error@ParseError(_, _, _)   => LoadError(file, error)
-          case error@CodlError(_)          => LoadError(file, error)
-          case error@NumberError(_, _)     => LoadError(file, error)
-          case error@MarkdownError(_)      => LoadError(file, error)
-
-        . within:
-            val text = file.open(_.read[Text])
-            val stripped = text.cut(t"\n").dropWhile(_ != "##").tail.join(t"\n")
-            val doc = Codl.read[AmokDoc](text)
-
-            given Model()
-
-            val sections = Markdown.parse(stripped).broken.map(_.html).zipWithIndex.map: (content, index) =>
-              html5.Section(id = DomId(t"slide${index + 1}"))(content)
-
-            SlidesFolio(mountpoint, doc, file, sections)
-
-  else abort(LoadError(file, FiletypeError()))
-
 @main
 def application(): Unit = cli:
   // Try to install tab-completions only once
@@ -142,8 +68,7 @@ def application(): Unit = cli:
           . gunzip
           . utf8
           . cut(t"\n")
-          . each: line =>
-              Out.println(line)
+          . each(Out.println(_))
 
           given Decimalizer(significantFigures = 4, exponentThreshold = Unset)
           val memory = Heap.used/1.mib
@@ -166,10 +91,10 @@ def application(): Unit = cli:
 
       recover:
         case TerminalError() =>
-          Out.println(table.tabulate(Server.mappings.values.to(List)).grid(100))
+          Out.println(table.tabulate(Server.folios).grid(100))
       . within:
           interactive:
-            Out.println(table.tabulate(Server.mappings.values.to(List)).grid(terminal.columns.or(100)))
+            Out.println(table.tabulate(Server.folios).grid(terminal.columns.or(100)))
 
       Exit.Ok
 
@@ -184,7 +109,7 @@ def application(): Unit = cli:
           . within:
               val mountpoint = MountpointArg().or(Mountpoint())
               Out.println(m"Deploying $file to $mountpoint".teletype)
-              Server.register(load(mountpoint, file))
+              Server.register(Folio.load(mountpoint, file))
               Exit.Ok
 
         catch case error: Throwable =>

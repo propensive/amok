@@ -17,7 +17,8 @@ format   presentation
 
 - over 100 libraries or modules
 - reimplements large parts of the Java and Scala standard libraries
-- goes much further than that
+- and other parts of the Java and Scala ecosystem
+
 
 ---
 
@@ -25,16 +26,6 @@ format   presentation
 
 - Impossible states must be unrepresentable
 - Transitions between states must be total
-
----
-
-## Make it...
-
-- ... _work_
-- ... _correct_
-- ... _safe_
-- ... _elegant_
-- ... _fast_
 
 ---
 
@@ -53,19 +44,11 @@ format   presentation
 
 ---
 
-## Modules
-
-- `core` — some fundamentals
-- `cli` — for developing command line applications
-- `web` — for developing web applications
-- `sci` — scientific representations and utilities
-- `test` — for testing
-- `tool` — for tooling developers
-- `data` — for working with data in various forms
+![Bundles](https://storage.googleapis.com/soundness-data/bundles2.svg)
 
 ---
 
-# `core`
+## The `core` Bundle
 
 * safe error-handling
 * pretty-printing of stack traces
@@ -77,132 +60,340 @@ format   presentation
 
 ---
 
-## Polymorphism
-
----
-
-## Error handling
-
-Let's take a filename, interpret it as a path, read its content as text, and parse it as JSON.
+## Literals
 
 ```amok
 version
-    @main
-    def info(filename: Text): Text =
-      val json: Json = Json.parse(filename.decode[Path on Linux].read[Text])
-      val person = json.companies(0).ceo.as[Person]
-
-      t"The CEO is ${person.name}."
+    val url = url"https//github.com/propensive/soundness"
 version
-    import strategies.throwUnsafely
-
-    @main
-    def info(filename: Text): Text =
-      val json: Json = Json.parse(filename.decode[Path on Linux].read[Text])
-      val person = json.companies(0).ceo.as[Person]
-
-      t"The CEO is ${person.name}."
+    // the URL http//github.com/propensive/soundness is not valid: a colon was expected
+    val url = url"https//github.com/propensive/soundness"
 version
-    import strategies.throwUnsafely
-
-    @main
-    def info(filename: Text): Text =
-      val json: Json = Json.parse(filename.decode[Path on Linux].read[Text])
-      import dynamicJson.enabled
-      val person = json.companies(0).ceo.as[Person]
-
-      t"The CEO is ${person.name}."
+    val url = url"https://github.com/propensive/soundness"
 version
-    @main
-    def info(filename: Text): Text =
-      val json: Optional[Json] = safely(Json.parse(filename.decode[Path on Linux].read[Text]))
-      import dynamicJson.enabled
-      val person = json.let(_.companies(0).ceo.as[Person])
+    val url = url"https://github.com/propensive/soundness"
+    val date = 2019-Feb-29
+version
+    val url = url"https://github.com/propensive/soundness"
 
-      t"The CEO is ${person.lay("unknown")(_.name)}."
+    // the date was not valid because 2019-2-29 does not exist in the calendar Gregorian
+    val date = 2019-Feb-29
+version
+    val url = url"https://github.com/propensive/soundness"
+    val date = 2020-Feb-29
+version
+    val url = url"https://github.com/propensive/soundness"
+    val time = 2020-Feb-29 at 15.20.am
+version
+    val url = url"https://github.com/propensive/soundness"
+
+    // a time cannot have an hour value above 12
+    val time = 2020-Feb-29 at 15.20.am
+version
+    val url = url"https://github.com/propensive/soundness"
+    val time = 2020-Feb-29 at 3.20.pm
+version
+    val url = url"https://github.com/propensive/soundness"
+    val time = 2020-Feb-29 at 3.20.pm in tz"Europe/Lyon"
+version
+    val url = url"https://github.com/propensive/soundness"
+
+    // the name Europe/Lyon does not refer to a known timezone
+    val time = 2020-Feb-29 at 3.20.pm in tz"Europe/Lyon"
+version
+    val url = url"https://github.com/propensive/soundness"
+    val time = 2020-Feb-29 at 3.20.pm in tz"Europe/Paris"
+version
+    val url = url"https://github.com/propensive/soundness"
+    val time = 2020-Feb-29 at 3.20.pm in tz"Europe/Paris"
+    val html = Table(Th("Key"), Td("Value"))
+version
+    val url = url"https://github.com/propensive/soundness"
+    val time = 2020-Feb-29 at 3.20.pm in tz"Europe/Paris"
+
+    // Type mismatch
+    val html = Table(Th("Key"), Td("Value"))
+version
+    val url = url"https://github.com/propensive/soundness"
+    val time = 2020-Feb-29 at 3.20.pm in tz"Europe/Paris"
+    val html = Table(Tr(Th("Key"), Td("Value")))
+version
+    val url = url"https://github.com/propensive/soundness"
+    val time = 2020-Feb-29 at 3.20.pm in tz"Europe/Paris"
+    val html = Table(Tr(Th("Key"), Td("Value")))
+    val ip = ip"192.168.0.0.1"
+version
+    val url = url"https://github.com/propensive/soundness"
+    val time = 2020-Feb-29 at 3.20.pm in tz"Europe/Paris"
+    val html = Table(Tr(Th("Key"), Td("Value")))
+
+    // the IP address is not valid because the address contains 5 period-separated
+    // groups instead of 4
+    val ip = ip"192.168.0.0.1"
+version
+    val url = url"https://github.com/propensive/soundness"
+    val time = 2020-Feb-29 at 3.20.pm in tz"Europe/Paris"
+    val html = Table(Tr(Th("Key"), Td("Value")))
+    val ip = ip"192.168.0.1"
+version
+    val url = url"https://github.com/propensive/soundness"
+    val time = 2020-Feb-29 at 3.20.pm in tz"Europe/Paris"
+    val html = Table(Tr(Th("Key"), Td("Value")))
+    val ip = ip"192.168.0.1"
+    val color = rgb"#40c9cd4"
+version
+    val url = url"https://github.com/propensive/soundness"
+    val time = 2020-Feb-29 at 3.20.pm in tz"Europe/Paris"
+    val html = Table(Tr(Th("Key"), Td("Value")))
+    val ip = ip"192.168.0.1"
+
+    // the color must be in the form rgb"#rrggbb" or rgb"rrggbb" where rr, gg and bb
+    // are 2-digit hex values
+    val color = rgb"#40c9cd4"
+version
+    val url = url"https://github.com/propensive/soundness"
+    val time = 2020-Feb-29 at 3.20.pm in tz"Europe/Paris"
+    val html = Table(Tr(Th("Key"), Td("Value")))
+    val ip = ip"192.168.0.1"
+    val color = rgb"#40c9cd"
+version
+    val url = url"https://github.com/propensive/soundness"
+    val time = 2020-Feb-29 at 3.20.pm in tz"Europe/Paris"
+    val html = Table(Tr(Th("Key"), Td("Value")))
+    val ip = ip"192.168.0.1"
+    val color = rgb"#40c9cd"
+    val message = e"This is $Bold[$color[very] important."
+version
+    val url = url"https://github.com/propensive/soundness"
+    val time = 2020-Feb-29 at 3.20.pm in tz"Europe/Paris"
+    val html = Table(Tr(Th("Key"), Td("Value")))
+    val ip = ip"192.168.0.1"
+    val color = rgb"#40c9cd"
+
+    // the closing bracket does not match an opening bracket
+    val message = e"This is $Bold[$color[very] important."
+version
+    val url = url"https://github.com/propensive/soundness"
+    val time = 2020-Feb-29 at 3.20.pm in tz"Europe/Paris"
+    val html = Table(Tr(Th("Key"), Td("Value")))
+    val ip = ip"192.168.0.1"
+    val color = rgb"#40c9cd"
+    val message = e"This is $Bold[$color[very] important]."
+version
+    val url = url"https://github.com/propensive/soundness"
+    val time = 2020-Feb-29 at 3.20.pm in tz"Europe/Paris"
+    val html = Table(Tr(Th("Key"), Td("Value")))
+    val ip = ip"192.168.0.1"
+    val color = rgb"#40c9cd"
+    val message = e"This is $Bold[$color[very] important]."
+    val mime = media"application/jon"
+version
+    val url = url"https://github.com/propensive/soundness"
+    val time = 2020-Feb-29 at 3.20.pm in tz"Europe/Paris"
+    val html = Table(Tr(Th("Key"), Td("Value")))
+    val ip = ip"192.168.0.1"
+    val color = rgb"#40c9cd"
+    val message = e"This is $Bold[$color[very] important]."
+
+    // application/jon is not a registered media type; did you mean application/json or
+    // application/x-jon?
+    val mime = media"application/jon"
+version
+    val url = url"https://github.com/propensive/soundness"
+    val time = 2020-Feb-29 at 3.20.pm in tz"Europe/Paris"
+    val html = Table(Tr(Th("Key"), Td("Value")))
+    val ip = ip"192.168.0.1"
+    val color = rgb"#40c9cd"
+    val message = e"This is $Bold[$color[very] important]."
+    val mime = media"application/json"
+version
+    val url = url"https://github.com/propensive/soundness"
+    val time = 2020-Feb-29 at 3.20.pm in tz"Europe/Paris"
+    val html = Table(Tr(Th("Key"), Td("Value")))
+    val ip = ip"192.168.0.1"
+    val color = rgb"#40c9cd"
+    val message = e"This is $Bold[$color[very] important]."
+    val mime = media"application/json"
+    val cmd = sh"docker ps --filter 'name='$name'"
+version
+    val url = url"https://github.com/propensive/soundness"
+    val time = 2020-Feb-29 at 3.20.pm in tz"Europe/Paris"
+    val html = Table(Tr(Th("Key"), Td("Value")))
+    val ip = ip"192.168.0.1"
+    val color = rgb"#40c9cd"
+    val message = e"This is $Bold[$color[very] important]."
+    val mime = media"application/json"
+
+    // the single quotes have not been closed
+    val cmd = sh"docker ps --filter 'name='$name'"
+version
+    val url = url"https://github.com/propensive/soundness"
+    val time = 2020-Feb-29 at 3.20.pm in tz"Europe/Paris"
+    val html = Table(Tr(Th("Key"), Td("Value")))
+    val ip = ip"192.168.0.1"
+    val color = rgb"#40c9cd"
+    val message = e"This is $Bold[$color[very] important]."
+    val mime = media"application/json"
+    val cmd = sh"docker ps --filter name=$name"
+version
+    val url = url"https://github.com/propensive/soundness"
+    val time = 2020-Feb-29 at 3.20.pm in tz"Europe/Paris"
+    val html = Table(Tr(Th("Key"), Td("Value")))
+    val ip = ip"192.168.0.1"
+    val color = rgb"#40c9cd"
+    val message = e"This is $Bold[$color[very] important]."
+    val mime = media"application/json"
+    val cmd = sh"docker ps --filter name=$name"
+    val encoding = enc"ISO-8559-1"
+version
+    val url = url"https://github.com/propensive/soundness"
+    val time = 2020-Feb-29 at 3.20.pm in tz"Europe/Paris"
+    val html = Table(Tr(Th("Key"), Td("Value")))
+    val ip = ip"192.168.0.1"
+    val color = rgb"#40c9cd"
+    val message = e"This is $Bold[$color[very] important]."
+    val mime = media"application/json"
+    val cmd = sh"docker ps --filter name=$name"
+
+    // the encoding ISO-8559-1 was not available
+    val encoding = enc"ISO-8559-1"
+version
+    val url = url"https://github.com/propensive/soundness"
+    val time = 2020-Feb-29 at 3.20.pm in tz"Europe/Paris"
+    val html = Table(Tr(Th("Key"), Td("Value")))
+    val ip = ip"192.168.0.1"
+    val color = rgb"#40c9cd"
+    val message = e"This is $Bold[$color[very] important]."
+    val mime = media"application/json"
+    val cmd = sh"docker ps --filter name=$name"
+    val encoding = enc"ISO-8859-1"
+version
+    val url = url"https://github.com/propensive/soundness"
+    val time = 2020-Feb-29 at 3.20.pm in tz"Europe/Paris"
+    val html = Table(Tr(Th("Key"), Td("Value")))
+    val ip = ip"192.168.0.1"
+    val color = rgb"#40c9cd"
+    val message = e"This is $Bold[$color[very] important]."
+    val mime = media"application/json"
+    val cmd = sh"docker ps --filter name=$name"
+    val encoding = enc"ISO-8859-1"
+    val regex = r"hello [a-z]+)"
+version
+    val url = url"https://github.com/propensive/soundness"
+    val time = 2020-Feb-29 at 3.20.pm in tz"Europe/Paris"
+    val html = Table(Tr(Th("Key"), Td("Value")))
+    val ip = ip"192.168.0.1"
+    val color = rgb"#40c9cd"
+    val message = e"This is $Bold[$color[very] important]."
+    val mime = media"application/json"
+    val cmd = sh"docker ps --filter name=$name"
+    val encoding = enc"ISO-8859-1"
+
+    // the regular expression could not be parsed because a closing parenthesis
+    // was found without a corresponding opening parenthesis
+    val regex = r"hello [a-z]+)"
+version
+    val url = url"https://github.com/propensive/soundness"
+    val time = 2020-Feb-29 at 3.20.pm in tz"Europe/Paris"
+    val html = Table(Tr(Th("Key"), Td("Value")))
+    val ip = ip"192.168.0.1"
+    val color = rgb"#40c9cd"
+    val message = e"This is $Bold[$color[very] important]."
+    val mime = media"application/json"
+    val cmd = sh"docker ps --filter name=$name"
+    val encoding = enc"ISO-8859-1"
+    val regex = r"hello ([a-z]+)"
+version
+    val url: HttpUrl = url"https://github.com/propensive/soundness"
+    val time: Moment = 2020-Feb-29 at 3.20.pm in tz"Europe/Paris"
+    val html: Element["table"] = Table(Tr(Th("Key"), Td("Value")))
+    val ip: Ipv4 = ip"192.168.0.1"
+    val color: Rgb24 = rgb"#40c9cd"
+    val message: Teletype = e"This is $Bold[$color[very] important]."
+    val mime: MediaType = media"application/json"
+    val cmd: Command = sh"docker ps --filter name=$name"
+    val encoding: Encoding = enc"ISO-8859-1"
+    val regex: Regex = r"hello ([a-z]+)"
 ```
 
 ---
 
-## Example
-
-There are several possible failures:
-- `_.decode[Path on Linux]` might fail if the path is invalid
-- `_.read[Text]` might fail if there's a disk I/O error
-- `Json.parse(_)` might fail if the content is invalid
-
----
+## Regular expressions
 
 ```amok
-context  term
-version  Json.parse(filename.decode[Path].read[Text])
-```
+version
+    import java.util.regex.*
 
-```amok
-context  term
-version
-    val path = filename.decode[Path]
-    val text = path.read[Text]
-    val json = Json.parse(text)
-version
-    val path: Path = filename.decode[Path]
-    val text: Text = path.read[Text]
-    val json: Json = Json.parse(text)
-version
-    val path: Try[Path] = filename.decode[Path]
-    val text: Try[Text] = path.flatMap(_.read[Text])
-    val json: Try[Json] = text.flatMap(Json.parse(_))
-version
-    val path = filename.decode[Path]
-    val text = path.flatMap(_.read[Text])
-    val json = text.flatMap(Json.parse(_))
-version
-    for path <- filename.decode[Path]
-        text <- path.read[Text]
-    yield Json.parse(text)
-```
+    case class Email(left: String, right: String)
 
----
+    object Email:
+      val pattern = Pattern.compile("^([^@]+)@([^@]+)$")
 
-## Dynamic JSON access
+      def unapply(email: String): Option[Email] =
+        val matcher = pattern.matcher(email)
+        if !matcher.matches then None
+        else Some(Email(pattern.group(1), pattern.group(2)))
 
-```amok
-context  term
-version  json.users(0).roles(0).as[Role]
-version  json.users.flatMap(_(0)).roles(0).as[Role]
-version  json.users.flatMap(_(0)).flatMap(_.roles)(0).as[Role]
-version  json.users.flatMap(_(0)).flatMap(_.roles).flatMap(_(0)).as[Role]
-version  json.users.flatMap(_(0)).flatMap(_.roles).flatMap(_(0)).flatMap(_.as[Role])
+    myEmail match
+      case Email(local, domain) =>
+        println(t"Local user $local is at domain $domain")
 version
-    for role <- json.users.flatMap(_(0)).flatMap(_.roles).flatMap(_(0)).flatMap(_.as[Role])
-    yield role
+    case class Email(left: String, right: String)
+
+    object Email:
+      val pattern = Pattern.compile("^([^@]+)@([^@]+)$")
+
+      def unapply(email: String): Option[Email] =
+        val matcher = pattern.matcher(email)
+        if !matcher.matches then None
+        else Some(Email(pattern.group(1), pattern.group(2)))
+
+    myEmail match
+      case Email(local, domain) =>
+        println(t"Local user $local is at domain $domain")
 version
-    for users <- json.users
-        role  <- users(0).flatMap(_.roles).flatMap(_(0)).flatMap(_.as[Role])
-    yield role
+    object Email:
+      val pattern = Pattern.compile("^([^@]+)@([^@]+)$")
+
+      def unapply(email: String): Option[Email] =
+        val matcher = pattern.matcher(email)
+        if !matcher.matches then None
+        else Some(Email(pattern.group(1), pattern.group(2)))
+
+    myEmail match
+      case Email(local, domain) =>
+        println(t"Local user $local is at domain $domain")
 version
-    for users <- json.users
-        user  <- users(0)
-        role  <- user.roles.flatMap(_(0)).flatMap(_.as[Role])
-    yield role
+    object Email:
+      val pattern = Pattern.compile("^([^@]+)@([^@]+)$")
+
+    myEmail match
+      case Email(local, domain) =>
+        println(t"Local user $local is at domain $domain")
 version
-    for users <- json.users
-        user  <- users(0)
-        roles <- user.roles
-        role  <- roles(0).flatMap(_.as[Role])
-    yield role
+    object Email:
+      val pattern = Pattern.compile("^([^@]+)@([^@]+)$")
+
+    myEmail match
+      case r"$local([^@]+)@$domain([^@]+)" =>
+        println(t"Local user $local is at domain $domain")
 version
-    for users <- json.users
-        user  <- users(0)
-        roles <- user.roles
-        role0 <- roles(0)
-        role  <- role0.as[Role]
-    yield role
+    myEmail match
+      case r"$local([^@]+)@$domain([^@]+)" =>
+        println(t"Local user $local is at domain $domain")
+version
+    myEmail match
+      case r"$local([^@]+)@$domain([^@.]+\.?)*" =>
+        println(t"The domain has ${domain.length} parts")
+version
+    myEmail match
+      case r"$local[^@]+@$domain([^@.]+\.?)*" =>
+        println(t"The local part is now a list of characters")
 ```
 
 ---
 
-## Quality of life
+## A "Quality of Life" Feature
 
 ```amok
 version
@@ -215,207 +406,7 @@ version
 
 ---
 
-## Ordinals
-
-Radical idea: Let's use different types for _cardinal_ and _ordinal_ numbers
-
-- Use `Int` for _cardinal_ numbers, like the `size` of a `List`
-- Use `Ordinal` for _ordinal_ numbers, like `Array` indices
-
----
-
-## Ordinals
-
-### New literals
-
-`Prim`, `Sec`, `Ter`, `Quat`, `Quin`, `Sen`, ...
-
----
-
-## New restrictions
-
-```amok
-version
-    val x = 2 + 1
-version
-    val x: Int = 2 + 1
-version
-    val x: Int = Sec + 1 // type error
-version
-    val x: Ordinal = Sec + 1
-version
-    val x: Ordinal = Sec + Prim // type error
-version
-    val x: Ordinal = Sec - Prim // type error
-version
-    val x: Int = Sec - Prim
-version
-    val x: Int = Sec - 1 // type error
-version
-    val x: Ordinal = Sec - 1
-```
-
----
-
-# `cli`
-
-* interactive CLI applications
-* rendering tree- and DAG-like data in the terminal
-* tab-completions for CLI applications
-* tabulating data for the terminal
-* bundling a Scala program for distribution
-* instantaneous startup for CLI apps
-* executing shell commands
-* filesystem monitoring
-
----
-
-```amok
-version
-    @main
-    def run(): Unit = println("Hello world")
-version
-    @main
-    def run(): Unit = cli:
-      println("Hello world")
-version
-    @main
-    def run(): Unit = cli:
-      Out.println("Hello world")
-version
-    @main
-    def run(): Unit = cli:
-      execute:
-        Out.println("Hello world")
-version
-    @main
-    def run(): Unit = cli:
-      execute:
-        Out.println("Hello world")
-        Exit.Ok
-version
-    @main
-    def run(): Unit = cli:
-      Out.println("Hello world") // does not compile
-      execute:
-        Out.println("Hello world")
-        Exit.Ok
-version
-    @main
-    def run(): Unit = cli:
-      execute:
-        Out.println("Hello world")
-        Exit.Ok
-version
-    @main
-    def run(): Unit = cli:
-      execute:
-        Out.println("Hello world") yet Exit.Ok
-version
-    val Greet = Subcommand("greet")
-    @main
-    def run(): Unit = cli:
-      execute:
-        Out.println("Hello world") yet Exit.Ok
-version
-    val Greet = Subcommand("greet")
-    @main
-    def run(): Unit = cli:
-      arguments match
-        case Greet() :: _ =>
-          execute:
-            Out.println("Hello world") yet Exit.Ok
-version
-    val Greet = Subcommand("greet")
-    @main
-    def run(): Unit = cli:
-      arguments match
-        case Greet() :: _ =>
-          execute:
-            Out.println("Hello world") yet Exit.Ok
-        case _ =>
-          execute:
-            Out.println("Unrecognized command") yet Exit.Fail(1)
-version
-    val Greet = Subcommand("greet")
-    val Check = Subcommand("check")
-    @main
-    def run(): Unit = cli:
-      arguments match
-        case Greet() :: _ =>
-          execute:
-            Out.println("Hello world") yet Exit.Ok
-        case _ =>
-          execute:
-            Out.println("Unrecognized command") yet Exit.Fail(1)
-version
-    val Greet = Subcommand("greet")
-    val Check = Subcommand("check")
-    @main
-    def run(): Unit = cli:
-      arguments match
-        case Greet() :: _ =>
-          execute:
-            Out.println("Hello world") yet Exit.Ok
-        case Check() :: _ =>
-          execute:
-            Out.println("Checking something") yet Exit.Ok
-        case _ =>
-          execute:
-            Out.println("Unrecognized command") yet Exit.Fail(1)
-version
-    val Greet = Subcommand("greet", "give a friendly greeting")
-    val Check = Subcommand("check", "check something")
-    @main
-    def run(): Unit = cli:
-      arguments match
-        case Greet() :: _ =>
-          execute:
-            Out.println("Hello world") yet Exit.Ok
-        case Check() :: _ =>
-          execute:
-            Out.println("Checking something") yet Exit.Ok
-        case _ =>
-          execute:
-            Err.println("Unrecognized command") yet Exit.Fail(1)
-version
-    val Greet = Subcommand("greet", "give a friendly greeting")
-    val Check = Subcommand("check", "check something")
-    @main
-    def run(): Unit = cli:
-      arguments match
-        case Greet() :: name :: _ =>
-          execute:
-            Out.println(t"Hello ${name()}") yet Exit.Ok
-        case Check() :: _ =>
-          execute:
-            Out.println("Checking something") yet Exit.Ok
-        case _ =>
-          execute:
-            Err.println("Unrecognized command") yet Exit.Fail(1)
-version
-    val Greet = Subcommand("greet", "give a friendly greeting")
-    val Check = Subcommand("check", "check something")
-    @main
-    def run(): Unit = cli:
-      arguments match
-        case Greet() :: name :: _ =>
-          execute:
-            Out.println(t"Hello ${name()}") yet Exit.Ok
-        case Check() :: Nil =>
-          enum Color:
-            case Red, Green, Blue
-          Flag("color", List('c'))[Color]()
-          execute:
-            Out.println("Checking something") yet Exit.Ok
-        case _ =>
-          execute:
-            Err.println("Unrecognized command") yet Exit.Fail(1)
-```
-
----
-
-# `data`
+## The `data` Bundle
 
 * Myers' _diff_ algorithm
 * structural comparison of datatypes
@@ -429,65 +420,84 @@ version
 
 ## Generic Derivation
 
----
-
-# `sci`
-
-* representations of physical quantities
-* quantized quantities (e.g. feet and inches)
-* datatypes for working with directed acyclic graphs
-* representations of complex numbers
-* representations of chemical symbols
-* safe arithmetic tools
-* opaque types for unsigned arithmetic
-* vector and matrix algebra
+- If we have typeclass instances for every parameter of a product type (or every variant of a
+  sum type) then we can combine them to create a typeclass instance for the product or sum type.
 
 ---
-
-# `tool`
-
-* typesafe programmatic invocations of the Scala compiler
-* compiler-checked syntax highlighting
-* classpath manipulation
-* TASTy analysis
-* programmatic interface to Git
-* plugin for compile-time package-shading
-* Java bytecode decompiler
-
----
-
-# `test`
-
-* unit test runner
-* benchmarking
-* structured comparison of values
-* test compiletime error messages
-* provision of randomized data
-
----
-
-## Direct-Style Scala
 
 ```amok
 version
-    block:
-      action()
-version
-    block {
-      action()
-    }
-version
-    block { context ?=>
-      action()(using context)
-    }
-version
-    block:
-      action()
+    object Derivation extends Derivable[Inspectable]:
+      inline def join[derivation <: Product: ProductReflection]: derivation is Inspectable =
+        value =>
+          fields(value):
+            [field] => field =>
+              val text = context.text(field)
+              if tuple then text else s"$label:$text"
+
+          . mkString(if tuple then "(" else s"$typeName(", " ╱ ", ")").tt
+
+      inline def split[derivation: SumReflection]: derivation is Inspectable = value =>
+        variant(value):
+          [variant <: derivation] => variant =>
+            context.give(variant.inspect)
 ```
 
 ---
 
-## The Typeclass Dilemma
+## Polymorphism and Composition
+
+---
+
+## Infix types
+
+```amok
+context type
+version
+    Decodable { type Self = Int }
+version
+    is[Decodable, Int]
+version
+    Int is Decodable
+version
+    Int is Decodable raises NumberError
+version
+    raises[Int is Decodable, NumberError]
+version
+    Tactic[NumberError] ?=> Int is Decodable
+version
+    Tactic[NumberError] ?=> (Decodable { type Self = Int })
+```
+
+---
+
+### Infix types
+
+```amok
+context type
+version
+    Instant is Addable by Duration to Instant
+version
+    to[Instant is Addable by Duration, Instant]
+version
+    to[by[Instant is Addable, Duration], Instant]
+version
+    to[by[is[Instant, Addable], Duration], Instant]
+version
+    to[by[Addable { type Self = Instant }, Duration], Instant]
+version
+    to[Addable { type Self = Instant; type Operand = Duration }, Instant]
+version
+    Addable { type Self = Instant; type Operand = Duration; type Result = Instant }
+version
+    Instant is Addable by Duration to Instant
+version
+    Instant is Addable by Duration
+```
+
+---
+
+## The Typeclass Designer's Dilemma
 
 ```amok
 version
@@ -551,11 +561,9 @@ version
       given Text is Decodable = identity(_)
 
       given Int is Decodable:
-        def decode(text: Text): Optional[Int] =
-          if isValidInt(text) then text.toInt else Unset
-
-      given User is Decodable:
-        def decode(text: Text): Optional[User] = ???
+        def decode(text: Text): Int raises NumberError =
+          if isValidInt(text) then text.toInt
+          else raise(NumberError(text))
 
     trait Decodable:
       type Self
@@ -565,134 +573,105 @@ version
       given Text is Decodable = identity(_)
 
       given Int is Decodable:
-        def decode(text: Text): Optional[Int] =
-          if isValidInt(text) then text.toInt else Unset
-
-      given User is Decodable:
-        def decode(text: Text): Optional[User] =
-          summon[UserDb].lookup(text)
+        def decode(text: Text): Int raises NumberError =
+          if isValidInt(text) then text.toInt
+          else raise(NumberError(text))
 
     trait Decodable:
       type Self
-      def decode(text: Text): Optional[Self]
+      def decode(text: Text): Self raises NumberError
 version
     object Decodable:
       given Text is Decodable = identity(_)
 
       given Int is Decodable:
-        def decode(text: Text): Optional[Int] =
-          if isValidInt(text) then text.toInt else Unset
+        def decode(text: Text): Int raises NumberError =
+          if isValidInt(text) then text.toInt
+          else raise(NumberError(text))
 
-      given User is Decodable:
-        def decode(text: Text)(using UserDb): Optional[User] =
-          summon[UserDb].lookup(text)
-
-    trait Decodable:
-      type Self
-      def decode(text: Text): Optional[Self]
-version
-    object Decodable:
-      given Text is Decodable:
-        def decode(text: Text)(using UserDb): Text = text
-
-      given Int is Decodable:
-        def decode(text: Text)(using UserDb): Optional[Int] =
-          if isValidInt(text) then text.toInt else Unset
-
-      given User is Decodable:
-        def decode(text: Text)(using UserDb): Optional[User] =
-          summon[UserDb].lookup(text)
+      given EmailAddress is Decodable:
+        def decode(text: Text): EmailAddress raises EmailAddressError =
+          EmailAddress.parse(text)
 
     trait Decodable:
       type Self
-      def decode(text: Text)(using UserDb): Optional[Self]
-version
-    object Decodable:
-      given Text is Decodable:
-        def decode(text: Text)(using UserDb): Text = text
-
-      given Int is Decodable:
-        def decode(text: Text)(using UserDb): Optional[Int] =
-          if isValidInt(text) then text.toInt else Unset
-
-      given User is Decodable:
-        def decode(text: Text)(using UserDb): Optional[User] =
-          summon[UserDb].lookup(text)
-
-    trait Decodable:
-      type Self
-      def decode(text: Text): Self
+      def decode(text: Text): Self raises NumberError
 version
     object Decodable:
       given Text is Decodable = identity(_)
 
       given Int is Decodable:
-        def decode(text: Text): Int =
-          if isValidInt(text) then text.toInt else Unset
+        def decode(text: Text): Int raises NumberError raises EmailAddressError =
+          if isValidInt(text) then text.toInt
+          else raise(NumberError(text))
 
-      given User is Decodable:
-        def decode(text: Text): User =
-          summon[UserDb].lookup(text)
+      given EmailAddress is Decodable:
+        def decode(text: Text): EmailAddress raises NumberError raises EmailAddressError =
+          EmailAddress.parse(text)
 
     trait Decodable:
       type Self
-      def decode(text: Text): Self
+      def decode(text: Text): Self raises NumberError raises EmailAddressError
 version
     object Decodable:
       given Text is Decodable = identity(_)
 
       given Int is Decodable:
-        def decode(text: Text): Int =
-          if isValidInt(text) then text.toInt else raise(NumberError(text))
+        def decode(text: Text): Int raises NumberError =
+          if isValidInt(text) then text.toInt
+          else raise(NumberError(text))
 
-      given User is Decodable:
-        def decode(text: Text): User =
-          summon[UserDb].lookup(text).or(raise(UserError(text)))
+      given EmailAddress is Decodable:
+        def decode(text: Text): EmailAddress raises EmailAddressError =
+          EmailAddress.parse(text)
 
     trait Decodable:
       type Self
-      def decode(text: Text): Self
+      def decode(text: Text): Self raises NumberError raises EmailAddressError
+version
+    object Decodable:
+      given Text is Decodable = identity(_)
+
+      given Int is Decodable:
+        def decode(text: Text)(using Tactic[NumberError]): Int =
+          if isValidInt(text) then text.toInt
+          else raise(NumberError(text))
+
+      given EmailAddress is Decodable:
+        def decode(text: Text)(using Tactic[EmailAddressError]): EmailAddress =
+          EmailAddress.parse(text)
+
+    trait Decodable:
+      type Self
+      def decode(text: Text): Self raises NumberError raises EmailAddressError
 version
     object Decodable:
       given Text is Decodable = identity(_)
 
       given Tactic[NumberError] => Int is Decodable:
         def decode(text: Text): Int =
-          if isValidInt(text) then text.toInt else raise(NumberError(text))
+          if isValidInt(text) then text.toInt
+          else raise(NumberError(text))
 
-      given Tactic[UserError] => User is Decodable:
-        def decode(text: Text): User =
-          summon[UserDb].lookup(text).or(raise(UserError(text)))
+      given Tactic[EmailAddressError] => EmailAddress is Decodable:
+        def decode(text: Text): EmailAddress =
+          EmailAddress.parse(text)
 
     trait Decodable:
       type Self
-      def decode(text: Text): Self
+      def decode(text: Text): Self raises NumberError raises EmailAddressError
 version
     object Decodable:
       given Text is Decodable = identity(_)
 
       given Tactic[NumberError] => Int is Decodable:
         def decode(text: Text): Int =
-          if isValidInt(text) then text.toInt else raise(NumberError(text))
+          if isValidInt(text) then text.toInt
+          else raise(NumberError(text))
 
-      given UserDb => Tactic[UserError] => User is Decodable:
-        def decode(text: Text): User =
-          summon[UserDb].lookup(text).or(raise(UserError(text)))
-
-    trait Decodable:
-      type Self
-      def decode(text: Text): Self
-version
-    object Decodable:
-      given Text is Decodable = identity(_)
-
-      given Tactic[NumberError] => Int is Decodable:
-        def decode(text: Text): Int =
-          if isValidInt(text) then text.toInt else raise(NumberError(text))
-
-      given (db: UserDb) => Tactic[UserError] => User is Decodable:
-        def decode(text: Text): User =
-          db.lookup(text).or(raise(UserError(text)))
+      given Tactic[EmailAddressError] => EmailAddress is Decodable:
+        def decode(text: Text): EmailAddress =
+          EmailAddress.parse(text)
 
     trait Decodable:
       type Self
@@ -701,11 +680,12 @@ version
     object Decodable:
       given Text is Decodable = identity(_)
 
-      given Tactic[NumberError] => Int is Decodable =
-        text => if isValidInt(text) then text.toInt else raise(NumberError(text))
+      given Tactic[NumberError] => Int is Decodable = text =>
+        if isValidInt(text) then text.toInt
+        else raise(NumberError(text))
 
-      given (db: UserDb) => Tactic[UserError] => User is Decodable =
-        text => db.lookup(text).or(raise(UserError(text)))
+      given Tactic[EmailAddressError] => EmailAddress is Decodable =
+        EmailAddress.parse(_)
 
     trait Decodable:
       type Self
@@ -717,48 +697,596 @@ version
 version
     trait Decodable:
       type Self
-      def decode(text: Json): Self
+      def decode(json: Json): Self
 version
     trait Decodable:
       type Self
       type Form
-      def decode(text: Form): Self
+      def decode(value: Form): Self
 version
     trait Decodable extends Typeclass:
       type Form
-      def decode(text: Form): Self
+      def decode(value: Form): Self
 version
     trait Decodable extends Typeclass, Formal:
-      def decode(text: Form): Self
+      def decode(value: Form): Self
 ```
+
+---
+
+### Composability
+
+```amok
+version
+    import strategies.throwUnsafely
+
+    val source: Path on Linux = % / "home" / "propensive" / "file.txt"
+    source.read[Text]
+version
+    import strategies.throwUnsafely
+
+    val source: Path on Linux = % / "home" / "propensive" / "image.jpg"
+    source.read[Raster of Jpeg]
+version
+    import strategies.throwUnsafely
+
+    val source: Path on Linux = % / "home" / "propensive" / "info.md"
+    source.read[Md]
+version
+    import strategies.throwUnsafely
+
+    val source: Path on Linux = % / "home" / "propensive" / "data.csv"
+    source.read[Sheet]
+version
+    import strategies.throwUnsafely
+    import dsvFormats.csv
+
+    val source: Path on Linux = % / "home" / "propensive" / "data.csv"
+    source.read[Sheet]
+version
+    import strategies.throwUnsafely
+
+    val source: Path on Linux = % / "home" / "propensive" / "data.json"
+    source.read[Json]
+version
+    import strategies.throwUnsafely
+
+    val source: Path on Linux = % / "home" / "propensive" / "data.json"
+    source.read[Json].as[MyData]
+version
+    import strategies.throwUnsafely
+
+    val source = Classpath / "data.json"
+    source.read[Json].as[MyData]
+version
+    import strategies.throwUnsafely
+
+    val source = url"https://example.com/sample.json"
+    source.read[Json].as[MyData]
+version
+    import strategies.throwUnsafely
+    import internetAccess.enabled
+
+    val source = url"https://example.com/sample.json"
+    source.read[Json].as[MyData]
+version
+    import strategies.throwUnsafely
+    import internetAccess.enabled
+
+    val source = url"https://example.com/sample.json"
+
+    summon[HttpUrl is Readable by Bytes]
+
+    source.read[Json].as[MyData]
+version
+    import strategies.throwUnsafely
+    import internetAccess.enabled
+
+    val source = url"https://example.com/sample.json"
+
+    summon[HttpUrl is Readable by Bytes]
+    summon[Json is Aggregable by Bytes]
+
+    source.read[Json].as[MyData]
+version
+    import strategies.throwUnsafely
+    import internetAccess.enabled
+
+    val source = url"https://example.com/sample.json"
+
+    summon[HttpUrl is Readable by Text]
+    summon[Json is Aggregable by Text]
+
+    source.read[Json].as[MyData]
+```
+
+---
+
+## Direct-style Scala
+
+```amok
+version
+    def block[result](action: => result): result =
+      setUp()
+      val result = action
+      tearDown()
+      result
+version
+    def block[result](action: => result): result =
+      setUp()
+      val result = action
+      tearDown()
+      result
+
+    block:
+      doSomething()
+version
+    def block[result](action: Context => result): result =
+      val context = setUp()
+      val result = action(context)
+      context.tearDown()
+      result
+
+    block: context =>
+      doSomething()(context)
+version
+    def block[result](action: Context ?=> result): result =
+      val context = setUp()
+      val result = action(using context)
+      context.tearDown()
+      result
+
+    block:
+      doSomething()
+version
+    def block[result](action: (context: Context) ?=> result): result =
+      val context = setUp()
+      val result = action(using context)
+      context.tearDown()
+      result
+
+    block:
+      println(context)
+      doSomething()
+```
+
+---
+
+## Error handling
+
+Let's take a filename, interpret it as a path, read its content as JSON and extract a
+`Person` from it.
+
+```amok
+version
+    def extract(filename: Text): Person = ???
+version
+    def extract(filename: Text): Person =
+      filename.decode[Path on Linux]
+version
+    def extract(filename: Text): Person =
+      filename.decode[Path on Linux].read[Json]
+version
+    def extract(filename: Text): Person =
+      filename.decode[Path on Linux].read[Json].as[Person]
+```
+
+---
+
+## Example
+
+There are several possible failures:
+- `_.decode[Path on Linux]` might fail if the path is invalid on Linux (`PathError`)
+- `_.read[Json]` might fail if there's a disk I/O error (`IoError`)
+- ...or if the content isn't valid JSON (`ParseError`)
+- `.as[Person]` might fail if the JSON has the wrong schema (`JsonError`)
 
 ---
 
 ```amok
-context  type
-version  Int is Decodable in Json
-version  Int is Decodable { type Form = Json }
-version  Decodable { type Self = Int; type Form = Json }
 version
-    Int is Decodable in Json
-    StackTrace is Decodable in Xml
+    case class Person(name: Text, age: Int)
+
+    def extract(filename: Text): Person =
+      filename.decode[Path on Linux].read[Json].as[Person]
 version
-    Int is Decodable in Json
-    StackTrace is Decodable in Xml
-    HttpUrl is Encodable in Text
+    import strategies.throwUnsafely
+
+    case class Person(name: Text, age: Int)
+
+    def extract(filename: Text): Person =
+      filename.decode[Path on Linux].read[Json].as[Person]
 version
-    Int is Decodable in Json
-    StackTrace is Decodable in Xml
-    HttpUrl is Encodable in Text
+    case class Person(name: Text, age: Int)
+
+    def extract(filename: Text): Person =
+      filename.decode[Path on Linux].read[Json].as[Person]
+version
+    case class Person(name: Text, age: Int)
+
+    def extract(filename: Text): Person =
+      filename.decode[Path on Linux].flatMap(_.read[Json].as[Person])
+version
+    case class Person(name: Text, age: Int)
+
+    def extract(filename: Text): Person =
+      filename.decode[Path on Linux].flatMap(_.read[Json].map(_.as[Person]))
+version
+    case class Person(name: Text, age: Int)
+
+    def extract(filename: Text): Try[Person] =
+      filename.decode[Path on Linux].flatMap(_.read[Json].map(_.as[Person]))
+version
+    case class Person(name: Text, age: Int)
+
+    def extract(filename: Text): Try[Person] =
+      for path <- filename.decode[Path on Linux]
+          json <- path.read[Json]
+      yield json.as[Person]
+version
+    case class Person(name: Text, age: Int)
+
+    def extract(filename: Text): Person =
+      filename.decode[Path on Linux].read[Json].as[Person]
+version
+    case class Person(name: Text, age: Int)
+
+    def extract(filename: Text): Person =
+      unsafely:
+        filename.decode[Path on Linux].read[Json].as[Person]
+version
+    case class Person(name: Text, age: Int)
+
+    def extract(filename: Text): Optional[Person] =
+      safely:
+        filename.decode[Path on Linux].read[Json].as[Person]
+version
+    case class Person(name: Text, age: Int)
+
+    def extract(filename: Text): Person =
+      filename.decode[Path on Linux].read[Json].as[Person]
+version
+    case class Person(name: Text, age: Int)
+
+    def extract(filename: Text)
+    : Person raises PathError raises IoError raises ParseError raises JsonError =
+
+        filename.decode[Path on Linux].read[Json].as[Person]
+version
+    case class Person(name: Text, age: Int)
+
+    case class ExtractError() extends Error(m"Could not read the person")
+
+    def extract(filename: Text)
+    : Person raises PathError raises IoError raises ParseError raises JsonError =
+
+        filename.decode[Path on Linux].read[Json].as[Person]
+version
+    case class Person(name: Text, age: Int)
+
+    case class ExtractError() extends Error(m"Could not read the person")
+
+    def extract(filename: Text): Person raises ExtractError =
+      filename.decode[Path on Linux].read[Json].as[Person]
+version
+    case class Person(name: Text, age: Int)
+
+    case class ExtractError() extends Error(m"Could not read the person")
+
+    def extract(filename: Text): Person raises ExtractError =
+      mitigate:
+        filename.decode[Path on Linux].read[Json].as[Person]
+version
+    case class Person(name: Text, age: Int)
+
+    case class ExtractError() extends Error(m"Could not read the person")
+
+    def extract(filename: Text): Person raises ExtractError =
+      mitigate:
+        case error: Error => ExtractError()
+      . within:
+          filename.decode[Path on Linux].read[Json].as[Person]
+version
+    case class Person(name: Text, age: Int)
+
+    case class ExtractError() extends Error(m"Could not read the person")
+
+    def extract(filename: Text): Person raises ExtractError =
+      mitigate:
+        case PathError(reason, path)   => ExtractError()
+        case IoError(path, op, reason) => ExtractError()
+        case ParseError(_, _, _)       => ExtractError()
+        case JsonError(reason)         => ExtractError()
+
+      . within:
+          filename.decode[Path on Linux].read[Json].as[Person]
+version
+    case class Person(name: Text, age: Int)
+
+    case class ExtractError(reason: Message)
+    extends Error(m"Could not read the person because $reason")
+
+    def extract(filename: Text): Person raises ExtractError =
+      mitigate:
+        case PathError(reason, path)   => ExtractError(m"the path was bad")
+        case IoError(path, op, reason) => ExtractError(reason.communicate)
+        case ParseError(_, _, _)       => ExtractError(m"the JSON did not parse")
+        case JsonError(reason)         => ExtractError(reason.communicate)
+
+      . within:
+          filename.decode[Path on Linux].read[Json].as[Person]
+version
+    case class Person(name: Text, age: Int)
+
+    case class ExtractError(reason: Message)
+    extends Error(m"Could not read the person because $reason")
+
+    def extract(filename: Text): Optional[Person] =
+      recover:
+        case PathError(reason, path)   => Unset
+        case IoError(path, op, reason) => Out.println("I/O error!") yet Unset
+        case ParseError(_, _, _)       => Unset
+        case JsonError(reason)         => Person.default
+
+      . within:
+          filename.decode[Path on Linux].read[Json].as[Person]
+version
+    case class Person(name: Text, age: Int)
+
+    case class ExtractError(reason: Message)
+    extends Error(m"Could not read the person because $reason")
+
+    def extract(filename: Text): Person raises ExtractError =
+      mitigate:
+        case PathError(reason, path)   => ExtractError(m"the path was bad")
+        case IoError(path, op, reason) => ExtractError(reason.communicate)
+        case ParseError(_, _, _)       => ExtractError(m"the JSON did not parse")
+        case JsonError(reason)         => ExtractError(reason.communicate)
+
+      . within:
+          filename.decode[Path on Linux].read[Json].as[Person]
+version
+    case class Person(name: Text, age: Int, email: EmailAddress)
+
+    case class ExtractError(reason: Message)
+    extends Error(m"Could not read the person because $reason")
+
+    def extract(filename: Text): Person raises ExtractError =
+      mitigate:
+        case PathError(reason, path)   => ExtractError(m"the path was bad")
+        case IoError(path, op, reason) => ExtractError(reason.communicate)
+        case ParseError(_, _, _)       => ExtractError(m"the JSON did not parse")
+        case JsonError(reason)         => ExtractError(reason.communicate)
+
+      . within:
+          filename.decode[Path on Linux].read[Json].as[Person]
+version
+    case class Person(name: Text, age: Int, email: EmailAddress)
+
+    given Tactic[EmailAddressError] => EmailAddress is Decodable in Json = ???
+
+    case class ExtractError(reason: Message)
+    extends Error(m"Could not read the person because $reason")
+
+    def extract(filename: Text): Person raises ExtractError =
+      mitigate:
+        case PathError(reason, path)   => ExtractError(m"the path was bad")
+        case IoError(path, op, reason) => ExtractError(reason.communicate)
+        case ParseError(_, _, _)       => ExtractError(m"the JSON did not parse")
+        case JsonError(reason)         => ExtractError(reason.communicate)
+
+      . within:
+          filename.decode[Path on Linux].read[Json].as[Person]
+version
+    case class Person(name: Text, age: Int, email: EmailAddress)
+
+    case class ExtractError(reason: Message)
+    extends Error(m"Could not read the person because $reason")
+
+    def extract(filename: Text): Person raises ExtractError raises EmailAddressError =
+      mitigate:
+        case PathError(reason, path)   => ExtractError(m"the path was bad")
+        case IoError(path, op, reason) => ExtractError(reason.communicate)
+        case ParseError(_, _, _)       => ExtractError(m"the JSON did not parse")
+        case JsonError(reason)         => ExtractError(reason.communicate)
+
+      . within:
+          filename.decode[Path on Linux].read[Json].as[Person]
+version
+    case class Person(name: Text, age: Int, email: EmailAddress)
+
+    case class ExtractError(reason: Message)
+    extends Error(m"Could not read the person because $reason")
+
+    def extract(filename: Text): Person raises ExtractError =
+      mitigate:
+        case PathError(reason, path)   => ExtractError(m"the path was bad")
+        case IoError(path, op, reason) => ExtractError(reason.communicate)
+        case ParseError(_, _, _)       => ExtractError(m"the JSON did not parse")
+        case JsonError(reason)         => ExtractError(reason.communicate)
+        case EmailAddressError(reason) => ExtractError(reason.communicate)
+
+      . within:
+          filename.decode[Path on Linux].read[Json].as[Person]
+version
+    case class Person(name: Text, age: 0 ~ 130, email: EmailAddress)
+
+    case class ExtractError(reason: Message)
+    extends Error(m"Could not read the person because $reason")
+
+    def extract(filename: Text): Person raises ExtractError =
+      mitigate:
+        case PathError(reason, path)   => ExtractError(m"the path was bad")
+        case IoError(path, op, reason) => ExtractError(reason.communicate)
+        case ParseError(_, _, _)       => ExtractError(m"the JSON did not parse")
+        case JsonError(reason)         => ExtractError(reason.communicate)
+        case EmailAddressError(reason) => ExtractError(reason.communicate)
+
+      . within:
+          filename.decode[Path on Linux].read[Json].as[Person]
+version
+    case class Person(name: Text, age: 0 ~ 130, email: EmailAddress)
+
+    case class ExtractError(reason: Message)
+    extends Error(m"Could not read the person because $reason")
+
+    def extract(filename: Text): Person raises ExtractError =
+      mitigate:
+        case PathError(reason, path)   => ExtractError(m"the path was bad")
+        case IoError(path, op, reason) => ExtractError(reason.communicate)
+        case ParseError(_, _, _)       => ExtractError(m"the JSON did not parse")
+        case JsonError(reason)         => ExtractError(reason.communicate)
+        case EmailAddressError(reason) => ExtractError(reason.communicate)
+        case RangeError(_, _, _)       => ExtractError(m"the age was out of range")
+
+      . within:
+          filename.decode[Path on Linux].read[Json].as[Person]
+version
+    case class Person(name: Text, age: 0 ~ 130, email: EmailAddress)
+
+    case class ExtractError(reason: Message)
+    extends Error(m"Could not read the person because $reason")
+
+    def extract(filename: Text): Person raises ExtractError =
+      mitigate:
+        case PathError(reason, path)   => ExtractError(m"the path was bad")
+        case IoError(path, op, reason) => ExtractError(reason.communicate)
+        case ParseError(_, _, _)       => ExtractError(m"the JSON did not parse")
+
+      . within:
+          val json = filename.decode[Path on Linux].read[Json]
+          json.as[Person]
+version
+    val json = filename.decode[Path on Linux].read[Json]
+    json.as[Person]
+version
+    val json = filename.decode[Path on Linux].read[Json]
+
+    validate(ExtractError()):
+      case JsonError(reason)         => accrual.add(reason.communicate)
+      case EmailAddressError(reason) => accrual.add(reason.communicate)
+      case RangeError(_, _, _)       => accrual.add(m"the age was out of range")
+
+    . within:
+        json.as[Person]
+version
+    val json = filename.decode[Path on Linux].read[Json]
+
+    validate[JsonPointer](ExtractError()):
+      case JsonError(reason)         => accrual.add(reason.communicate, focus)
+      case EmailAddressError(reason) => accrual.add(reason.communicate, focus)
+      case RangeError(_, _, _)       => accrual.add(m"the age was out of range", focus)
+
+    . within:
+        json.as[Person]
+```
+---
+
+```amok
+version
+    class Json():
+      def as[result]: result
+version
+    class Json():
+      def as[result: Decodable in Json]: result
+version
+    class Json():
+      def as[result: Decodable in Json]: result raises JsonError
+version
+    class Json():
+      def as[result: Decodable in Json]: result raises JsonError tracks JsonPointer
+```
+---
+
+## Ordinals
+
+The two most difficult problems in computer science:
+
+ - naming things
+ - cache invalidation
+ - off-by-one errors
+
+---
+
+## Ordinals
+
+Let's use different types for _cardinal_ and _ordinal_ numbers
+
+- Use `Int` for _cardinal_ numbers, like the size of a collection
+- Use `Ordinal` for _ordinal_ numbers, like `Array` indices
+
+---
+
+### New approach
+
+- let `Prim`, `Sec`, `Ter`, `Quat`, `Quin`, `Sen` be the first ordinal numbers
+  - there is no "zeroth" / "first" ambiguity
+  - we always know which element these refer to
+  - most of the time we don't need to refer to an `Ordinal` by name
+
+---
+
+## New restrictions
+
+```amok
+version
+    val n = 2 + 1
+version
+    val n: Int = 2 + 1
+version
+    val n: Int = Sec + 1 // type error
+version
+    val n: Ordinal = Sec + 1
+version
+    val n: Ordinal = Sec + Prim // type error
+version
+    val n: Ordinal = Sec - Prim // type error
+version
+    val n: Int = Sec - Prim
+version
+    val n: Int = Sec - 1 // type error
+version
+    val n: Ordinal = Sec - 1
+version
+    val n = 2*Sec // type error
 ```
 
 ---
 
-## More
+## Why it _helps_:
+
+In numeric expressions,
+
+- _some_ values will get a different type
+- _some_ of the arithmetic operations may change operand types
+- _some_ of those operations may no longer be valid
+- ...but only the ones which don't make sense!
 
 ---
 
-## More
+## The `cli` Bundle
+
+* interactive CLI applications
+* rendering tree- and DAG-like data in the terminal
+* tab-completions for CLI applications
+* tabulating data for the terminal
+* bundling a Scala program for distribution
+* instantaneous startup for CLI apps
+* executing shell commands
+* filesystem monitoring
+
+---
+
+## The `sci` Bundle
+
+* representations of physical quantities
+* quantized quantities (e.g. feet and inches)
+* datatypes for working with directed acyclic graphs
+* representations of complex numbers
+* representations of chemical symbols
+* safe arithmetic tools
+* opaque types for unsigned arithmetic
+* vector and matrix algebra
 
 ---
 
@@ -817,7 +1345,20 @@ version
 
     val s = u*t + 0.5*a*t*t
 ```
+
 ---
+
+## The `test` Bundle
+
+* unit test runner
+* benchmarking
+* structured comparison of values
+* test compiletime error messages
+* test coverage
+* provision of randomized data
+
+---
+
 
 ## Compiletime tests
 
@@ -858,6 +1399,33 @@ version
     test(m"check that 2 + 2 does not equal 5"):
       demilitarize:
         val x: 5 = 2 + 2
+    . assert()
+version
+    test(m"check that 2 + 2 equals 4"):
+      2 + 2
+    . assert(_ == 4)
+
+    test(m"check that 2 + 2 equals 4 at compiletime"):
+      val x: 4 = 2 + 2
+    . assert()
+
+    test(m"check that 2 + 2 does not equal 5"):
+      demilitarize:
+        val x: 5 = 2 + 2
+      . messages
+    . assert()
+version
+    test(m"check that 2 + 2 equals 4"):
+      2 + 2
+    . assert(_ == 4)
+
+    test(m"check that 2 + 2 equals 4 at compiletime"):
+      val x: 4 = 2 + 2
+    . assert()
+
+    test(m"check that 2 + 2 does not equal 5"):
+      demilitarize:
+        val x: 5 = 2 + 2
       . messages
     . assert(_.length > 0)
 version
@@ -884,11 +1452,110 @@ version
 
 ---
 
-# `web`
+## Test rigs
+
+```amok
+version
+    test(m"test a CLI application"):
+      @main
+      def run(): Unit = cli:
+        arguments match
+          case Help() :: _ => execute(Out.println(msg) yet Exit.Ok)
+          case _           => execute(Exit.Fail(1))
+
+      // invoke(t"help")
+
+    . assert(_ == "Helpful text")
+version
+    test(m"test a CLI application"):
+      val app = cliRig:
+        @main
+        def run(): Unit = cli:
+          arguments match
+            case Help() :: _ => execute(Out.println(msg) yet Exit.Ok)
+            case _           => execute(Exit.Fail(1))
+
+      // invoke(t"help")
+
+    . assert(_ == "Helpful text")
+version
+    test(m"test a CLI application"):
+      val app = cliRig:
+        cli:
+          arguments match
+            case Help() :: _ => execute(Out.println(msg) yet Exit.Ok)
+            case _           => execute(Exit.Fail(1))
+
+      // invoke(t"help")
+
+    . assert(_ == "Helpful text")
+version
+    test(m"test a CLI application"):
+      val app = cliRig:
+        '{  cli:
+              arguments match
+                case Help() :: _ => execute(Out.println(msg) yet Exit.Ok)
+                case _           => execute(Exit.Fail(1))  }
+
+      // invoke(t"help")
+
+    . assert(_ == "Helpful text")
+version
+    test(m"test a CLI application"):
+      val app = cliRig:
+        '{  cli:
+              arguments match
+                case Help() :: _ => execute(Out.println(msg) yet Exit.Ok)
+                case _           => execute(Exit.Fail(1))  }
+
+      app.invoke(t"help")
+
+    . assert(_ == "Helpful text")
+version
+    for msg <- List("Hello world!", "Привет, мир!", "გამარჯობა, მსოფლიო!") do
+      test(m"test a CLI application with $msg"):
+        val app = cliRig:
+          '{  cli:
+                arguments match
+                  case Help() :: _ => execute(Out.println(msg) yet Exit.Ok)
+                  case _           => execute(Exit.Fail(1))  }
+
+        app.invoke(t"help")
+
+      . assert(_ == msg)
+version
+    for msg <- List("Hello world!", "Привет, мир!", "გამარჯობა, მსოფლიო!") do
+      test(m"test a CLI application with $msg"):
+        val app = cliRig:
+          '{  cli:
+                arguments match
+                  case Help() :: _ => execute(Out.println($msg) yet Exit.Ok)
+                  case _           => execute(Exit.Fail(1))  }
+
+        app.invoke(t"help")
+
+      . assert(_ == msg)
+```
+
+---
+
+## The `tool` Bundle
+
+* typesafe programmatic invocations of the Scala compiler
+* compiler-checked syntax highlighting
+* classpath manipulation
+* TASTy analysis
+* programmatic interface to Git
+* plugin for compile-time package-shading
+* Java bytecode decompiler
+
+---
+
+## The `web` Bundle
 
 * correctly represent URLs and other network values
 * typesafe generation of HTML
-* generate forms from case classes
+* generate validated forms from case classes
 * HTTP client and server
 * Markdown engine
 * SVG generation
@@ -896,6 +1563,12 @@ version
 * support for MIME types
 * read TTF/OTF font files
 * send emails
+* work with CSS
 * read and process JPEGs, GIFs, PNGs and BMPs
 
 ---
+
+## Thank you
+
+- Check out the Soundness website: https://soundness.dev/
+- Ask me about consultancy in Scala 3

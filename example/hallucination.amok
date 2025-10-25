@@ -1,0 +1,75 @@
+domain java
+base hallucination
+
+memo  supports working with raster images
+detail
+    _Hallucination_ provides simple facilities for working with raster images in common formats like
+    [GIF](https://en.wikipedia.org/wiki/GIF), [JPEG](https://en.wikipedia.org/wiki/JPEG),
+    [PNG](https://en.wikipedia.org/wiki/PNG) and
+    [Windows BMP](https://en.wikipedia.org/wiki/BMP_file_format).
+
+    Hallucination makes it possible to load and save files in these formats, access and transform
+    their pixel data, and perform simple transformations like cropping and mirroring images, without
+    stretching to advanced image analysis or processing functionality.
+
+    ## Loading images
+
+    It's easy to load an image:
+
+    ```amok
+    version
+        import soundness.*
+
+        val file = % / "home" / "data" / "image.png"
+        val image = Raster(file)
+    version
+        import soundness.*
+
+        val file: Path on Linux = % / "home" / "data" / "image.png"
+        val raster: Raster of Png = file.open(Raster[Png](_))
+    ```
+
+    ### This is a third-level heading
+
+    With a paragraph of text beneath it.
+
+    #### This is a fourth-level heading
+
+    With a paragraph of text beneath it.
+
+entry .Bmp   a typelevel representation of the Windows BMP file format
+  refer hallucination.Bmp hallucination.Gif hallucination.Jpeg hallucination.Png
+
+entry .Gif              a typelevel representation the GIF file format
+entry .Jpeg             a typelevel representation the JPEG file format
+  entry .apply          constructs a new JPEG instance
+  entry .rasterization  defines how a `Jpeg` should be rasterized
+    entry .Self         the type, `Jpeg`
+    entry .name         the name by which this JPEG image should be known
+    entry .mediaType    the MIME type, `image/jpeg`
+
+entry .Png   a typelevel representation the PNG file format
+
+entry .RasterError  an error raised when processing a raster image
+entry .Raster  represents an image consisting of a rectanguar grid of pixels of a certain color
+  entry .graphical  a graphical instance
+  entry #apply      access the pixel at position `x` and `y`
+      Retrieves the pixel color at the `[Int]` positions, `x` and `y`.
+
+      ```scala
+      val pixel: Color = raster(193, 129)
+      ```
+
+  entry #crop       crops the image to a smaller size
+  entry #flipX      mirrors the image about a vertical axis
+  entry #flipY      mirrors the image about a horizontal axis
+  entry #height     gets the height of the image in pixels
+  entry #image
+  entry #landscape  `true` if the `width` of the image is greater than its `height`
+  entry #portrait   `true` if the `height` of the image is greater than its `width`
+  entry #rotate     rotates the image 90, 180 or 270 degrees
+  entry #square     `true` if the width and height of the image are equal
+  entry #to         converts the image to the specified format
+  entry #width      gets the width of the image in pixels
+
+entry .Rasterizable  typeclass instance for transforming the given type into a `Raster`

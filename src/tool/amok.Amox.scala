@@ -49,27 +49,29 @@ object Amox:
                detail:   Optional[Text],
                entry:    List[Entry])
 
-  object Entry:
-    given decoder: Void => Entry is CodlDecodable = CodlDecodable.derived
-    given encoder: Void => Entry is CodlEncodable = CodlEncodable.derived
-
   case class Entry
-              (name:     Text,
-               memo:     Optional[Text],
-               detail:   Optional[Text],
-               until:    List[Rename],
-               hidden:   Optional[Boolean],
-               refer:    List[Text],
-               entry:    List[Entry])
+              (name:   Text,
+               memo:   Optional[Text],
+               detail: Optional[Text],
+               until:  List[Rename],
+               hidden: Optional[Boolean],
+               refer:  List[Text],
+               entry:  List[Entry])
+
+  // object Entry:
+  //   given Tactic[CodlError] => Entry is Decodable = Codl.derivedDecodable
+  //   given Void => Entry is Encodable = Codl.derivedEncodable
+  //   given Void => Entry is cellulose.CodlSchematic = cellulose.CodlSchematic.derived
 
   case class Rename(version: Text, name: Text)
 
   def read(file: Path on Linux)(using Stdio): Base raises LoadError =
     mitigate:
-      case error@IoError(path, operation, reason) => LoadError(file, error)
-      case error@CodlError(_)                     => LoadError(file, error)
-      case error@ParseError(_, _, _)              => LoadError(file, error)
-      case error@StreamError(total)               => LoadError(file, error)
+      case error@IoError(_, _, _)    => LoadError(file, error)
+      case error@CodlError(_)        => unsafely(throw error) yet LoadError(file, error)
+      case error@ParseError(_, _, _) => LoadError(file, error)
+      case error@StreamError(_)      => LoadError(file, error)
 
     . within:
-        file.open(Codl.read[Base](_))
+        Out.println(file.open(_.read[Text]))
+        file.open(_.read[CodlDoc of Base].materialize)

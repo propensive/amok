@@ -107,6 +107,7 @@ def amok(): Unit = cli:
           else workingDirectory[Path on Linux] + filename.decode[Relative on Linux]
 
         def load(): (doc: AmokDoc, content: List[Html["section"]]) = synchronized:
+          ???
           Out.println(m"Loading $filename...")
           val fileText = file.open(_.read[Text])
           val stripped = fileText.cut(t"\n").dropWhile(_ != t"##").tail.join(t"\n")

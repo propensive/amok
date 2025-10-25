@@ -78,7 +78,7 @@ entry .Diff
       For example, an edit sequence of `[Par('X'), Par('Y'), Del('W'), Ins('Z'), Par('Q'), Par('J')]` contains the
       deletion subsequence `[Del('W')]` and the insertion subsequence `[Ins('Z')]`, whose lengths are equal and
       less than or equal to `1`. The sequence would therefore be rewritten
-      `[Par('X'), Par('Y'), Sub('W', 'Z'), Par('Q'), Par('J')[`, without even applying the similarity function.
+      `List(Par('X'), Par('Y'), Sub('W', 'Z'), Par('Q'), Par('J'))`, without even applying the similarity function.
 
       A call to `.dissonance#Diff.rdiff` produces an instance of `.dissonance.Rdiff`.
 

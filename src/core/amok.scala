@@ -88,11 +88,11 @@ object Amok:
             case ConstantType(IntConstant(int))    => int.show
             case ConstantType(StringConstant(str)) => t"\"$str\""
             case TypeRef(prefix, ref)              => ref.show
-            case AnnotatedType(tpe, anns)          => t"${captures(anns)}${showType(tpe)}"
+            case AnnotatedType(meta, anns)         => t"${captures(anns)}${showType(meta)}"
             case OrType(left, right)               => t"${showType(left, true)} | ${showType(right, true)}"
             case AndType(left, right)              => t"${showType(left, true)} & ${showType(right, true)}"
             case TermRef(prefix, name)             => t"$name.type"
-            case TypeLambda(from, to, tpe)         => t"[${from.mkString(", ")}] =>> ${showType(tpe, true)}"
+            case TypeLambda(from, to, meta)        => t"[${from.mkString(", ")}] =>> ${showType(meta, true)}"
             case TypeBounds(lb, ub)                => t"? >: ${showType(lb, true)} <: ${showType(ub, true)}}" // FIXME: hide Any/Nothing
 
             case ref: dotty.tools.dotc.core.Types.TypeParamRef =>
@@ -105,7 +105,7 @@ object Amok:
         //   term match
         //     case Apply(Select(New(focus), _), List(Typed(Repeated(values, _), _))) if focus.tpe.typeSymbol == retainsSym =>
         //       values.map:
-        //         case Select(prefix, name) => t"${scope.prefix(pname(prefix))}${name}"
+        //         case Select(prefix, name) => t"${imports.prefix(pname(prefix))}${name}"
         //         case Ident(name)          => t"${name}"
 
         //       . join(t"{", t", ", t"} ")
@@ -142,8 +142,8 @@ object Amok:
             db((path / name.show).asTerm) = Info(name.show, icon(Icons.Entity.Package, pc.symbol.flags))
             body.each(walk(_, (path / name.show).asTerm))
 
-          case valDef@ValDef(name, rtn, body) if !(valDef.symbol.flags.is(Synthetic) || valDef.symbol.flags.is(Private) || name == "_") =>
-            val termName = if valDef.symbol.flags.is(Given) && (name.startsWith("given_") || name.startsWith("evidence$")) then showType(rtn.tpe) else name.show
+          case valDef@ValDef(name, result, body) if !(valDef.symbol.flags.is(Synthetic) || valDef.symbol.flags.is(Private) || name == "_") =>
+            val termName = if valDef.symbol.flags.is(Given) && (name.startsWith("given_") || name.startsWith("evidence$")) then showType(result.tpe) else name.show
             db((path / termName).asTerm) = Info(termName, icon(Icons.Entity.Val, valDef.symbol.flags))
             body.each(walk(_, (path / termName).asTerm))
 
@@ -156,8 +156,8 @@ object Amok:
               companion.each(walk(_, (path / className).asTerm))
               body.each(walk(_, (path / className).asType))
 
-          case term@DefDef(name, params, rtn, body) if !term.symbol.flags.is(Synthetic) && !term.symbol.flags.is(Private) && !name.contains("$default$") =>
-            val termName = if term.symbol.flags.is(Given) && name.startsWith("given_") then showType(rtn.tpe) else name.show
+          case term@DefDef(name, params, result, body) if !term.symbol.flags.is(Synthetic) && !term.symbol.flags.is(Private) && !name.contains("$default$") =>
+            val termName = if term.symbol.flags.is(Given) && name.startsWith("given_") then showType(result.tpe) else name.show
             db((path / termName).asType) = Info(termName, icon(Icons.Entity.Def, term.symbol.flags))
             params.flatMap(_.params).each(walk(_, (path / termName).asTerm))
 

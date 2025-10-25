@@ -91,13 +91,13 @@ class Model():
           case other   => Out.println(m"Unexpected: ${other.inspect}") yet Unset
 
         next.let: next =>
-          next.memo = entry.memo.dare(Markdown.parseInline)
+          next.memo = entry.memo.dare(_.read[InlineMd])
           next.detail = entry.detail
           next.hidden = entry.hidden.or(false)
           recur(prefix+entry.name, entry.entry, next)
 
     val init = root(Member.OfTerm(base.base.or(t"")))
-    init.memo = base.memo.dare(Markdown.parseInline)
+    init.memo = base.memo.dare(_.read[InlineMd])
     init.detail = base.detail
     recur(base.base.or(t""), base.entry, init)
 
@@ -107,7 +107,7 @@ class Model():
     catch case error: Throwable =>
       Out.println(error.stackTrace.teletype)
 
-    Syntax.cache.clear()
+    Syntax.clear()
     java.lang.System.gc()
 
   import Member.{OfTerm, OfType}
@@ -125,11 +125,11 @@ class Model():
             child.definition = `package`(Nil)
             body.each(walk(_, child, true))
 
-          case valDef@ValDef(name, rtn, body) if !(valDef.symbol.flags.is(Private) || name == "_") =>
+          case valDef@ValDef(name, result, body) if !(valDef.symbol.flags.is(Private) || name == "_") =>
             val flags = valDef.symbol.flags
             val termName =
               if flags.is(Given) && (name.tt.starts(t"evidence$$"))
-              then name.tt/*Syntax(rtn.tpe)*/ else name.tt
+              then name.tt/*Syntax(result.tpe)*/ else name.tt
             if name.tt.ends(t"$$package") then body.each(walk(_, node, true))
             else
               val child = node(of(termName))
@@ -143,7 +143,7 @@ class Model():
                 then `var`(flags.has(`override`, `private`, `protected`, `final`))
                 else `val`(flags.has(`override`, `private`, `protected`, `erased`, `inline`, `final`, `lazy`))
 
-              if !flags.is(Module) then child.returnType = Syntax(rtn.tpe)
+              if !flags.is(Module) then child.returnType = Syntax(result.tpe)
               body.each(walk(_, child, true))
 
           case classDef@ClassDef(name, defDef, extensions0, selfType, body) =>
@@ -194,7 +194,10 @@ class Model():
 
               body.each(walk(_, child, obj))
 
-          case term@DefDef(name, groups0, rtn, body) if !term.symbol.flags.is(Synthetic) && !term.symbol.flags.is(Private) && !name.contains("$default$") =>
+          case term@DefDef(name, groups0, result, body)
+            if !term.symbol.flags.is(Synthetic) && !term.symbol.flags.is(Private)
+               && !name.contains("$default$") =>
+
             val flags = term.symbol.flags
             val isGiven = flags.is(Given)
             val termName = name.show
@@ -202,15 +205,15 @@ class Model():
             val ext = flags.is(ExtensionMethod)
 
             val split = 1 + groups0.indexWhere:
-              case clause@TermParamClause(terms) => terms.length == 1
-                                                    && !terms.exists(_.symbol.flags.is(Given))
-              case _                             => false
+              case clause@TermParamClause(terms) =>
+                terms.length == 1 && !terms.exists(_.symbol.flags.is(Given))
+              case _ => false
 
             val preClauses = if ext then groups0.take(split) else Nil
             val paramClauses = if ext then groups0.drop(split) else groups0
 
             child.params =
-              if isGiven then Unset else Syntax(10, paramClauses.map(Syntax.clause(_, true))*)
+              if isGiven then Unset else Syntax.Compound(paramClauses.map(Syntax.clause(_, true)))
 
             child.definition =
               if isGiven then `given`(flags.has(`inline`, `transparent`, `erased`))
@@ -218,15 +221,15 @@ class Model():
                 val definition: amok.Definition.`def` =
                   `def`(flags.has(`abstract`, `override`, `private`, `protected`, `erased`, `final`, `infix`, `transparent`, `inline`))
 
-                if ext then `extension`(Syntax(10, preClauses.map(Syntax.clause(_, true))*), definition)
+                if ext then `extension`(Syntax.Compound(preClauses.map(Syntax.clause(_, true))), definition)
                 else definition
 
             child.returnType =
               if isGiven then
-                Syntax(10, paramClauses.flatMap: clause =>
+                Syntax.Compound(paramClauses.flatMap: clause =>
                   List(Syntax.clause(clause, false), Syntax.Symbolic(t" => "))
-                :+ Syntax(rtn.tpe)*)
-              else Syntax(rtn.tpe)
+                :+ Syntax(result.tpe))
+              else Syntax(result.tpe)
 
           case typeDef@TypeDef(name, _) if name != "MirroredMonoType" =>
             val flags = typeDef.symbol.flags

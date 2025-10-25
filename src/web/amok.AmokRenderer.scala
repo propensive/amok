@@ -87,7 +87,7 @@ object AmokEmbedding:
 
 class AmokEmbedding(autoScale: Boolean)(using Tactic[CodlError], Tactic[ParseError]) extends Embedding(t"amok"):
   def render(meta: Optional[Text], content: Text): Seq[Html["div"]] =
-    val preamble = Codl.read[Preamble](content)
+    val preamble = content.read[CodlDoc of Preamble].materialize
 
     val context = preamble.context match
       case t"term" => Scala.Context.Term

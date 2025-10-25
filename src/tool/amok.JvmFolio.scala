@@ -59,105 +59,117 @@ extends Folio(mountpoint, t"jvm", source):
             import Markdown.renderable
 
             val detail: Optional[Markdown[Markdown.Ast.Block]] =
-              node.detail.let(Markdown.parse(_))
+              node.detail.let(_.read[Md])
 
-            val index = Index.decode(name)
+            val typename = Typename.decode(name)
 
-            def parents: List[Index] =
-              def recur(index: Index): List[Index] =
-                (index.only { case Index.Entity(parent, _, _) => parent :: recur(parent) }).or(Nil)
+            def parents: List[Typename] =
+              def recur(typename: Typename): List[Typename] =
+                typename.only:
+                  case Typename.Type(parent, _) => parent :: recur(parent)
+                  case Typename.Term(parent, _) => parent :: recur(parent)
+                . or(Nil)
 
-              recur(index)
+              recur(typename)
 
-            def link(isType: Boolean): Path on UrlSpace = (mountpoint / "_entity" / index.child(name, isType).id).on[UrlSpace]
+            def link(isType: Boolean): Path on Www = (mountpoint / "_entity" / typename.child(name, isType).id).on[Www]
             def keywords(node: Node) =
               List(node.template.let(_.syntax.html), node.definition.let(_.syntax.html)).compact match
                 case one :: Nil        => Code(one)
                 case one :: two :: Nil => Code(one, t", ", two)
                 case _                 => Unset
 
-            given Imports(Set
-                   (Index.decode(t"scala.Predef"),
-                    Index.decode(t"scala.collection"),
-                    Index.decode(t"scala.collection.immutable"),
-                    Index.decode(t"scala"),
-                    Index.decode(t"prepositional"),
-                    Index.decode(t"java.lang")) ++ parents)
+            given imports: Imports = Imports(Set
+                   (Typename.decode(t"scala.Predef"),
+                    Typename.decode(t"scala.collection"),
+                    Typename.decode(t"scala.collection.immutable"),
+                    Typename.decode(t"scala"),
+                    Typename.decode(t"prepositional"),
+                    Typename.decode(t"java.lang")) ++ parents)
 
+            val colon = if node.types.isEmpty then Nil else List(Code(t":"))
 
             Page.simple
-             (mountpoint, index.only:
-                case Index.Entity(parent, isType, entity) =>
+             (mountpoint, typename.only:
+                case Typename.Type(parent, entity) =>
+                  H1.pkg(Code(parent.html, symbol))
+                case Typename.Term(parent, entity) =>
                   H1.pkg(Code(parent.html, symbol)),
-
               H1(Code(entity)),
-              P(t"Memo: "),
-              node.template.let: kind =>
-                val exts =
-                  if kind.extensions.length == 0 then Unset
-                  else Syntax.sequence(kind.extensions, Syntax.Comma).let(_.html)
+              Div(List(node.template.let(_.syntax), node.definition.let(_.syntax)).compact.map: kind =>
+                H3(Code(kind.html))),
+              // node.template.let: template =>
+              //   val extensionss =
+              //     if template.extensions.length == 0 then Unset
+              //     else Syntax.sequence(template.extensions, Syntax.Comma).let(_.html)
+            //
+            //   node.template.let: kind =>
+            //     val exts =
+            //       if kind.extensions.length == 0 then Unset
+            //       else Syntax.sequence(kind.extensions, Syntax.Comma).let(_.html)
 
-                val colon = if node.types.isEmpty then Nil else List(Code(t":"))
 
-                Table.members
-                 (Tr(Th(colspan = 2)(Code(kind.syntax.html), Code(t" "), Code(entity, t" extends ".unless(kind.extensions.isEmpty), exts), colon)),
-                  node.types.to(List).flatMap: (name, template) =>
-                    val entry: Html["tr"] = Tr(Td.kind(keywords(template)), Th(Code(A(href = link(true))(name))))
+            //     Table.members
+            //      (Tr(Th(colspan = 2)(Code(kind.syntax.html), Code(t" "), Code(entity, t" extends ".unless(kind.extensions.isEmpty), exts), colon)),
+            //       node.types.to(List).flatMap: (name, template) =>
+            //         val entry: Html["tr"] = Tr(Td.kind(keywords(template)), Th(Code(A(href = link(true))(name))))
 
-                    List
-                     (entry,
-                      template.memo.let { memo => Tr(Td, Td.memo(memo.html)) }).compact),
+            //         List
+            //          (entry,
+            //           template.memo.let { memo => Tr(Td, Td.memo(memo.html)) }).compact),
 
-              node.definition.let: kind =>
-                val colon = if node.terms.isEmpty then Nil else List(Code(t":"))
+            //   node.definition.let: kind =>
+            //     val colon = if node.terms.isEmpty then Nil else List(Code(t":"))
 
-                Table.members
-                 (Tr
-                   (Th(colspan = 2)
-                     (Code(kind.syntax.html, t" "),
-                      Code.typed
-                       (entity,
-                        node.params.let(_.html),
-                        t": ".unless(node.returnType.absent),
-                        node.returnType.let(_.html),
-                        colon))),
+            //     Table.members
+            //      (Tr
+            //        (Th(colspan = 2)
+            //          (Code(kind.syntax.html, t" "),
+            //           Code.typed
+            //            (entity,
+            //             node.params.let(_.html),
+            //             t": ".unless(node.returnType.absent),
+            //             node.returnType.let(_.html),
+            //             colon))),
 
-                  locally:
-                    val grouped: Seq[Html["tr"]] =
-                      node.terms.to(List).flatMap: (name, node) =>
-                        node.definition match
-                          case `extension`(subject, definition, modifiers) =>
-                            List((subject, definition.syntax, name, node.memo))
-                          case _ =>
-                            Nil
-                      . groupBy(_(0)).to(List).flatMap: (subject, defs) =>
-                          List
-                           (List(Tr(Td.extension(Code(Span(t"extension"))), Td.extension2(Code(subject.html)))),
-                            node.terms.to(List).flatMap: (name, term) =>
-                              val entry: Html["tr"] = Tr(Td.kind(keywords(term)), Th(Code(A(href = link(false))(name))))
+            //       locally:
+            //         val grouped: Seq[Html["tr"]] =
+            //           node.terms.to(List).flatMap: (name, node) =>
+            //             node.definition match
+            //               case `extension`(subject, definition, modifiers) =>
+            //                 List((subject, definition.syntax, name, node.memo))
+            //               case _ =>
+            //                 Nil
+            //           . groupBy(_(0)).to(List).flatMap: (subject, defs) =>
+            //               List
+            //                (List(Tr(Td.extension(Code(Span(t"extension"))), Td.extension2(Code(subject.html)))),
+            //                 node.terms.to(List).flatMap: (name, term) =>
+            //                   val entry: Html["tr"] = Tr(Td.kind(keywords(term)), Th(Code(A(href = link(false))(name))))
 
-                              List
-                               (entry,
-                                term.memo.let { memo => Tr(Td, Td.memo(memo.html)) }))
-                          . flatten
+            //                   List
+            //                    (entry,
+            //                     term.memo.let { memo => Tr(Td, Td.memo(memo.html)) }))
+            //               . flatten
 
-                    val members: Seq[Html["tr"]] = node.terms.to(List).flatMap: (name, term) =>
-                      term.definition match
-                        case `extension`(_, _, _) => Nil
-                        case definition =>
-                          val entry: Html["tr"] = Tr(Td.kind(keywords(term)), Th(Code(A(href = link(false))(name))))
+            //         val members: Seq[Html["tr"]] = node.terms.to(List).flatMap: (name, term) =>
+            //           term.definition match
+            //             case `extension`(_, _, _) => Nil
+            //             case definition =>
+            //               val entry: Html["tr"] = Tr(Td.kind(keywords(term)), Th(Code(A(href = link(false))(name))))
 
-                          List
-                           (entry,
-                            term.memo.let { memo => Tr(Td, Td.memo(memo.html)) })
+            //               List
+            //                (entry,
+            //                 term.memo.let { memo => Tr(Td, Td.memo(memo.html)) })
 
-                    members ++ grouped),
+            //         members ++ grouped),
 
-              detail.let(_.html).let(Div(H3(t"Documentation"), _)))
+            //   detail.let(_.html).let(Div(H3(t"Documentation"), _)))
+
+            "???")
 
     case _ /: t"_api" =>
       import html5.*
-      val rootLocation: Path on UrlSpace = mountpoint / "_entity"
+      val rootLocation: Path on Www = mountpoint / "_entity"
 
       Http.Response:
         Page
@@ -167,13 +179,13 @@ extends Folio(mountpoint, t"jvm", source):
            (H2(t"All Packages"),
             Ul.all
              (model.root.members.filter(!_(1).hidden).map: (member, _) =>
-                val link: Path on UrlSpace = (mountpoint / "_api" / member.text.skip(1)).on[UrlSpace]
+                val link: Path on Www = (mountpoint / "_api" / member.text.skip(1)).on[Www]
                 Li(Code(A(href = link)(member.text.skip(1)))))))
 
     case _ /: t"_api" /: (pkg: Text) =>
       import html5.*
 
-      val rootLocation: Path on UrlSpace = mountpoint / "_entity" / pkg
+      val rootLocation: Path on Www = mountpoint / "_entity" / pkg
 
       Http.Response:
         Page

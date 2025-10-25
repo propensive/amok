@@ -61,10 +61,10 @@ enum Definition:
 
   def syntax: Syntax = this match
     case `extension`(param, definition, _) =>
-      Syntax(0, Syntax.Symbolic(t"extension"), Syntax.Space, param, Syntax.Space, definition.syntax)
+      Syntax.Compound(List(Syntax.Symbolic(t"extension "), param, Syntax.Symbolic(t" "), definition.syntax))
+
     case other =>
-      Syntax.sequence(other.modifiers.map(_.keyword), Syntax.Space)
-      . let(Syntax(0, _, Syntax.Space, keyword))
-      . or(keyword)
+      val modifiers = other.modifiers.flatMap(_.keyword :: Syntax.Symbolic(t" ") :: Nil)
+      if modifiers.isEmpty then keyword else Syntax.Compound(modifiers ::: keyword :: Nil)
 
 export Definition.*

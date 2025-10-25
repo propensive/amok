@@ -74,6 +74,8 @@ p { text-align: center; max-width: 80vw; widows: 2; orphans: 2; }
 li p { text-align: left; }
 blockquote { font-style: italic; text-align: center; }
 
+section>p>img {width: min(85vw, 85vh);}
+
 .e {
   background-color: #356;
   border-radius: 0.3em;
@@ -110,20 +112,18 @@ code { font-family: "JetBrains Mono"; font-weight: 200; }
 
 span.line { display: block; line-height: 0; font-size: 5%; }
 
-input[type="radio"]
- { appearance: none;
-   width:            0.75vw;
-   height:           0.75vw;
-   border:           none;
-   border-radius:    50%;
-   display:          inline-block;
-   vertical-align:   middle;
-   background-color: #ffffff55;
-   cursor:           pointer;
-   margin:           0 2vw 0 0;
-   transition:       all 1.5s 0.5s; }
 
- /* Show yellow filled circle when checked */
+ input[type="radio"]
+  { appearance: none;
+    width:            1.5vw;
+    height:           0.4vw;
+    display:          inline-block;
+    vertical-align:   top;
+    background-color: #ffffff55;
+    cursor:           pointer;
+    margin:           0;
+    transition:       all 1.5s 0.5s; }
+
 input[type="radio"]:checked
  { background-color: #ffcc33;
    box-shadow:       0 0 1vw #ffcc33;

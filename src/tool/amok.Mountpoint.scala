@@ -32,7 +32,26 @@
                                                                                                   */
 package amok
 
-import soundness.*
+import soundness.{is as _, Node as _, *}
+object Mountpoint:
+  given Mountpoint is Interpretable =
+    case Argument(Mountpoint(value)) :: _ => value
+    case _                                => Unset
 
-case class Imports(indexes: Set[Index]):
-  def has(index: Index): Boolean = indexes.contains(index)
+  given Mountpoint is Discoverable = _ => Server.mountpoints.map(_.text).map: path =>
+    Suggestion(path, t"a suggestion")
+
+  def unapply(path: Text): Option[Mountpoint] =
+    val path2 = if path.starts("/") then path.skip(1) else path
+    val path3 = if path2.ends("/") then path2.skip(1, Rtl) else path2
+    Some(Mountpoint(path3.cut(t"/")*))
+
+  given Mountpoint is Showable = _.text
+
+case class Mountpoint(parts: Text*):
+  val text = parts.join(t"/", t"/", t"")
+  val path: Path on Www = Path.of(t"/", parts.reverse*)
+  def contains(path: Text): Boolean = path.starts(text)
+
+  @targetName("child")
+  def / (text: String): Path on Www = path / text
