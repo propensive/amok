@@ -73,5 +73,6 @@ object Amox:
       case error@StreamError(_)      => LoadError(file, error)
 
     . within:
-        Out.println(file.open(_.read[Text]))
-        file.open(_.read[CodlDoc of Base].materialize)
+        // If the `decodable` is inferred in `materialize`, the compiler crashes
+        val decodable: Base is Decodable in Codl = summon
+        file.open(_.read[CodlDoc of Base].materialize(using decodable))
