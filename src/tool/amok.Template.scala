@@ -34,7 +34,7 @@ package amok
 
 import soundness.{is as _, Node as _, *}
 
-enum Template:
+enum Template extends Declaration:
   case `case class`(modifiers: List[Modifier], extensions: List[Syntax] = Nil, derivations: List[Text] = Nil)
   case `class`(modifiers: List[Modifier], extensions: List[Syntax] = Nil, derivations: List[Text] = Nil)
   case `trait`(modifiers: List[Modifier], extensions: List[Syntax] = Nil)
@@ -55,7 +55,7 @@ enum Template:
 
   def modifiers: List[Modifier]
 
-  def syntax: Syntax =
+  def syntax(brief: Boolean): Syntax =
     val modifiers2 = modifiers.flatMap(_.keyword :: Syntax.Symbolic(t" ") :: Nil)
     if modifiers2.isEmpty then keyword else Syntax.Compound(modifiers2 ::: keyword :: Nil)
 

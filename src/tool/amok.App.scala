@@ -46,7 +46,9 @@ val Quit    = Subcommand("quit",    e"shutdown Amok")
 val Serve   = Subcommand("serve",   e"serve the documentation on a local HTTP server")
 val Folios  = Subcommand("list",    e"list all deployed mountpoints")
 
-val MountpointArg = Flag[Mountpoint]("mountpoint", false, List('m'), "the URL at which to serve the folio, e.g. /tutorials")
+val MountpointArg =
+  Flag[Mountpoint]
+   ("mountpoint", false, List('m'), "the URL at which to serve the folio, e.g. /tutorials")
 
 @main
 def application(): Unit = cli:
@@ -72,9 +74,9 @@ def application(): Unit = cli:
 
           given Decimalizer(significantFigures = 4, exponentThreshold = Unset)
           val memory = Heap.used/1.mib
-          val build = unsafely((Classpath / "build.id").read[Text].trim)
-
-          Out.println(e"$Bold(Amok) prerelease version, build $build: $Italic(a documentation engine for Scala)")
+          val build = cp"/build.id".read[Text].trim
+          val tagline = "a documentation engine for Scala"
+          Out.println(e"$Bold(Amok) prerelease version, build $build: $Italic($tagline)")
           Out.println(e"© Copyright 2025 Propensive OÜ")
           Out.println()
           Out.println(e"Memory usage: $memory MiB")
@@ -83,15 +85,17 @@ def application(): Unit = cli:
       Exit.Ok
 
     case Folios() :: _ => execute:
+      val base = workingDirectory[Path on Linux]
       val table =
         Table[Folio]
          (Column(e"$Bold(Mountpoint)")(_.base.show),
-          Column(e"$Bold(Source)")(_.source.relativeTo(unsafely(workingDirectory[Path on Linux])).encode),
+          Column(e"$Bold(Source)")(_.source.relativeTo(base).encode),
           Column(e"$Bold(Type)")(_.kind))
 
       recover:
         case TerminalError() =>
           Out.println(table.tabulate(Server.folios).grid(100))
+
       . within:
           interactive:
             Out.println(table.tabulate(Server.folios).grid(terminal.columns.or(100)))
@@ -128,7 +132,9 @@ def application(): Unit = cli:
 
       . within:
           tcp"8080".serve:
-            Server.at(request.location).lay(Http.Response(NotFound(Page.simple(Mountpoint(), t"There is no page at ${request.location}")))): folio =>
+            def notFound = Page.simple(Mountpoint(), t"There is no page at ${request.location}")
+
+            Server.at(request.location).lay(Http.Response(NotFound(notFound))): folio =>
               folio.handle(using request)
 
           Out.println(e"Listening on $Bold(http://localhost:8080)")

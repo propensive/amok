@@ -1,5 +1,4 @@
 tool:
-	mill clean
 	rm -f tool
 	mill amok.tool.assembly
 	echo $$(( $$(<res/build.id) + 1 )) > res/build.id

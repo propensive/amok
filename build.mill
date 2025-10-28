@@ -50,18 +50,20 @@ trait Submodule extends ScalaModule with PublishModule {
 
   override def scalacOptions = settings.scalaOptions
   def consoleScalacOptions = scalacOptions()
-  def resources = Task(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "res")))
 }
 
 object amok extends ProjectModule {
   object web extends Submodule {
-    def sources = Task.Sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "src" / "web")))
+    def sources = T.sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "src" / "web")))
+    def compileResources = T.sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "res")))
+    def resources = T.sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "res")))
     def moduleDeps = Seq()
-    def ivyDeps = Agg(ivy"dev.soundness:soundness-all:0.44.0")
+    def ivyDeps = Agg(ivy"dev.soundness:soundness-all:0.45.0")
   }
 
   object tool extends Submodule {
-    def sources = Task.Sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "src" / "tool")))
+    def sources = T.sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "src" / "tool")))
+    def resources = Seq(PathRef(millSourcePath / ".." / ".." / ".." / "res"))
     def moduleDeps = Seq(web)
     def ivyDeps =
       Agg(
@@ -69,21 +71,5 @@ object amok extends ProjectModule {
         //ivy"org.scala-lang::scala2-library-tasty-experimental:3.7.2-RC1"
       )
   }
-
-  /*object core extends Submodule {
-    def sources = Task.Sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "src" / "core")))
-    def ivyDeps = Agg(ivy"org.scala-lang::scala3-tasty-inspector:3.6.2")
-    def moduleDeps = Seq(model)
-  }
-
-  object cli extends Submodule {
-    def sources = Task.Sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "src" / "cli")))
-    def moduleDeps = Seq(model)
-  }
-
-  object test extends Submodule {
-    def sources = Task.Sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "src" / "test")))
-    def moduleDeps = Seq(web)
-  }*/
 
 }

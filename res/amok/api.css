@@ -8,9 +8,8 @@
     --mono-font:    "Atkinson Hyperlegible Mono";
     --body-font:    "Atkinson Hyperlegible Next";
     --shadow:       0 0 0.5rem #ddd;
-    --full-width:    1280px;
+    --full-width:    1800px;
     --column-width:  320px;
-
     --content-width: calc(var(--full-width) - var(--column-width));
     --line-padding:  2rem;
     --shadow-width:  0.5rem;
@@ -129,26 +128,29 @@ h1, h2, h3, h4, h5, p
 h1
   { font-weight: 100;
     font-size:   3rem;
-    margin:      0 1.25rem;
+    margin:      0 2rem;
 
-    &.pkg { font-size: 1rem; font-weight: 570; } }
+    &.pkg { font-size: 1rem; font-weight: 570; margin-left: 2.25rem; } }
 
 h2 { font-size: 1.5rem; font-weight: 380; }
 h3 { font-size: 1.3rem; font-weight: 430; }
 h4 { font-size: 1.1rem; font-weight: 510; }
 
-table.members { margin-bottom: 1em; justify-self: start; }
+table.members { margin: 0 0 1em 1.5em; justify-self: start; & h2 { margin-top: 1em; } }
 
 table
   { margin:          1em 1rem;
     border-collapse: collapse; }
 
-td, th { text-align: left; padding: 0.3rem 0.5rem; line-height: 1.5em; vertical-align: top; }
+td, th { text-align: left; padding: 0 0.5rem; line-height: 1.5em; vertical-align: bottom; }
 th     { font-weight: 500; }
+
+tr.first>td { padding-top: 0.5rem; }
 
 td
   { &.kind, &.extension { text-align: right; padding-left: 4ch; }
     &.extension { padding-top: 4ch; }
+    &.memo { margin-bottom: 0.3rem; }
     &.extension2 { padding-top: 4ch; text-align: left; }
     &>*    { margin: 0; padding: 0; } }
 
@@ -161,6 +163,8 @@ a
     text-decoration-thickness: var(--thin);
 
     &:hover, &:active { color: var(--accent); } }
+
+b { font-weight: 600; }
 
 iframe
   { height:           calc(100vh - 8rem);
@@ -225,6 +229,8 @@ details
         transition-behavior: allow-discrete; }
 
     &[open]::details-content { height: calc-size(auto, size); opacity: 1; } }
+
+.items { margin-left: 0.5em; }
 
 @supports not (interpolate-size: allow-keywords) { .interpolate-size { display: none; } }
 
@@ -363,3 +369,9 @@ input[type="radio"]:checked
    & .parens   { color: #cc6699; }
    & .symbol   { color: #cc3366; }
    & .unparsed { color: #2288aa; font-style: italic; } }
+
+label { display:inline-flex; align-items:center; gap:.5rem; }
+#toggle { transition: all 0.3s; cursor: pointer; width:1.4rem; height:1.4rem; margin-right: 0.8em; appearance:none; text-align: center; border: solid 0.1em #aaa; border-radius: 50%; font-size: 0.65em; color: #aaa; background-color: #fff; }
+#toggle:hover { border-color:#2288aaaa; color: #2288aaaa; }
+#toggle::after { content:"⬇"; }
+#toggle:checked { background:#2288aa44; border-color:#2288aa; color: #2288aa; }

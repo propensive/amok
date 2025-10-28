@@ -32,40 +32,13 @@
                                                                                                   */
 package amok
 
-import soundness.{is as _, Node as _, *}
-import errorDiagnostics.stackTraces
+import soundness.*
 
-case class LoadError(file: Path on Linux, reason: Error)(using Diagnostics)
-extends Error(m"could not load the file $file because ${reason.message}")
+trait Declaration:
+  def syntax(brief: Boolean = false): Syntax
+  def keyword: Syntax
+  def modifiers: List[Modifier]
 
-case class FiletypeError()(using Diagnostics) extends Error(m"the file was not the right type")
-
-object Amox:
-  case class Base
-              (domain:   Text,
-               language: Optional[Text],
-               base:     Optional[Text],
-               memo:     Optional[Text],
-               detail:   Optional[Text],
-               entry:    List[Entry])
-
-  case class Entry
-              (name:   Text,
-               memo:   Optional[Text],
-               detail: Optional[Text],
-               until:  List[Rename],
-               hidden: Optional[Boolean],
-               refer:  List[Text],
-               entry:  List[Entry])
-
-  case class Rename(version: Text, name: Text)
-
-  def read(file: Path on Linux)(using Stdio): Base raises LoadError =
-    mitigate:
-      case error@IoError(_, _, _)    => LoadError(file, error)
-      case error@CodlError(_)        => LoadError(file, error)
-      case error@ParseError(_, _, _) => LoadError(file, error)
-      case error@StreamError(_)      => LoadError(file, error)
-
-    . within:
-        file.open(_.read[CodlDoc of Base].materialize)
+  def group: Optional[Syntax] = this match
+    case `extension`(params, _, _) => params
+    case _                         => Unset

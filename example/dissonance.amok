@@ -36,12 +36,13 @@ detail
     `#dissonance.Par` (parity), which retains an element from the left into the right sequence. Each
     edit also holds the index of the element as it appears in the left and or right sequences.
 
-entry .Diff
+entry .Diff  the representation of a set of edits between two different sequences
   entry .parse  reads content in the `ed` diff format
   entry #edits  the sequence of edits required to transform the _left_ sequence into the _right_ sequence
   entry #size   the number of insertions and deletions require to transform the _left_ sequence into the _right_ sequence
   entry #flip   create a new `.dissonance.Diff` representing the transformation from the _right_ sequence into the _left_ sequence
   entry #map    apply a transformation to each element in the _left_ and _right_ sequences
+
 
   entry #rdiff  performs a second-level _diff_ using a similarity function to pair `#dissonance.Ins`s with `#dissonance.Del`s into `#dissonance.Sub`s
       A `#dissonance.Diff` sequence, without loss of generality, can be broken down into subsequences of contiguous `#dissonance.Par`

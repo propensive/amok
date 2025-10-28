@@ -34,7 +34,7 @@ package amok
 
 import soundness.{is as _, Node as _, *}
 
-enum Definition:
+enum Definition extends Declaration:
   case `package`(modifiers: List[Modifier])
   case `object`(modifiers: List[Modifier])
   case `case object`(modifiers: List[Modifier])
@@ -59,9 +59,10 @@ enum Definition:
 
   def modifiers: List[Modifier]
 
-  def syntax: Syntax = this match
+  def syntax(brief: Boolean): Syntax = this match
     case `extension`(param, definition, _) =>
-      Syntax.Compound(List(Syntax.Symbolic(t"extension "), param, Syntax.Symbolic(t" "), definition.syntax))
+      if brief then definition.syntax(false)
+      else Syntax.Compound(List(Syntax.Symbolic(t"extension "), param, Syntax.Symbolic(t" "), definition.syntax(false)))
 
     case other =>
       val modifiers = other.modifiers.flatMap(_.keyword :: Syntax.Symbolic(t" ") :: Nil)

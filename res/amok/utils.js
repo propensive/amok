@@ -1,71 +1,75 @@
 const iframe = document.getElementById('api');
 const body = document.body;
-const theme = document.getElementById('theme');
 var lastCurrent = null;
-
-function applyTheme(isDark) {
-  body.classList.toggle('dark', isDark);
-
-  try {
-    const iframeDoc = iframe?.contentDocument || iframe?.contentWindow?.document;
-    if (iframeDoc && iframeDoc.body) {
-      iframeDoc.body.classList.toggle('dark', isDark);
-    }
-  } catch (e) {
-    console.warn('Could not access iframe for theme update:', e);
-  }
-}
-
-function getStoredTheme() {
-  return localStorage.getItem('theme');
-}
-
-function determineInitialTheme() {
-  const stored = getStoredTheme();
-  if (stored === 'dark') return true;
-  if (stored === 'light') return false;
-  return window.matchMedia('(prefers-color-scheme: dark)').matches;
-}
-
-function setStoredTheme(isDark) {
-  localStorage.setItem('theme', isDark ? 'dark' : 'light');
-}
-
-const initialThemeIsDark = determineInitialTheme();
-applyTheme(initialThemeIsDark);
-
-iframe?.addEventListener('load', () => {
-  applyTheme(body.classList.contains('dark'));
-});
-
-theme.addEventListener('click', () => {
-  const isNowDark = !body.classList.contains('dark');
-  applyTheme(isNowDark);
-  setStoredTheme(isNowDark);
-});
 
 iframe.addEventListener('load', () => {
   const url = iframe.contentWindow.location;
   const base = url.pathname.indexOf("_entity");
-  const offset = base + 8;
-  const detailsId = "menu_"+decodeURIComponent(url.pathname.slice(offset));
-  console.log(detailsId);
-  const oldLocation = url.pathname.substring(0, base)+"_api/";
-  history.replaceState(null, '', oldLocation+url.pathname.slice(offset));
+  if (base == -1) {
+    return;
+  } else {
+    const offset = base + 8;
+    const detailsId = "menu_"+decodeURIComponent(url.pathname.slice(offset));
+    console.log(detailsId);
+    const oldLocation = url.pathname.substring(0, base)+"_api/";
+    history.replaceState(null, '', oldLocation+url.pathname.slice(offset));
 
-  if (!detailsId) return;
+    if (!detailsId) return;
 
-  let el = document.getElementById(detailsId);
+    let el = document.getElementById(detailsId);
 
-  if (lastCurrent) { lastCurrent.classList.remove('active'); }
-  lastCurrent = el;
-  el.classList.add('active');
-  while (el && el.tagName === 'DETAILS') {
-    el.open = true;
-    el = el.parentElement.closest('details');
+    if (lastCurrent) { lastCurrent.classList.remove('active'); }
+    lastCurrent = el;
+    el.classList.add('active');
+    while (el && el.tagName === 'DETAILS') {
+      el.open = true;
+      el = el.parentElement.closest('details');
+    }
+
+    document.querySelectorAll('details').forEach(d => {
+      if (!d.contains(document.getElementById(detailsId))) { d.open = false; }
+    });
   }
+});
 
-  document.querySelectorAll('details').forEach(d => {
-    if (!d.contains(document.getElementById(detailsId))) { d.open = false; }
-  });
+const toggle = document.getElementById('toggle');
+
+function getCookie(name) {
+  const prefix = encodeURIComponent(name) + '=';
+  for (const part of document.cookie.split('; ')) {
+    if (part.startsWith(prefix)) return decodeURIComponent(part.slice(prefix.length));
+  }
+  return null;
+}
+
+function setCookie(name, value, { maxAge = 31536000, path = '/', sameSite = 'Lax', secure = location.protocol === 'https:' } = {}) {
+  let c = `${encodeURIComponent(name)}=${encodeURIComponent(value || '')}`;
+  if (maxAge != null) c += `; Max-Age=${maxAge}`;
+  if (path) c += `; Path=${path}`;
+  if (sameSite) c += `; SameSite=${sameSite}`;
+  if (secure) c += `; Secure`;
+  document.cookie = c;
+}
+
+function readSet() {
+  const raw = getCookie("imports");
+  if (!raw) return new Set();
+  return new Set(raw.split(',').map(s => s.trim()).filter(Boolean));
+}
+
+function writeSet(set) {
+  setCookie("imports", Array.from(set).join(','));
+}
+
+(function init() {
+  if (!toggle.value) return;
+  const set = readSet();
+  toggle.checked = set.has(toggle.value);
+})();
+
+toggle.addEventListener('change', () => {
+  if (!toggle.value) return;
+  const set = readSet();
+  if (toggle.checked) set.add(toggle.value); else set.delete(toggle.value);
+  writeSet(set);
 });

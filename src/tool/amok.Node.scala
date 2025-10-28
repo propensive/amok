@@ -48,6 +48,8 @@ class Node(parent0: Optional[Node] = Unset):
   var hidden: Boolean = false
   var returnType: Optional[Syntax] = Unset
 
+  def declaration: Declaration = declarations.head
+  def declarations: List[Declaration] = List(template, definition).compact
   def parent: Node = parent0.or(this)
   def members: List[(Member, Node)] = membersMap.to(List)
 
@@ -73,7 +75,8 @@ class Node(parent0: Optional[Node] = Unset):
     val members2 = members.filter(!_(1).hidden)
 
     Details(name = group.urlEncode, id = DomId(t"menu_${path}"))
-     (if members2.isEmpty then Summary(A(href = mountpoint / "_entity" / path, target = id"main")(name))
+     (if members2.isEmpty
+      then Summary(A(href = mountpoint / "_entity" / path, target = id"main")(name))
       else Summary.full(A(href = mountpoint / "_entity" / path, target = id"main")(name)),
       Div:
         members2.map: (member, node) =>
