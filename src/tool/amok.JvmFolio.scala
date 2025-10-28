@@ -125,7 +125,7 @@ extends Folio(mountpoint, t"jvm", source):
 
                       List
                        (Tr.first(Td.kind(rowspan = 2)(Code(kinds)), Td, Td),
-                        Tr(Td(Code(A(href = href)(B(name)), colon)), Td(rowspan = 2)(meta)),
+                        Tr(Td(Code(A(href = href)(B(name)), child.params.let(_.html), colon)), Td(rowspan = 2)(meta)),
                         Tr(Td, Td),
                         child.memo.let { memo => Tr(Td, Td(colspan = 2)(memo.html)) })
 
