@@ -117,156 +117,152 @@ class Model():
       import quotes.reflect.*
       import Flags.*
 
-      def context(tree: Tree)
-          (lambda: (name:          Text,
-                    packageObject: Boolean,
-                    body:          List[Tree],
-                    flags:         Flags) ?=> Unit)
-      : Unit =
 
-          tree.match
-            case PackageClause(Ident(name), body) => (name.tt, body.to(List))
-            case ClassDef(name, _, _, _, body)    => (name.tt, body.to(List))
-            case DefDef(name, _, _, body)         => (name.tt, Nil)
-            case ValDef(name, _, body)            => (name.tt, body.to(List))
-            case TypeDef(name, _)                 => (name.tt, Nil)
-            case other                            => Unset
+      def walk(tree: Tree, node: Node, ofTerm: Boolean, typename0: Optional[Typename] = Unset): Unit =
+        val flags = tree.symbol.flags
 
-          . let: (name0, body) =>
-              val name2 = name0.when(_.ends("$"))(_.skip(1, Rtl))
-              val packageObject = name2.ends("$package")
-              val name = name2.when(packageObject)(_.skip(8, Rtl))
-              val flags = tree.symbol.flags
+        tree.match
+          case PackageClause(Ident(name), body) => (name.tt, body.to(List), true)
+          case ClassDef(name, _, _, _, body)    => (name.tt, body.to(List), flags.is(Module))
+          case DefDef(name, _, _, body)         => (name.tt, Nil, true)
+          case ValDef(name, _, body)            => (name.tt, body.to(List), true)
+          case TypeDef(name, _)                 => (name.tt, Nil, false)
+          case other                            => Unset
 
-              if name != "_" then lambda(using name, packageObject, body, flags)
+        . let: (name0, body, term) =>
+            val name2 = name0.when(_.ends("$"))(_.skip(1, Rtl))
+            val packageObject = name2.ends("$package")
+            val name = name2.when(packageObject)(_.skip(8, Rtl))
 
+            val typename = tree match
+              case PackageClause(_, _) => Typename(tree.symbol.fullName)
+              case _ =>
+                typename0.lay(Typename.Top(name)): typename =>
+                  if term then Typename.Term(typename, name) else Typename.Type(typename, name)
 
-      def walk(ast: Tree, node: Node, ofTerm: Boolean, typename: Optional[Typename] = Unset): Unit =
-        def of(name: Text): Member = if ofTerm then OfTerm(name) else OfType(name)
-        ast match
-          case tree@PackageClause(packageName, stats) => context(tree):
-            val child = node(name) = of(name)
-            child() = `package`(Nil)
-            val typename2 = typename.let(Typename.Term(_, name)).or(Typename.Top(name))
-            body.each(walk(_, child, true, typename2))
+            def of(name: Text): Member = if ofTerm then OfTerm(name) else OfType(name)
 
-          case tree@ValDef(_, result, _) if !tree.symbol.flags.is(Private) => context(tree):
-            if packageObject then
-              val typename2 = typename.let(Typename.Term(_, name)).or(Typename.Top(name))
-              body.each(walk(_, node, ofTerm, typename2))
-            else
-              val child = node(name) = of(name)
-              val returnType = Syntax(result.tpe)
+            if name != "_" then
+              tree match
+                case tree@PackageClause(packageName, stats) =>
+                  val child = node(name) = of(name)
+                  child() = `package`(Nil)
+                  body.each(walk(_, child, true, typename))
 
-              if flags.is(Enum) && flags.is(Case)
-              then child() = Template.`case`(flags.has(`private`), Nil, Unset)
-              else if flags.is(Synthetic) then Unset
-              else if flags.is(Given)
-              then child() = `given`(flags.has(`inline`, `transparent`, `erased`), returnType)
-              else if flags.is(Module)
-              then child() = `object`(flags.has(`case`))
-              else if flags.is(Mutable)
-              then child() = `var`(flags.has(`override`, `private`, `protected`, `final`), returnType)
-              else child() = `val`(flags.has(`override`, `private`, `protected`, `erased`, `inline`, `final`, `lazy`), returnType)
+                case tree@ValDef(_, result, _) if !tree.symbol.flags.is(Private) =>
+                  if packageObject then
+                    body.each(walk(_, node, ofTerm, typename))
+                  else
+                    val child = node(name) = of(name)
+                    val returnType = Syntax(result.tpe)
 
-              val typename2 = typename.let(Typename.Term(_, name)).or(Typename.Top(name))
-              body.each(walk(_, child, true, typename2))
+                    if flags.is(Enum) && flags.is(Case)
+                    then child() = Template.`case`(flags.has(`private`), Nil, Unset)
+                    else if flags.is(Synthetic) then Unset
+                    else if flags.is(Given)
+                    then child() = `given`(flags.has(`inline`, `transparent`, `erased`), returnType)
+                    else if flags.is(Module)
+                    then child() = `object`(flags.has(`case`))
+                    else if flags.is(Mutable)
+                    then child() = `var`(flags.has(`override`, `private`, `protected`, `final`), returnType)
+                    else child() = `val`(flags.has(`override`, `private`, `protected`, `erased`, `inline`, `final`, `lazy`), returnType)
 
-          case tree@ClassDef(_, DefDef(_, groups0, _, _), extensions0, selfType, _) => context(tree):
-            val typeRef = tree.symbol.typeRef
-            val obj = flags.is(Module)
-            val parents = typeRef.baseClasses.map(typeRef.baseType(_))
-            val typename2 = typename.let(Typename.Type(_, name)).or(Typename.Top(name))
+                    body.each(walk(_, child, true, typename))
 
-            if name.contains("BoxLine") then Out.println(typename2.render)
+                case tree@ClassDef(_, DefDef(_, groups0, _, _), extensions0, selfType, _) =>
+                  val typeRef = tree.symbol.typeRef
+                  val obj = flags.is(Module)
+                  val parents = typeRef.baseClasses.map(typeRef.baseType(_))
 
-            given TypeRepr is PartiallyOrdered = (left, right) =>
-              !(left =:= right) && left <:< right
+                  Out.println(typename.render)
 
-            val caseClass = flags.is(Case)
-            val dag = Poset(parents*).dag
+                  given TypeRepr is PartiallyOrdered = (left, right) =>
+                    !(left =:= right) && left <:< right
 
-            val extensions: List[Syntax] =
-              dag(parents.head).filter: repr =>
-                repr.typeSymbol != defn.ObjectClass
-                && repr.typeSymbol != defn.AnyClass
-                && repr.typeSymbol != defn.AnyRefClass
-                && (caseClass && repr.typeSymbol != defn.ProductClass)
-                && (caseClass && repr.typeSymbol != TypeRepr.of[java.io.Serializable].typeSymbol)
+                  val caseClass = flags.is(Case)
+                  val dag = Poset(parents*).dag
 
-              . to(List)
-              . map(Syntax(_))
+                  val extensions: List[Syntax] =
+                    dag(parents.head).filter: repr =>
+                      repr.typeSymbol != defn.ObjectClass
+                      && repr.typeSymbol != defn.AnyClass
+                      && repr.typeSymbol != defn.AnyRefClass
+                      && (caseClass && repr.typeSymbol != defn.ProductClass)
+                      && (caseClass && repr.typeSymbol != TypeRepr.of[java.io.Serializable].typeSymbol)
 
-            if packageObject then body.each(walk(_, node, ofTerm, typename2))
-            else
-              val child = node(name) = if flags.is(Enum) then OfType(name) else of(name)
-              val params = if groups0.isEmpty && flags.is(Trait) then Unset else Syntax.Compound(groups0.map(Syntax.clause(_, true)))
-              if flags.is(Synthetic) || flags.is(Module) then ()
-              else if flags.is(Trait)
-              then child() = Template.`trait`(flags.has(`private`, `erased`, `into`, `sealed`, `transparent`), extensions, params)
-              else if obj && !flags.is(Case) && flags.is(Enum)
-              then child() = Template.`enum`(flags.has(`private`), Nil, Nil, params)
-              else if flags.is(Case) && flags.is(Enum)
-              then child() = Template.`case`(flags.has(`private`, `protected`), extensions, params)
-              else if flags.is(Case)
-              then child() = Template.`case class`(flags.has(`private`, `protected`, `sealed`, `open`, `transparent`, `final`, `into`, `erased`, `abstract`), extensions, Nil, params)
-              else child() = Template.`class`(flags.has(`private`, `protected`, `sealed`, `open`, `transparent`, `final`, `into`, `erased`, `abstract`), extensions, params, Nil)
+                    . to(List)
+                    . map(Syntax(_))
 
-              body.each(walk(_, child, obj, typename2))
+                  if packageObject then body.each(walk(_, node, ofTerm, typename))
+                  else
+                    val child = node(name) = if flags.is(Enum) then OfType(name) else of(name)
+                    val params = if groups0.isEmpty && flags.is(Trait) then Unset else Syntax.Compound(groups0.map(Syntax.clause(_, true)))
+                    if flags.is(Synthetic) || flags.is(Module) then ()
+                    else if flags.is(Trait)
+                    then child() = Template.`trait`(flags.has(`private`, `erased`, `into`, `sealed`, `transparent`), extensions, params)
+                    else if obj && !flags.is(Case) && flags.is(Enum)
+                    then child() = Template.`enum`(flags.has(`private`), Nil, Nil, params)
+                    else if flags.is(Case) && flags.is(Enum)
+                    then child() = Template.`case`(flags.has(`private`, `protected`), extensions, params)
+                    else if flags.is(Case)
+                    then child() = Template.`case class`(flags.has(`private`, `protected`, `sealed`, `open`, `transparent`, `final`, `into`, `erased`, `abstract`), extensions, Nil, params)
+                    else child() = Template.`class`(flags.has(`private`, `protected`, `sealed`, `open`, `transparent`, `final`, `into`, `erased`, `abstract`), extensions, params, Nil)
+
+                    body.each(walk(_, child, obj, typename))
 
 
 
-          case tree@DefDef(_, groups0, result, _)
-            if !tree.symbol.flags.is(Synthetic) && !tree.symbol.flags.is(Private) => context(tree):
+                case tree@DefDef(_, groups0, result, _)
+                  if !tree.symbol.flags.is(Synthetic) && !tree.symbol.flags.is(Private) =>
 
-            val isGiven = flags.is(Given)
-            val isInfix = flags.is(Infix)
-            val termName = name.show
-            val child = node(name) = of(termName)
-            val ext = flags.is(ExtensionMethod)
-            val split = 1 + groups0.indexWhere:
-              case clause@TermParamClause(terms) =>
-                terms.length == 1 && !terms.exists(_.symbol.flags.is(Given))
-              case _ => false
+                  val isGiven = flags.is(Given)
+                  val isInfix = flags.is(Infix)
+                  val termName = name.show
+                  val child = node(name) = of(termName)
+                  val ext = flags.is(ExtensionMethod)
+                  val split = 1 + groups0.indexWhere:
+                    case clause@TermParamClause(terms) =>
+                      terms.length == 1 && !terms.exists(_.symbol.flags.is(Given))
+                    case _ => false
 
-            val preClauses = if ext then groups0.take(split) else Nil
-            val paramClauses = if ext then groups0.drop(split) else groups0
+                  val preClauses = if ext then groups0.take(split) else Nil
+                  val paramClauses = if ext then groups0.drop(split) else groups0
 
-            val params =
-              if isGiven then Unset
-              else Syntax.Compound(Syntax.Symbolic(if isInfix then " " else "") :: paramClauses.map(Syntax.clause(_, true)))
-
-
-            val returnType =
-              if isGiven then
-                Syntax.Compound(paramClauses.flatMap: clause =>
-                  List(Syntax.clause(clause, false), Syntax.Symbolic(t" => "))
-                :+ Syntax(result.tpe))
-              else Syntax(result.tpe)
-            child() =
-              if isGiven then `given`(flags.has(`inline`, `transparent`, `erased`), returnType)
-              else
-                val definition: amok.Definition.`def` =
-                  `def`(flags.has(`abstract`, `override`, `private`, `protected`, `erased`, `final`, `infix`, `transparent`, `inline`), params, returnType)
-
-                if ext then `extension`(Syntax.Compound(preClauses.map(Syntax.clause(_, true))), definition)
-                else definition
+                  val params =
+                    if isGiven then Unset
+                    else Syntax.Compound(Syntax.Symbolic(if isInfix then " " else "") :: paramClauses.map(Syntax.clause(_, true)))
 
 
-          case tree@TypeDef(name, result) if name != "MirroredMonoType" => context(tree):
-            def child = node(name) = of(name)
+                  val returnType =
+                    if isGiven then
+                      Syntax.Compound(paramClauses.flatMap: clause =>
+                        List(Syntax.clause(clause, false), Syntax.Symbolic(t" => "))
+                      :+ Syntax(result.tpe))
+                    else Syntax(result.tpe)
+                  child() =
+                    if isGiven then `given`(flags.has(`inline`, `transparent`, `erased`), returnType)
+                    else
+                      val definition: amok.Definition.`def` =
+                        `def`(flags.has(`abstract`, `override`, `private`, `protected`, `erased`, `final`, `infix`, `transparent`, `inline`), params, returnType)
 
-            if !flags.is(Flags.Param)
-            then child() = Template.`type`(flags.has(`into`, `opaque`, `infix`), Nil, Unset)
+                      if ext then `extension`(Syntax.Compound(preClauses.map(Syntax.clause(_, true))), definition)
+                      else definition
 
-          case Export(term, exports) => exports.map:
-            case SimpleSelector(name)    =>
-              node(of(name.tt))
-            case RenameSelector(_, name) => node(of(name.tt))
-            case other: Selector         => Out.println(t"Found a different kind of selector")
 
-          case other if other.symbol.flags.is(Private) =>
-          case other  =>
+                case tree@TypeDef(name, result) if name != "MirroredMonoType" =>
+                  def child = node(name) = of(name)
+
+                  if !flags.is(Flags.Param)
+                  then child() = Template.`type`(flags.has(`into`, `opaque`, `infix`), Nil, Unset)
+
+                case Export(term, exports) => exports.map:
+                  case SimpleSelector(name)    =>
+                    node(of(name.tt))
+                  case RenameSelector(_, name) => node(of(name.tt))
+                  case other: Selector         => Out.println(t"Found a different kind of selector")
+
+                case other if other.symbol.flags.is(Private) =>
+                case other  =>
 
       val total = tastys.length
       Out.println(t"There are $total TASTy files")
