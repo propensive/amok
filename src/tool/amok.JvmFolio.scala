@@ -43,13 +43,14 @@ extends Folio(mountpoint, t"jvm", source):
   given Model = model
 
   def handle(using Http.Request): Http.Response = subpath match
-    case _ /: t"api.css"     => Http.Response(cp"/amok/api.css")
-    case _ /: t"code.css"    => Http.Response(cp"/amok/code.css")
-    case _ /: t"utils.js"    => Http.Response(cp"/amok/utils.js")
-    case _ /: t"navigate.js" => Http.Response(cp"/amok/navigate.js")
-    case _ /: t"logo.svg"    => Http.Response(cp"/amok/logo.svg")
+    case %                   => Http.Response(Page(mountpoint, Nil, List(html5.H2("Welcome"))))
+    case % /: t"api.css"     => Http.Response(cp"/amok/api.css")
+    case % /: t"code.css"    => Http.Response(cp"/amok/code.css")
+    case % /: t"utils.js"    => Http.Response(cp"/amok/utils.js")
+    case % /: t"navigate.js" => Http.Response(cp"/amok/navigate.js")
+    case % /: t"logo.svg"    => Http.Response(cp"/amok/logo.svg")
 
-    case _ /: t"_entity" /: (name: Text) =>
+    case % /: t"_entity" /: (name: Text) =>
       val (symbol, entity, node) = model.resolve(name)
 
       Http.Response:
@@ -73,69 +74,69 @@ extends Folio(mountpoint, t"jvm", source):
 
               recur(typename)
 
-            def link(parent: Declaration, name: Text, child: Declaration): Path on Www =
-              val isType = parent match
-                case parent: Definition => false
-                case parent: Template   => true
+            def link(parent: Declaration, name: Text, local: Boolean): Path on Www =
+                val isType = parent match
+                  case parent: Definition => false
+                  case parent: Template   => true
 
-              (mountpoint / "_entity" / typename.child(name, isType).id).on[Www]
+                if local
+                then mountpoint / "_entity" / typename.child(name, isType).id
+                else mountpoint / "_api" / typename.child(name, isType).id
 
-            def keywords(node: Node) =
-              List(node.template.let(_.syntax().html), node.definition.let(_.syntax().html)).compact match
-                case one :: Nil        => Code(one)
-                case one :: two :: Nil => Code(one, t", ", two)
-                case _                 => Unset
+            def full[result](lambda: Imports ?=> result): result = lambda(using Imports(Set()))
+
+            val cookieImports = cookie("imports").let(_.cut(t",").to(Set)).or(Set()).map(Typename.decode(_))
 
             given imports: Imports = Imports(Set
-                   (typename,
-                    Typename.decode(t"scala.Predef"),
+                   (Typename.decode(t"scala.Predef"),
                     Typename.decode(t"scala.collection"),
                     Typename.decode(t"scala.collection.immutable"),
                     Typename.decode(t"scala"),
                     Typename.decode(t"prepositional"),
-                    Typename.decode(t"java.lang")) ++ parents ++ cookie("imports").let(_.cut(t",").to(Set)).or(Set()).map(Typename.decode(_)))
+                    Typename.decode(t"java.lang")) ++ parents ++ cookieImports)
 
-            val colon = if node.types.isEmpty then Nil else List(Code(t":"))
-
-            val pkg = typename match
-              case Typename.Top(_) => true
-              case _               => false
-
+            val parentPackage = H1.pkg(Code(full(typename.parent.html), symbol))
 
             Page.simple
-             (mountpoint, typename.only:
-                case Typename.Type(parent, _) => H1.pkg(Code({ given Imports(Set()); parent.html }, symbol))
-                case Typename.Term(parent, _) => H1.pkg(Code({ given Imports(Set()); parent.html }, symbol)),
+             (mountpoint,
+              parentPackage,
               H1(Code(entity)),
-              node.memo.let { memo => Div(memo.html) },
+              Div(node.memo.let { memo => memo.html }),
               Table.members(List(node.template.let(_ -> node.types), node.definition.let(_ -> node.terms)).compact.flatMap:
                 case (declaration, members) =>
+                  def colon0 = if members.isEmpty && declaration.returnType.absent then "" else ": "
+                  val keywords = declaration.syntax().html
+                  val parameters = declaration.parameters.let(_.html)
+                  val returnType = declaration.returnType.let(_.html)
+                  val title = H3(Code(keywords, " ", entity, parameters, colon0, returnType))
+                  val titleRow = Tr(Td(colspan = 3)(title))
+                  val current = declaration match
+                    case _: Definition => Typename.Term(typename, entity)
+                    case _: Template   => Typename.Type(typename, entity)
 
-                  def colon0 = if members.isEmpty then "" else ":"
-                  val titleRow = Tr(Td(colspan = 3)(H2(Code(declaration.syntax().html, " ", entity, colon0))))
-
-                  val methods = members.to(List).groupBy(_(1).declaration.group).flatMap: (group, members) =>
-                    val head = group.let { ext => List(Tr(Td.extension(Code("extension ", ext.html)))) }.or(Nil)
+                  val methods = members.groupBy(_(1).definition.let(_.group)).flatMap: (group, members) =>
+                    val head = group.lay(Nil) { ext => List(Tr(Td(Code("extension ", ext.html)))) }
 
                     head ::: members.to(List).flatMap: (name, child) =>
-                      val href = link(declaration, name, child.declaration)
+                      given imports2: Imports = Imports(imports.typenames + current)
+                      val local = true
+                      val href = link(declaration, name, local)
                       val kinds = child.declarations.flatMap(_.syntax(true).html :+ Code(", ")).dropRight(1)
-                      val meta = child.returnType.let(_.html).let(Code(_))
+                      val meta = child.declarations.map(_.returnType).prim.let(_.html).let(Code(_))
                       val colon = if meta.present then ":" else ""
+                      val params = child.declarations.map(_.parameters).compact.prim.let(html)
 
                       List
                        (Tr.first(Td.kind(rowspan = 2)(Code(kinds)), Td, Td),
-                        Tr(Td(Code(A(href = href)(B(name)), child.params.let(_.html), colon)), Td(rowspan = 2)(meta)),
+                        Tr(Td(Code(A(href = href)(B(name)), params, colon)), Td(rowspan = 2)(meta)),
                         Tr(Td, Td),
                         child.memo.let { memo => Tr(Td, Td(colspan = 2)(memo.html)) })
 
                   titleRow :: methods.to(List)),
             Div(node.detail.let(_.read[Md].html)))
 
-    case _ /: t"_api" =>
+    case % /: t"_api" =>
       import html5.*
-      val rootLocation: Path on Www = mountpoint / "_entity"
-
       Http.Response:
         Page
          (mountpoint,
@@ -144,24 +145,26 @@ extends Folio(mountpoint, t"jvm", source):
            (H2(t"All Packages"),
             Ul.all
              (model.root.members.filter(!_(1).hidden).map: (member, _) =>
-                val link: Path on Www = (mountpoint / "_api" / member.text.skip(1)).on[Www]
+                val link: Path on Www = mountpoint / "_api" / member.text.skip(1)
                 Li(Code(A(href = link)(member.text.skip(1)))))))
 
-    case _ /: t"_api" /: (pkg: Text) =>
+    case % /: t"_api" /: (pkg: Text) =>
       import html5.*
 
       val rootLocation: Path on Www = mountpoint / "_entity" / pkg
+      val link = A(target = id"main", href = rootLocation)(pkg)
 
       Http.Response:
         Page
          (mountpoint,
           List
-           (Details(Summary(H3(Label(Input.Checkbox(id = id"toggle", value = pkg)), A(target = id"main", href = rootLocation)(pkg)))),
+           (Details(Summary(H3(Label(Input.Checkbox(id = id"toggle", value = pkg)), link))),
             Div.items:
               model(pkg).members.filter(!_(1).hidden).map: (member, node) =>
                 node.tree(member.text, pkg, pkg+member.safe)),
           List(Iframe(id = id"api", name = t"main", src = rootLocation)))
 
     case _ =>
-      Server.at(request.location).let(_.handle(using request)).or:
-        Http.Response(NotFound(t"Not found"))
+      Http.Response(subpath.inspect)
+      // Server.at(request.location).let(_.handle(using request)).or:
+      //   Http.Response(NotFound(t"Not found"))

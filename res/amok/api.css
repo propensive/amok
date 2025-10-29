@@ -136,13 +136,13 @@ h2 { font-size: 1.5rem; font-weight: 380; }
 h3 { font-size: 1.3rem; font-weight: 430; }
 h4 { font-size: 1.1rem; font-weight: 510; }
 
-table.members { margin: 0 0 1em 1.5em; justify-self: start; & h2 { margin-top: 1em; } }
+table.members { margin: 0 0 1em 1.5em; justify-self: start; & h3 { margin-top: 1em; } }
 
 table
   { margin:          1em 1rem;
     border-collapse: collapse; }
 
-td, th { text-align: left; padding: 0 0.5rem; line-height: 1.5em; vertical-align: bottom; }
+td, th { text-align: left; padding: 0 0.5rem; line-height: 1.5em; vertical-align: top; }
 th     { font-weight: 500; }
 
 tr.first>td { padding-top: 0.5rem; }
@@ -173,7 +173,7 @@ iframe
     background-color: transparent; }
 
 ul.all
-  { columns:     3;
+  { columns:     5;
     line-height: 1.5em;
     list-style:  none;
     padding:     1rem;

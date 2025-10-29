@@ -44,6 +44,7 @@ object Server:
   def register(folio: Folio): Unit = mappings(folio.base) = folio
   def apply(mountpoint: Mountpoint): Optional[Folio] = mappings.at(mountpoint)
 
-  def at(path: Text): Optional[Folio] =
-    mountpoints.filter(_.contains(path)).occupied.let: matching =>
-      apply(matching.maxBy(_.text.length))
+  def at(path: Text)(using Stdio, Http.Request): Optional[Folio] =
+    mountpoints.filter: mountpoint =>
+      mountpoint.endpoint.precedes(request.path)
+    . occupied.let(_.maxBy(_.text.length)).let(mappings.at(_))

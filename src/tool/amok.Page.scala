@@ -45,7 +45,7 @@ object Page:
           Link.Stylesheet(href = mountpoint / "api.css")),
         Body
          (Header(Nav(Ul
-           (Li(A(href = mountpoint / "_api")(t"API")),
+           (Li(A(href = mountpoint / "_api")(t"PACKAGES")),
             Li(A(href = mountpoint / "_glossary")(t"GLOSSARY")),
             Li(A(href = mountpoint / "_context")(t"CONTEXT")),
             Li(Button(id = id"theme"))))),

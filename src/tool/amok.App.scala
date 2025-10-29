@@ -130,14 +130,19 @@ def application(): Unit = cli:
         case ClasspathError(path) =>
           panic(m"Expected to find $path on the classpath")
 
+        case TerminalError() =>
+          panic(m"Could not start the terminal")
+
       . within:
-          tcp"8080".serve:
-            def notFound = Page.simple(Mountpoint(), t"There is no page at ${request.location}")
+          interactive:
+            Out.println(e"Listening on $Italic(http://localhost:8080)")
+            Out.println(e"Type Ctrl+C to exit")
+            tcp"8080".serve:
+              def notFound = Page.simple(Mountpoint(), t"There is no page at ${request.location}")
+              Server.at(request.location).lay(Http.Response(NotFound(notFound)))(_.handle)
 
-            Server.at(request.location).lay(Http.Response(NotFound(notFound))): folio =>
-              folio.handle(using request)
+            terminal.events.stream.takeWhile(_ != Keypress.Ctrl('C')).strict
 
-          Out.println(e"Listening on $Bold(http://localhost:8080)")
           Exit.Ok
 
     case command :: _ =>

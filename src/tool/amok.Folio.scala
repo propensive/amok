@@ -92,7 +92,6 @@ object Folio:
     else abort(LoadError(file, FiletypeError()))
 
 trait Folio(val base: Mountpoint, val kind: Text, val source: Path on Linux):
-  def subpath(using Http.Request): Relative on Www =
-    request.location.skip(base.show.length).decode[Relative on Www]
+  def subpath(using Http.Request): Path on Www under %.type = request.path.shift(base.endpoint.depth)
 
   def handle(using Http.Request): Http.Response
