@@ -61,35 +61,35 @@ extension (using Quotes)(flags: quotes.reflect.Flags)
   def has(modifiers: Modifier*): List[Modifier] = modifiers.filter(flags.modifier(_)).to(List)
 
 class Model():
-  val root = Node()
+  val root = Node(Unset)
 
   def resolve(path: Text, prefix: Text = t"", current: Node = root, term: Boolean = true)
-  : (Text, Text, Node) =
+  : Optional[(Text, Text, Node)] =
 
       path.where { char => char == '.' || char == ':' }.let: position =>
         val part = path.before(position).urlDecode
-        val next = current() = if term then Member.OfTerm(part) else Member.OfType(part)
+        val next = current(if term then Member.OfTerm(part) else Member.OfType(part))
 
         path.at(position) match
-          case '.' => resolve(path.after(position), t"$prefix$part.", next, true)
-          case ':' => resolve(path.after(position), t"$prefix$part⌗", next, false)
+          case '.' => next.let(resolve(path.after(position), t"$prefix$part.", _, true))
+          case ':' => next.let(resolve(path.after(position), t"$prefix$part⌗", _, false))
           case _   => (if prefix.empty then t"" else prefix.keep(1, Rtl), part, current)
 
       . or:
-         (if prefix.empty then t"" else prefix.keep(1, Rtl),
-          path.urlDecode,
-          current() = if term then Member.OfTerm(path.urlDecode) else Member.OfType(path.urlDecode))
+          val path2 = path.urlDecode
+          current(if term then Member.OfTerm(path2) else Member.OfType(path2)).let: current =>
+            (if prefix.empty then t"" else prefix.keep(1, Rtl), path2, current)
 
-  def apply(pkg: Text): Node = root() = Member.OfTerm(pkg)
+  def apply(pkg: Text): Optional[Node] = root(Member.OfTerm(pkg))
 
   def overlay(base: Amox.Base)(using Stdio): Unit =
     def recur(prefix: Text, entries: List[Amox.Entry], current: Node): Unit =
       entries.map: entry =>
         val part = entry.name.skip(1)
         val next = entry.name.at(Prim) match
-          case '.' => current() = Member.OfTerm(part)
-          case '#' => current() = Member.OfType(part)
-          case other   => Out.println(m"Unexpected: ${other.inspect}") yet Unset
+          case '.'   => current(Member.OfTerm(part))
+          case '#'   => current(Member.OfType(part))
+          case other => Out.println(m"Unexpected: ${other.inspect}") yet Unset
 
         next.let: next =>
           next.memo = entry.memo.dare(_.read[InlineMd])
@@ -97,12 +97,11 @@ class Model():
           next.hidden = entry.hidden.or(false)
           recur(prefix+entry.name, entry.entry, next)
 
-    val init = root() = Member.OfTerm(base.base.or(t""))
-    init.memo = base.memo.dare(_.read[InlineMd])
-    init.detail = base.detail
-    recur(base.base.or(t""), base.entry, init)
+    root.memo = base.memo.dare(_.read[InlineMd])
+    root.detail = base.detail
+    recur(base.base.or(t""), base.entry, root)
 
-  def load(path: Path on Linux)(using Stdio): Unit =
+  def load(path: Path on Linux)(using Stdio, Terminal): Unit =
     val inspector = DocInspector()
     try TastyInspector.inspectTastyFilesInJar(path.encode.s)(inspector)
     catch case error: Throwable =>
@@ -113,28 +112,50 @@ class Model():
 
   import Member.{OfTerm, OfType}
 
-  case class DocInspector()(using Stdio) extends Inspector:
+  case class DocInspector()(using Stdio, Terminal) extends Inspector:
     def inspect(using Quotes)(tastys: List[Tasty[quotes.type]]): Unit =
       import quotes.reflect.*
       import Flags.*
 
-      def walk(ast: Tree, node: Node, ofTerm: Boolean): Unit =
+      def context(tree: Tree)
+          (lambda: (name:          Text,
+                    packageObject: Boolean,
+                    body:          List[Tree],
+                    flags:         Flags) ?=> Unit)
+      : Unit =
+
+          tree.match
+            case PackageClause(Ident(name), body) => (name.tt, body.to(List))
+            case ClassDef(name, _, _, _, body)    => (name.tt, body.to(List))
+            case DefDef(name, _, _, body)         => (name.tt, Nil)
+            case ValDef(name, _, body)            => (name.tt, body.to(List))
+            case TypeDef(name, _)                 => (name.tt, Nil)
+            case other                            => Unset
+
+          . let: (name0, body) =>
+              val name2 = name0.when(_.ends("$"))(_.skip(1, Rtl))
+              val packageObject = name2.ends("$package")
+              val name = name2.when(packageObject)(_.skip(8, Rtl))
+              val flags = tree.symbol.flags
+
+              if name != "_" then lambda(using name, packageObject, body, flags)
+
+
+      def walk(ast: Tree, node: Node, ofTerm: Boolean, typename: Optional[Typename] = Unset): Unit =
         def of(name: Text): Member = if ofTerm then OfTerm(name) else OfType(name)
         ast match
-          case pc@PackageClause(id@Ident(name), body) =>
-            val child = node() = of(name)
+          case tree@PackageClause(packageName, stats) => context(tree):
+            val child = node(name) = of(name)
             child() = `package`(Nil)
-            body.each(walk(_, child, true))
+            val typename2 = typename.let(Typename.Term(_, name)).or(Typename.Top(name))
+            body.each(walk(_, child, true, typename2))
 
-          case valDef@ValDef(name, result, body) if !(valDef.symbol.flags.is(Private) || name == "_") =>
-            val flags = valDef.symbol.flags
-            val termName =
-              if flags.is(Given) && (name.tt.starts(t"evidence$$"))
-              then name.tt/*Syntax(result.tpe)*/ else name.tt
-            if name.tt.ends(t"$$package") then body.each(walk(_, node, false))
-            else if name.tt.ends(t"$$package$$") then body.each(walk(_, node, true))
+          case tree@ValDef(_, result, _) if !tree.symbol.flags.is(Private) => context(tree):
+            if packageObject then
+              val typename2 = typename.let(Typename.Term(_, name)).or(Typename.Top(name))
+              body.each(walk(_, node, ofTerm, typename2))
             else
-              val child = node() = of(termName)
+              val child = node(name) = of(name)
               val returnType = Syntax(result.tpe)
 
               if flags.is(Enum) && flags.is(Case)
@@ -148,12 +169,16 @@ class Model():
               then child() = `var`(flags.has(`override`, `private`, `protected`, `final`), returnType)
               else child() = `val`(flags.has(`override`, `private`, `protected`, `erased`, `inline`, `final`, `lazy`), returnType)
 
-              body.each(walk(_, child, true))
+              val typename2 = typename.let(Typename.Term(_, name)).or(Typename.Top(name))
+              body.each(walk(_, child, true, typename2))
 
-          case classDef@ClassDef(name, DefDef(_, groups0, _, _), extensions0, selfType, body) =>
-            val typeRef = classDef.symbol.typeRef
-            val flags = classDef.symbol.flags
+          case tree@ClassDef(_, DefDef(_, groups0, _, _), extensions0, selfType, _) => context(tree):
+            val typeRef = tree.symbol.typeRef
+            val obj = flags.is(Module)
             val parents = typeRef.baseClasses.map(typeRef.baseType(_))
+            val typename2 = typename.let(Typename.Type(_, name)).or(Typename.Top(name))
+
+            if name.contains("BoxLine") then Out.println(typename2.render)
 
             given TypeRepr is PartiallyOrdered = (left, right) =>
               !(left =:= right) && left <:< right
@@ -172,13 +197,9 @@ class Model():
               . to(List)
               . map(Syntax(_))
 
-            val obj = flags.is(Module)
-            val className = if obj && name.tt.ends(t"$$") then name.tt.skip(1, Rtl) else name.tt
-
-            if name.tt.ends(t"$$package") || name.tt.ends(t"$$package$$")
-            then body.each(walk(_, node, obj))
+            if packageObject then body.each(walk(_, node, ofTerm, typename2))
             else
-              val child = node() = if flags.is(Enum) then OfType(name) else of(className)
+              val child = node(name) = if flags.is(Enum) then OfType(name) else of(name)
               val params = if groups0.isEmpty && flags.is(Trait) then Unset else Syntax.Compound(groups0.map(Syntax.clause(_, true)))
               if flags.is(Synthetic) || flags.is(Module) then ()
               else if flags.is(Trait)
@@ -191,19 +212,17 @@ class Model():
               then child() = Template.`case class`(flags.has(`private`, `protected`, `sealed`, `open`, `transparent`, `final`, `into`, `erased`, `abstract`), extensions, Nil, params)
               else child() = Template.`class`(flags.has(`private`, `protected`, `sealed`, `open`, `transparent`, `final`, `into`, `erased`, `abstract`), extensions, params, Nil)
 
-              body.each(walk(_, child, obj))
+              body.each(walk(_, child, obj, typename2))
 
 
 
-          case term@DefDef(name, groups0, result, body)
-            if !term.symbol.flags.is(Synthetic) && !term.symbol.flags.is(Private)
-               && !name.contains("$default$") =>
+          case tree@DefDef(_, groups0, result, _)
+            if !tree.symbol.flags.is(Synthetic) && !tree.symbol.flags.is(Private) => context(tree):
 
-            val flags = term.symbol.flags
             val isGiven = flags.is(Given)
             val isInfix = flags.is(Infix)
             val termName = name.show
-            val child = node() = of(termName)
+            val child = node(name) = of(termName)
             val ext = flags.is(ExtensionMethod)
             val split = 1 + groups0.indexWhere:
               case clause@TermParamClause(terms) =>
@@ -234,10 +253,8 @@ class Model():
                 else definition
 
 
-          case typeDef@TypeDef(name, result) if name != "MirroredMonoType" =>
-            val flags = typeDef.symbol.flags
-            val typeName = name.show
-            def child = node() = of(typeName)
+          case tree@TypeDef(name, result) if name != "MirroredMonoType" => context(tree):
+            def child = node(name) = of(name)
 
             if !flags.is(Flags.Param)
             then child() = Template.`type`(flags.has(`into`, `opaque`, `infix`), Nil, Unset)
@@ -251,5 +268,18 @@ class Model():
           case other if other.symbol.flags.is(Private) =>
           case other  =>
 
+      val total = tastys.length
+      Out.println(t"There are $total TASTy files")
+      var count = 0
+      val t0 = java.lang.System.currentTimeMillis
+      val grades = "▏▎▍▌▋▊▉█"
+
+      val columns = summon[Terminal].columns.or(100)
       tastys.each: tasty =>
-        walk(tasty.ast, root, true)
+        val percent = 8*columns*count/total
+        val bar = e"${t"█"*(percent/8)}${grades(percent%8)}"
+        // Out.print(e"\r${Bg(rgb"#221100")}(${rgb"#DD9900"}($bar)${t" "*(columns - percent/8 - 1)})")
+        walk(tasty.ast, root, true, Unset)
+        count += 1
+
+      Out.println(((java.lang.System.currentTimeMillis - t0)/1000.0).toString)

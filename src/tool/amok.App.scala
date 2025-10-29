@@ -113,7 +113,9 @@ def application(): Unit = cli:
           . within:
               val mountpoint = MountpointArg().or(Mountpoint())
               Out.println(m"Deploying $file to $mountpoint".teletype)
-              Server.register(Folio.load(mountpoint, file))
+              safely:
+                interactive:
+                  Server.register(Folio.load(mountpoint, file))
               Exit.Ok
 
         catch case error: Throwable =>

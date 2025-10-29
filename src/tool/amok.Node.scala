@@ -37,7 +37,7 @@ import scala.collection.immutable.ListMap
 
 import soundness.{is as _, Node as _, *}
 
-class Node(parent0: Optional[Node] = Unset):
+class Node(name: Optional[Text], parent0: Optional[Node] = Unset):
   private var doc: Optional[Text] = Unset
   val membersMap: scm.TreeMap[Member, Node] = scm.TreeMap()
   var template: Optional[Template] = Unset
@@ -72,9 +72,9 @@ class Node(parent0: Optional[Node] = Unset):
   def update(definition0: Definition): Unit = definition = definition0
   def update(template0: Template): Unit = template = template0
 
-  def update(member: Member): Node =
+  def update(name: Text, member: Member): Node =
     membersMap.get(member).getOrElse:
-      Node(this).tap: node =>
+      Node(name, this).tap: node =>
         membersMap(member) = node
 
   def tree(name: Text, group: Text, path: Text)(using mountpoint: Mountpoint): Element["details"] =

@@ -43,7 +43,7 @@ object Folio:
       case folio: JvmFolio => t"jvm"
       case folio           => t"content")
 
-  def load(mountpoint: Mountpoint, file: Path on Linux)(using Stdio): Folio raises LoadError =
+  def load(mountpoint: Mountpoint, file: Path on Linux)(using Stdio, Terminal): Folio raises LoadError =
     val folio: Optional[Folio] = Server(mountpoint)
     if file.name.ends(t".jar") then
       Out.println(m"Loading JAR file ${file.name}")
