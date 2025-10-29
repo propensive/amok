@@ -102,23 +102,25 @@ extends Folio(mountpoint, t"jvm", source):
               parentPackage,
               H1(Code(entity)),
               Div(node.memo.let { memo => memo.html }),
-              Table.members(List(node.template.let(_ -> node.types), node.definition.let(_ -> node.terms)).compact.flatMap:
+              Table.members(node.namespace.flatMap:
                 case (declaration, members) =>
                   def colon0 = if members.isEmpty && declaration.returnType.absent then "" else ": "
+
+                  val current = declaration match
+                    case _: Definition => Typename.Term(typename, entity)
+                    case _: Template   => Typename.Type(typename, entity)
+
+                  given imports2: Imports = Imports(imports.typenames + current)
                   val keywords = declaration.syntax().html
                   val parameters = declaration.parameters.let(_.html)
                   val returnType = declaration.returnType.let(_.html)
                   val title = H3(Code(keywords, " ", entity, parameters, colon0, returnType))
                   val titleRow = Tr(Td(colspan = 3)(title))
-                  val current = declaration match
-                    case _: Definition => Typename.Term(typename, entity)
-                    case _: Template   => Typename.Type(typename, entity)
 
                   val methods = members.groupBy(_(1).definition.let(_.group)).flatMap: (group, members) =>
                     val head = group.lay(Nil) { ext => List(Tr(Td(Code("extension ", ext.html)))) }
 
                     head ::: members.to(List).flatMap: (name, child) =>
-                      given imports2: Imports = Imports(imports.typenames + current)
                       val local = true
                       val href = link(declaration, name, local)
                       val kinds = child.declarations.flatMap(_.syntax(true).html :+ Code(", ")).dropRight(1)

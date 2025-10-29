@@ -118,11 +118,6 @@ class Model():
       import quotes.reflect.*
       import Flags.*
 
-      def ref(term: Tree): Optional[Typename] = term match
-        case Ident(name)        => Typename.Top(name)
-        case Select(term, name) => ref(term).let(Typename.Term(_, name))
-        case This(_)            => Unset
-
       def walk(ast: Tree, node: Node, ofTerm: Boolean): Unit =
         def of(name: Text): Member = if ofTerm then OfTerm(name) else OfType(name)
         ast match
@@ -136,7 +131,8 @@ class Model():
             val termName =
               if flags.is(Given) && (name.tt.starts(t"evidence$$"))
               then name.tt/*Syntax(result.tpe)*/ else name.tt
-            if name.tt.ends(t"$$package") then body.each(walk(_, node, true))
+            if name.tt.ends(t"$$package") then body.each(walk(_, node, false))
+            else if name.tt.ends(t"$$package$$") then body.each(walk(_, node, true))
             else
               val child = node() = of(termName)
               val returnType = Syntax(result.tpe)
@@ -178,11 +174,11 @@ class Model():
 
             val obj = flags.is(Module)
             val className = if obj && name.tt.ends(t"$$") then name.tt.skip(1, Rtl) else name.tt
-            val child = node() = if flags.is(Enum) then OfType(name) else of(className)
 
             if name.tt.ends(t"$$package") || name.tt.ends(t"$$package$$")
-            then body.each(walk(_, node, true))
+            then body.each(walk(_, node, obj))
             else
+              val child = node() = if flags.is(Enum) then OfType(name) else of(className)
               val params = if groups0.isEmpty && flags.is(Trait) then Unset else Syntax.Compound(groups0.map(Syntax.clause(_, true)))
               if flags.is(Synthetic) || flags.is(Module) then ()
               else if flags.is(Trait)

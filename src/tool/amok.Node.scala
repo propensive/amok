@@ -47,10 +47,12 @@ class Node(parent0: Optional[Node] = Unset):
   var hidden: Boolean = false
   var aliases: List[Typename] = Nil
 
-  //def declaration: Declaration = declarations.last
   def declarations: List[Declaration] = List(definition, template).compact
   def parent: Node = parent0.or(this)
   def members: List[(Member, Node)] = membersMap.to(List)
+
+  def namespace: List[(Declaration, ListMap[Text, Node])] =
+    List(template.let(_ -> types), definition.let(_ -> terms)).compact
 
   override def toString: String = members.map(_(0).text).join(t", ").s
 
