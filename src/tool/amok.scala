@@ -53,44 +53,58 @@ export charEncoders.utf8
 export charDecoders.utf8
 export textSanitizers.skip
 export classloaders.threadContext
+export webserverErrorPages.stackTraces
 
-given typenameIsRenderable: (imports: Imports, mountpoint: Mountpoint) => Typename is Renderable:
-  import html5.*
+import html5.*
+
+case class RootPackage(member: Member)
+
+given memberIsRenderable: (imports: Imports, mountpoint: Mountpoint, model: Model, root: RootPackage)
+      => Member is Renderable:
   type Result = Phrasing
 
-  def html(index: Typename): List[Html[Phrasing]] =
-    def recur(index: Typename): Html[Phrasing] =
-      val ref = index.id
-      def link(name: Text) = A(href = mountpoint / "_entity" / ref)(name)
+  def html(member: Member): List[Html[Phrasing]] =
+    def recur(member: Member): Html[Phrasing] =
+      def link(name: Text): Html[Phrasing] =
+        if model.root(member) == root.member then A(href = mountpoint / "_entity" / member.encode)(name)
+        else A(target = id"_top", href = mountpoint / "_api" / member.encode)(name)
 
-      index match
-        case Typename.Top(name) => link(name)
+      member match
+        case Member(Unset, name) => link(name)
 
-        case child =>
-          if imports.has(child.parent) then link(child.name)
-          else Span(Span(recur(child.parent)), index.symbol("⌗"), link(child.name))
+        case Member(parent: Typename, name) =>
+          if imports.has(parent) then if model.has(member) then link(member.name) else member.name
+          else Span(Span(recur(parent.member)), member.symbol, if model.has(member) then link(name) else name)
 
-    List(recur(index))
+    List(recur(member))
+
+given divisible: Typename is Divisible by Text to Member = Member(_, _)
+
+extension (typename: Typename)
+  def member: Member = typename match
+    case Typename.Top(name)          => Member(Unset, name)
+    case Typename.Term(parent, name) => Member(parent, name)
+    case Typename.Type(parent, name) => Member(parent, name)
 
 given translator: Tactic[CodlError] => Tactic[ParseError] => (model: Model) => Translator =
   new HtmlTranslator(AmokEmbedding(false), ScalaEmbedding):
-    override def phrasing(node: Markdown.Ast.Inline): Seq[Html[html5.Phrasing]] = node match
+    override def phrasing(node: Markdown.Ast.Inline): Seq[Html[Phrasing]] = node match
       case Markdown.Ast.Inline.SourceCode(code) =>
         List:
-          html5.Code:
+          Code:
             if code.starts(t".") then t"$code"
-            else if code.starts(t"#") then model.resolve(code.skip(1)) match
-              case (_, _, node) => node.template.let(_.syntax().html)
+            else if code.starts(t"#") then model.lookup(Typename(code.skip(1))).let: node =>
+              node.template.let(_.syntax().html)
             else code
 
       case other => super.phrasing(other)
 
-given syntaxIsRenderable: (imports: Imports, mountpoint: Mountpoint) => Syntax is Renderable:
-  import html5.*
+given syntaxIsRenderable: (imports: Imports, mountpoint: Mountpoint, model: Model, root: RootPackage)
+      => Syntax is Renderable:
   type Result = Phrasing
 
   def html(syntax: Syntax): Seq[Html[Phrasing]] = syntax match
-    case Syntax.Simple(typename)       => typename.html
+    case Syntax.Simple(typename)       => typename.member.html
     case Syntax.Symbolic(text)         => List(text)
     case Syntax.Project(Syntax.Simple(typename), text) => html(Syntax.Simple(Typename.Type(typename, text)))
     case Syntax.Project(base, text)    => base.html :+ t"⌗" :+ text
@@ -105,7 +119,7 @@ given syntaxIsRenderable: (imports: Imports, mountpoint: Mountpoint) => Syntax i
     case Syntax.Tuple(true, elements)  =>
       t"[" +: elements.flatMap(_.html :+ t", ").dropRight(1) :+ t"]"
 
-    case Syntax.Singleton(typename)    => typename.html :+ ".type"
+    case Syntax.Singleton(typename)    => typename.member.html :+ ".type"
     case Syntax.Compound(syntaxes)     => syntaxes.flatMap(_.html)
 
     case Syntax.Signature(method, syntaxes, result) =>

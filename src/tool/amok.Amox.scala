@@ -45,13 +45,13 @@ object Amox:
               (domain:   Text,
                language: Optional[Text],
                base:     Optional[Text],
-               memo:     Optional[Text],
+               info:     Optional[Text],
                detail:   Optional[Text],
                entry:    List[Entry])
 
   case class Entry
               (name:   Text,
-               memo:   Optional[Text],
+               info:   Optional[Text],
                detail: Optional[Text],
                until:  List[Rename],
                hidden: Optional[Boolean],

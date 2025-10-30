@@ -34,6 +34,7 @@ package amok
 
 import scala.tasty.*, inspector.*
 import scala.quoted.*
+import scala.collection.mutable as scm
 
 import soundness.{is as _, open as _, Node as _, *}
 
@@ -61,45 +62,65 @@ extension (using Quotes)(flags: quotes.reflect.Flags)
   def has(modifiers: Modifier*): List[Modifier] = modifiers.filter(flags.modifier(_)).to(List)
 
 class Model():
-  val root = Node(Unset)
+  private val roots: scm.HashSet[Member] = scm.HashSet()
+  private val index: scm.HashMap[Member, Node] = scm.HashMap()
 
-  def resolve(path: Text, prefix: Text = t"", current: Node = root, term: Boolean = true)
-  : Optional[(Text, Text, Node)] =
+  def root(member: Member): Optional[Member] =
+    if roots.contains(member) then member else member.parent.let(_.member).let(root(_))
 
-      path.where { char => char == '.' || char == ':' }.let: position =>
-        val part = path.before(position).urlDecode
-        val next = current(if term then Member.OfTerm(part) else Member.OfType(part))
+  def establish(typename: Typename): Node =
+    val member = Member(typename.parent, typename.name)
+    index.at(member).or:
+      Node().tap: node =>
+        index(member) = node
 
-        path.at(position) match
-          case '.' => next.let(resolve(path.after(position), t"$prefix$part.", _, true))
-          case ':' => next.let(resolve(path.after(position), t"$prefix$part⌗", _, false))
-          case _   => (if prefix.empty then t"" else prefix.keep(1, Rtl), part, current)
+        typename.parent match
+          case Unset       => roots += typename.member
+          case parent: Typename => establish(parent).add(typename)
 
-      . or:
-          val path2 = path.urlDecode
-          current(if term then Member.OfTerm(path2) else Member.OfType(path2)).let: current =>
-            (if prefix.empty then t"" else prefix.keep(1, Rtl), path2, current)
+  def packages: List[Member] = roots.to(List).sortBy(_.encode)
+  def lookup(typename: Typename): Optional[Node] = index.at(Member(typename.parent, typename.name))
+  def lookup(member: Member): Optional[Node] = index.at(member)
+  def has(member: Member): Boolean = index.contains(member)
 
-  def apply(pkg: Text): Optional[Node] = root(Member.OfTerm(pkg))
 
-  def overlay(base: Amox.Base)(using Stdio): Unit =
-    def recur(prefix: Text, entries: List[Amox.Entry], current: Node): Unit =
-      entries.map: entry =>
-        val part = entry.name.skip(1)
-        val next = entry.name.at(Prim) match
-          case '.'   => current(Member.OfTerm(part))
-          case '#'   => current(Member.OfType(part))
-          case other => Out.println(m"Unexpected: ${other.inspect}") yet Unset
+  // def resolve(path: Text, prefix: Text = t"", current: Optional[Node] = Unset, term: Boolean = true)
+  // : Optional[(Text, Text, Node)] =
 
-        next.let: next =>
-          next.memo = entry.memo.dare(_.read[InlineMd])
-          next.detail = entry.detail
-          next.hidden = entry.hidden.or(false)
-          recur(prefix+entry.name, entry.entry, next)
+  //     path.where { char => char == '.' || char == ':' }.let: position =>
+  //       val part = path.before(position).urlDecode
+  //       val next = current(if term then Member.OfTerm(part) else Member.OfType(part))
 
-    root.memo = base.memo.dare(_.read[InlineMd])
-    root.detail = base.detail
-    recur(base.base.or(t""), base.entry, root)
+  //       path.at(position) match
+  //         case '.' => next.let(resolve(path.after(position), t"$prefix$part.", _, true))
+  //         case ':' => next.let(resolve(path.after(position), t"$prefix$part⌗", _, false))
+  //         case _   => (if prefix.empty then t"" else prefix.keep(1, Rtl), part, current)
+
+  //     . or:
+  //         val path2 = path.urlDecode
+  //         current(if term then Member.OfTerm(path2) else Member.OfType(path2)).let: current =>
+  //           (if prefix.empty then t"" else prefix.keep(1, Rtl), path2, current)
+
+  // def apply(pkg: Text): Optional[Node] = root(Member.OfTerm(pkg))
+
+  // def overlay(base: Amox.Base)(using Stdio): Unit =
+  //   def recur(prefix: Text, entries: List[Amox.Entry], current: Node): Unit =
+  //     entries.map: entry =>
+  //       val part = entry.name.skip(1)
+  //       val next = entry.name.at(Prim) match
+  //         case '.'   => current(Member.OfTerm(part))
+  //         case '#'   => current(Member.OfType(part))
+  //         case other => Out.println(m"Unexpected: ${other.inspect}") yet Unset
+
+  //       next.let: next =>
+  //         next.memo = entry.memo.dare(_.read[InlineMd])
+  //         next.detail = entry.detail
+  //         next.hidden = entry.hidden.or(false)
+  //         recur(prefix+entry.name, entry.entry, next)
+
+  //   root.memo = base.memo.dare(_.read[InlineMd])
+  //   root.detail = base.detail
+  //   recur(base.base.or(t""), base.entry, root)
 
   def load(path: Path on Linux)(using Stdio, Terminal): Unit =
     val inspector = DocInspector()
@@ -110,71 +131,63 @@ class Model():
     Syntax.clear()
     java.lang.System.gc()
 
-  import Member.{OfTerm, OfType}
-
   case class DocInspector()(using Stdio, Terminal) extends Inspector:
     def inspect(using Quotes)(tastys: List[Tasty[quotes.type]]): Unit =
       import quotes.reflect.*
       import Flags.*
 
 
-      def walk(tree: Tree, node: Node, ofTerm: Boolean, typename0: Optional[Typename] = Unset): Unit =
+      def walk(tree: Tree, typename0: Optional[Typename] = Unset): Unit =
         val flags = tree.symbol.flags
 
         tree.match
           case PackageClause(Ident(name), body) => (name.tt, body.to(List), true)
           case ClassDef(name, _, _, _, body)    => (name.tt, body.to(List), flags.is(Module))
-          case DefDef(name, _, _, body)         => (name.tt, Nil, true)
+          case DefDef(name, _, _, body)         => (name.tt, body.to(List), true)
           case ValDef(name, _, body)            => (name.tt, body.to(List), true)
           case TypeDef(name, _)                 => (name.tt, Nil, false)
           case other                            => Unset
 
         . let: (name0, body, term) =>
-            val name2 = name0.when(_.ends("$"))(_.skip(1, Rtl))
+            val module = name0.ends("$")
+            val name2 = name0.when(module)(_.skip(1, Rtl))
             val packageObject = name2.ends("$package")
             val name = name2.when(packageObject)(_.skip(8, Rtl))
 
-            val typename = tree match
-              case PackageClause(_, _) => Typename(tree.symbol.fullName)
+            val typename: Typename = tree match
+              case PackageClause(_, _) =>
+                Typename(tree.symbol.fullName)
+
               case _ =>
-                typename0.lay(Typename.Top(name)): typename =>
-                  if term then Typename.Term(typename, name) else Typename.Type(typename, name)
+                if module then typename0.or(Typename.Top(name))
+                else typename0.lay(Typename.Top(name)): typename =>
+                  if module then Typename.Term(typename, name) else Typename.Type(typename, name)
 
-            def of(name: Text): Member = if ofTerm then OfTerm(name) else OfType(name)
+            if name != "_" && !flags.is(Synthetic) && !name.contains("$default$") then
+              val node: Node = establish(typename)
 
-            if name != "_" then
               tree match
-                case tree@PackageClause(packageName, stats) =>
-                  val child = node(name) = of(name)
-                  child() = `package`(Nil)
-                  body.each(walk(_, child, true, typename))
+                case tree@PackageClause(packageName, _) =>
+                  body.each(walk(_, typename))
 
                 case tree@ValDef(_, result, _) if !tree.symbol.flags.is(Private) =>
-                  if packageObject then
-                    body.each(walk(_, node, ofTerm, typename))
-                  else
-                    val child = node(name) = of(name)
-                    val returnType = Syntax(result.tpe)
+                  val returnType = Syntax(result.tpe)
 
-                    if flags.is(Enum) && flags.is(Case)
-                    then child() = Template.`case`(flags.has(`private`), Nil, Unset)
-                    else if flags.is(Synthetic) then Unset
-                    else if flags.is(Given)
-                    then child() = `given`(flags.has(`inline`, `transparent`, `erased`), returnType)
-                    else if flags.is(Module)
-                    then child() = `object`(flags.has(`case`))
-                    else if flags.is(Mutable)
-                    then child() = `var`(flags.has(`override`, `private`, `protected`, `final`), returnType)
-                    else child() = `val`(flags.has(`override`, `private`, `protected`, `erased`, `inline`, `final`, `lazy`), returnType)
+                  if flags.is(Enum) && flags.is(Case)
+                  then node.declare(Template.`case`(flags.has(`private`), Nil, Unset))
+                  else if flags.is(Given)
+                  then node.declare(`given`(flags.has(`inline`, `transparent`, `erased`), returnType))
+                  else if flags.is(Module)
+                  then node.declare(`object`(flags.has(`case`)))
+                  else if flags.is(Mutable)
+                  then node.declare(`var`(flags.has(`override`, `private`, `protected`, `final`), returnType))
+                  else node.declare(`val`(flags.has(`override`, `private`, `protected`, `erased`, `inline`, `final`, `lazy`), returnType))
 
-                    body.each(walk(_, child, true, typename))
+                  body.each(walk(_, typename))
 
-                case tree@ClassDef(_, DefDef(_, groups0, _, _), extensions0, selfType, _) =>
+                case tree@ClassDef(_, DefDef(_, groups0, _, _), _, _, _) =>
                   val typeRef = tree.symbol.typeRef
-                  val obj = flags.is(Module)
                   val parents = typeRef.baseClasses.map(typeRef.baseType(_))
-
-                  Out.println(typename.render)
 
                   given TypeRepr is PartiallyOrdered = (left, right) =>
                     !(left =:= right) && left <:< right
@@ -193,24 +206,22 @@ class Model():
                     . to(List)
                     . map(Syntax(_))
 
-                  if packageObject then body.each(walk(_, node, ofTerm, typename))
-                  else
-                    val child = node(name) = if flags.is(Enum) then OfType(name) else of(name)
-                    val params = if groups0.isEmpty && flags.is(Trait) then Unset else Syntax.Compound(groups0.map(Syntax.clause(_, true)))
-                    if flags.is(Synthetic) || flags.is(Module) then ()
-                    else if flags.is(Trait)
-                    then child() = Template.`trait`(flags.has(`private`, `erased`, `into`, `sealed`, `transparent`), extensions, params)
-                    else if obj && !flags.is(Case) && flags.is(Enum)
-                    then child() = Template.`enum`(flags.has(`private`), Nil, Nil, params)
-                    else if flags.is(Case) && flags.is(Enum)
-                    then child() = Template.`case`(flags.has(`private`, `protected`), extensions, params)
-                    else if flags.is(Case)
-                    then child() = Template.`case class`(flags.has(`private`, `protected`, `sealed`, `open`, `transparent`, `final`, `into`, `erased`, `abstract`), extensions, Nil, params)
-                    else child() = Template.`class`(flags.has(`private`, `protected`, `sealed`, `open`, `transparent`, `final`, `into`, `erased`, `abstract`), extensions, params, Nil)
+                  val params =
+                    if groups0.isEmpty && flags.is(Trait) then Unset
+                    else Syntax.Compound(groups0.map(Syntax.clause(_, true)))
 
-                    body.each(walk(_, child, obj, typename))
+                  if flags.is(Synthetic) then Unset
+                  else if flags.is(Trait)
+                  then node.declare(Template.`trait`(flags.has(`private`, `erased`, `into`, `sealed`, `transparent`), extensions, params))
+                  else if flags.is(Module) && !flags.is(Case) && flags.is(Enum)
+                  then node.declare(Template.`enum`(flags.has(`private`), Nil, Nil, params))
+                  else if flags.is(Case) && flags.is(Enum)
+                  then node.declare(Template.`case`(flags.has(`private`, `protected`), extensions, params))
+                  else if flags.is(Case)
+                  then node.declare(Template.`case class`(flags.has(`private`, `protected`, `sealed`, `open`, `transparent`, `final`, `into`, `erased`, `abstract`), extensions, Nil, params))
+                  else node.declare(Template.`class`(flags.has(`private`, `protected`, `sealed`, `open`, `transparent`, `final`, `into`, `erased`, `abstract`), extensions, params, Nil))
 
-
+                  body.each(walk(_, typename))
 
                 case tree@DefDef(_, groups0, result, _)
                   if !tree.symbol.flags.is(Synthetic) && !tree.symbol.flags.is(Private) =>
@@ -218,7 +229,6 @@ class Model():
                   val isGiven = flags.is(Given)
                   val isInfix = flags.is(Infix)
                   val termName = name.show
-                  val child = node(name) = of(termName)
                   val ext = flags.is(ExtensionMethod)
                   val split = 1 + groups0.indexWhere:
                     case clause@TermParamClause(terms) =>
@@ -239,30 +249,27 @@ class Model():
                         List(Syntax.clause(clause, false), Syntax.Symbolic(t" => "))
                       :+ Syntax(result.tpe))
                     else Syntax(result.tpe)
-                  child() =
-                    if isGiven then `given`(flags.has(`inline`, `transparent`, `erased`), returnType)
-                    else
-                      val definition: amok.Definition.`def` =
-                        `def`(flags.has(`abstract`, `override`, `private`, `protected`, `erased`, `final`, `infix`, `transparent`, `inline`), params, returnType)
 
-                      if ext then `extension`(Syntax.Compound(preClauses.map(Syntax.clause(_, true))), definition)
-                      else definition
+                  if isGiven then node.declare(`given`(flags.has(`inline`, `transparent`, `erased`), returnType))
+                  else
+                    val definition: amok.Definition.`def` =
+                      `def`(flags.has(`abstract`, `override`, `private`, `protected`, `erased`, `final`, `infix`, `transparent`, `inline`), params, returnType)
 
+                    if ext then node.declare(`extension`(Syntax.Compound(preClauses.map(Syntax.clause(_, true))), definition))
+                    else node.declare(definition)
 
-                case tree@TypeDef(name, result) if name != "MirroredMonoType" =>
-                  def child = node(name) = of(name)
-
+                case tree@TypeDef(name, result) =>
                   if !flags.is(Flags.Param)
-                  then child() = Template.`type`(flags.has(`into`, `opaque`, `infix`), Nil, Unset)
+                  then node.declare(Template.`type`(flags.has(`into`, `opaque`, `infix`), Nil, Unset))
 
                 case Export(term, exports) => exports.map:
-                  case SimpleSelector(name)    =>
-                    node(of(name.tt))
-                  case RenameSelector(_, name) => node(of(name.tt))
-                  case other: Selector         => Out.println(t"Found a different kind of selector")
+                  case SimpleSelector(name)    => //node(of(name.tt))
+                  case RenameSelector(_, name) => //node(of(name.tt))
+                  case other: Selector         =>
 
                 case other if other.symbol.flags.is(Private) =>
                 case other  =>
+                  Out.println(t"Skipping ${other.getClass.toString}")
 
       val total = tastys.length
       Out.println(t"There are $total TASTy files")
@@ -274,8 +281,13 @@ class Model():
       tastys.each: tasty =>
         val percent = 8*columns*count/total
         val bar = e"${t"█"*(percent/8)}${grades(percent%8)}"
-        // Out.print(e"\r${Bg(rgb"#221100")}(${rgb"#DD9900"}($bar)${t" "*(columns - percent/8 - 1)})")
-        walk(tasty.ast, root, true, Unset)
+        Out.print(e"\r${Bg(rgb"#221100")}(${rgb"#DD9900"}($bar)${t" "*(columns - percent/8 - 1)})")
+        walk(tasty.ast, Unset)
         count += 1
 
-      Out.println(((java.lang.System.currentTimeMillis - t0)/1000.0).toString)
+      for root <- roots do
+        val node = lookup(root).vouch
+        val size = node.members.size
+        if size == 1 then
+          roots.remove(root)
+          roots += node.members.head.member

@@ -46,7 +46,7 @@ extends Folio(base, t"slides", source):
       + styles.stylesheet.or(t"")
     . or(t"").ascribe(media"text/css")
 
-  def handle(using Http.Request): Http.Response = subpath match
+  def handle(using Http.Request, Stdio): Http.Response = subpath match
     case _ /: t"code.css"    => Http.Response(cp"/amok/code.css")
     case _ /: t"user.css"    => Http.Response(userStyles)
     case _ /: t"navigate.js" => Http.Response(cp"/amok/navigate.js")

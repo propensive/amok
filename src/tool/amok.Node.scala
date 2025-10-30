@@ -33,58 +33,32 @@
 package amok
 
 import scala.collection.mutable as scm
-import scala.collection.immutable.ListMap
 
 import soundness.{is as _, Node as _, *}
 
-class Node(name: Optional[Text], parent0: Optional[Node] = Unset):
-  private var doc: Optional[Text] = Unset
-  val membersMap: scm.TreeMap[Member, Node] = scm.TreeMap()
-  var template: Optional[Template] = Unset
-  var definition: Optional[Definition] = Unset
-  var memo: Optional[InlineMd] = Unset
-  var detail: Optional[Text] = Unset
-  var hidden: Boolean = false
-  var aliases: List[Typename] = Nil
+class Node():
+  private object state:
+    var document: Optional[Text] = Unset
+    var template: Optional[Template] = Unset
+    var definition: Optional[Definition] = Unset
+    var info: Optional[InlineMd] = Unset
+    var hidden: Boolean = false
+    var aliases: List[Typename] = Nil
+    val members: scm.HashSet[Typename] = scm.HashSet()
+
+  def info: Optional[InlineMd] = state.info
+  def document: Optional[Text] = state.document
+  def members: List[Typename] = state.members.to(List)
+  def template: Optional[Template] = state.template
+  def definition: Optional[Definition] = state.definition
+
+  def namespace: List[(Declaration, List[Member])] = declarations.map:
+    case definition: Definition => definition -> terms
+    case template: Template     => template   -> types
 
   def declarations: List[Declaration] = List(definition, template).compact
-  def parent: Node = parent0.or(this)
-  def members: List[(Member, Node)] = membersMap.to(List)
-
-  def namespace: List[(Declaration, ListMap[Text, Node])] =
-    List(template.let(_ -> types), definition.let(_ -> terms)).compact
-
-  override def toString: String = members.map(_(0).text).join(t", ").s
-
-  def terms: ListMap[Text, Node] =
-    members.collect:
-      case (Member.Root(name), node)   => name -> node
-      case (Member.OfTerm(name), node) => name -> node
-
-    . to(ListMap)
-
-  def types: ListMap[Text, Node] =
-    members.collect { case (Member.OfType(name), node) => name -> node }.to(ListMap)
-
-  def apply(member: Member): Optional[Node] =
-    membersMap.get(member).optional
-
-  def update(definition0: Definition): Unit = definition = definition0
-  def update(template0: Template): Unit = template = template0
-
-  def update(name: Text, member: Member): Node =
-    membersMap.get(member).getOrElse:
-      Node(name, this).tap: node =>
-        membersMap(member) = node
-
-  def tree(name: Text, group: Text, path: Text)(using mountpoint: Mountpoint): Element["details"] =
-    import html5.*
-    val members2 = members.filter(!_(1).hidden)
-
-    Details(name = group.urlEncode, id = DomId(t"menu_${path}"))
-     (if members2.isEmpty
-      then Summary(A(href = mountpoint / "_entity" / path, target = id"main")(name))
-      else Summary.full(A(href = mountpoint / "_entity" / path, target = id"main")(name)),
-      Div:
-        members2.map: (member, node) =>
-          node.tree(member.text, path, path+member.safe))
+  def add(member: Typename): Unit = state.members += member
+  def declare(definition: Definition): Unit = state.definition = definition
+  def declare(template: Template): Unit = state.template = template
+  def terms: List[Member] = state.members.sift[Typename.Term].map(_.member).to(List).sortBy(_.name)
+  def types: List[Member] = state.members.sift[Typename.Type].map(_.member).to(List).sortBy(_.name)

@@ -2,6 +2,8 @@ const iframe = document.getElementById('api');
 const body = document.body;
 var lastCurrent = null;
 
+const root = document.getElementById('root');
+
 iframe.addEventListener('load', () => {
   const url = iframe.contentWindow.location;
   const base = url.pathname.indexOf("_entity");
@@ -9,10 +11,18 @@ iframe.addEventListener('load', () => {
     return;
   } else {
     const offset = base + 8;
-    const detailsId = "menu_"+decodeURIComponent(url.pathname.slice(offset));
+    const details = decodeURIComponent(url.pathname.slice(offset));
+    const detailsId = "menu_"+details;
     console.log(detailsId);
     const oldLocation = url.pathname.substring(0, base)+"_api/";
-    history.replaceState(null, '', oldLocation+url.pathname.slice(offset));
+    const newLocation = oldLocation+url.pathname.slice(offset);
+    if (details.startsWith(root.value+".")) {
+      console.log("same root");
+      history.replaceState(null, '', newLocation);
+    } else {
+      console.log("different root");
+      //window.location = newLocation;
+    }
 
     if (!detailsId) return;
 
@@ -31,8 +41,6 @@ iframe.addEventListener('load', () => {
     });
   }
 });
-
-const toggle = document.getElementById('toggle');
 
 function getCookie(name) {
   const prefix = encodeURIComponent(name) + '=';
@@ -62,14 +70,14 @@ function writeSet(set) {
 }
 
 (function init() {
-  if (!toggle.value) return;
+  if (!root.value) return;
   const set = readSet();
-  toggle.checked = set.has(toggle.value);
+  root.checked = set.has(root.value);
 })();
 
-toggle.addEventListener('change', () => {
-  if (!toggle.value) return;
+root.addEventListener('change', () => {
+  if (!root.value) return;
   const set = readSet();
-  if (toggle.checked) set.add(toggle.value); else set.delete(toggle.value);
+  if (root.checked) set.add(root.value); else set.delete(root.value);
   writeSet(set);
 });

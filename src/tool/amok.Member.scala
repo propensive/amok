@@ -35,22 +35,30 @@ package amok
 import soundness.{is as _, Node as _, *}
 
 object Member:
-  given ordering: Ordering[Member] = Ordering.by[Member, String]:
-    case Member.Root(left)   => left.s
-    case Member.OfType(left) => left.s
-    case Member.OfTerm(left) => "."+left.s
+  def unapply(text: Any): Option[Member] = text match
+    case text: Text => Some(Typename(text.sub(t"~", t"#")).member)
+    case _          => None
 
-enum Member:
-  case OfTerm(name: Text)
-  case OfType(name: Text)
-  case Root(name: Text)
+  def urlDecode(typename: Typename): Typename = typename match
+    case Typename.Top(name)          => Typename.Top(name.urlDecode)
+    case Typename.Type(parent, name) => Typename.Type(urlDecode(parent), name.urlDecode)
+    case Typename.Term(parent, name) => Typename.Term(urlDecode(parent), name.urlDecode)
 
-  def text: Text = this match
-    case OfTerm(name) => t".$name"
-    case OfType(name) => t"⌗$name"
-    case Root(name)   => name
+  given decodable: Member is Decodable in Text =
+    text => urlDecode(Typename(text.sub("~", "#"))).member
 
-  def safe: Text = this match
-    case OfTerm(name) => t".${name.urlEncode}"
-    case OfType(name) => t":${name.urlEncode}"
-    case Root(name)   => name
+  given encodable: Member is Encodable in Text =
+    case Member(Unset, name)                 => name
+    case Member(parent: Typename.Term, name) => t"${parent.url}.$name"
+    case Member(parent: Typename.Type, name) => t"${parent.url}~$name"
+    case Member(parent: Typename.Top, name)  => t"${parent.url}.$name"
+
+case class Member(parent: Optional[Typename], name: Text):
+  val text: Text = parent.lay(name) { parent => t"${parent.render}$symbol$name" }
+  def template: Typename = parent.let(Typename.Type(_, name)).or(Typename.Top(name))
+  def definition: Typename = parent.let(Typename.Term(_, name)).or(Typename.Top(name))
+
+  def symbol: Text = parent match
+    case Unset | _: Typename.Top => t"."
+    case _: Typename.Term        => t"."
+    case _: Typename.Type        => t"⌗"

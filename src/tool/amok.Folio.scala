@@ -67,7 +67,7 @@ object Folio:
             Out.println(m"Replacing pre-existing folio")
             JvmFolio(mountpoint, file)
 
-        . tap(_.model.overlay(amox))
+        // . tap(_.model.overlay(amox))
       . or:
           mitigate:
             case error@IoError(path, _, _)   => LoadError(file, error)
@@ -92,6 +92,6 @@ object Folio:
     else abort(LoadError(file, FiletypeError()))
 
 trait Folio(val base: Mountpoint, val kind: Text, val source: Path on Linux):
-  def subpath(using Http.Request): Path on Www under %.type = request.path.shift(base.endpoint.depth)
+  def subpath(using Http.Request, Stdio): Path on Www under %.type = request.path.shift(base.endpoint.depth)
 
-  def handle(using Http.Request): Http.Response
+  def handle(using Http.Request, Stdio): Http.Response
