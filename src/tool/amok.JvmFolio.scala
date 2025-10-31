@@ -64,9 +64,6 @@ extends Folio(mountpoint, t"jvm", source):
               Page.simple(mountpoint, H2(t"Error"), P(t"The page contained errors"))
 
           . within:
-              val detail: Optional[Markdown[Markdown.Ast.Block]] =
-                node.document.let(_.read[Md])
-
               def parents: List[Typename] =
                 def recur(typename: Typename): List[Typename] = typename match
                   case Typename.Type(parent, _) => parent :: recur(parent)
@@ -143,7 +140,7 @@ extends Folio(mountpoint, t"jvm", source):
                           child.info.let { info => Tr(Td, Td(colspan = 2)(info.html)) })
 
                     subhead :: entries),
-              Div(node.document.let(_.read[Md].html)))
+              Div(node.document.dare(_.read[Md]).let(_.html)))
       . or:
           Http.Response(NotFound(t"Not found"))
 

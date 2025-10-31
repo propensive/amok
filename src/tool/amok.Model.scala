@@ -85,44 +85,29 @@ class Model():
   def lookup(member: Member): Optional[Node] = index.at(member)
   def has(member: Member): Boolean = index.contains(member)
 
+  def overlay(amox: Amox.Base)(using Stdio): Unit =
+    val root = Member(Unset, amox.base)
 
-  // def resolve(path: Text, prefix: Text = t"", current: Optional[Node] = Unset, term: Boolean = true)
-  // : Optional[(Text, Text, Node)] =
+    def recur(entries: List[Amox.Entry], focus0: Member): Unit =
+      entries.each: entry =>
+        val focus: Optional[Member] = entry.name.at(Prim) match
+          case '.'  => Member(focus0.definition, entry.name.skip(1))
+          case '#'  => Member(focus0.template, entry.name.skip(1))
+          case char => Out.println(t"Unexpected entry: ${char.or('?')}") yet Unset
 
-  //     path.where { char => char == '.' || char == ':' }.let: position =>
-  //       val part = path.before(position).urlDecode
-  //       val next = current(if term then Member.OfTerm(part) else Member.OfType(part))
+        focus.let: focus =>
+          lookup(focus).let: node =>
+            node.state.info = entry.info.dare(_.read[InlineMd])
+            node.state.document = entry.detail
+            node.state.hidden = entry.hidden.or(false)
 
-  //       path.at(position) match
-  //         case '.' => next.let(resolve(path.after(position), t"$prefix$part.", _, true))
-  //         case ':' => next.let(resolve(path.after(position), t"$prefix$part⌗", _, false))
-  //         case _   => (if prefix.empty then t"" else prefix.keep(1, Rtl), part, current)
+          recur(entry.entry, focus)
 
-  //     . or:
-  //         val path2 = path.urlDecode
-  //         current(if term then Member.OfTerm(path2) else Member.OfType(path2)).let: current =>
-  //           (if prefix.empty then t"" else prefix.keep(1, Rtl), path2, current)
+    lookup(root).let: node =>
+      node.state.info = amox.info.dare(_.read[InlineMd])
+      node.state.document = amox.detail
 
-  // def apply(pkg: Text): Optional[Node] = root(Member.OfTerm(pkg))
-
-  // def overlay(base: Amox.Base)(using Stdio): Unit =
-  //   def recur(prefix: Text, entries: List[Amox.Entry], current: Node): Unit =
-  //     entries.map: entry =>
-  //       val part = entry.name.skip(1)
-  //       val next = entry.name.at(Prim) match
-  //         case '.'   => current(Member.OfTerm(part))
-  //         case '#'   => current(Member.OfType(part))
-  //         case other => Out.println(m"Unexpected: ${other.inspect}") yet Unset
-
-  //       next.let: next =>
-  //         next.memo = entry.memo.dare(_.read[InlineMd])
-  //         next.detail = entry.detail
-  //         next.hidden = entry.hidden.or(false)
-  //         recur(prefix+entry.name, entry.entry, next)
-
-  //   root.memo = base.memo.dare(_.read[InlineMd])
-  //   root.detail = base.detail
-  //   recur(base.base.or(t""), base.entry, root)
+    recur(amox.entry, root)
 
   def load(path: Path on Linux)(using Stdio, Terminal): Unit =
     val inspector = DocInspector()
@@ -164,9 +149,6 @@ class Model():
                 if packageObject then typename0.or(Typename.Top(name))
                 else typename0.lay(Typename.Top(name)): typename =>
                   if module then Typename.Term(typename, name) else Typename.Type(typename, name)
-
-            if typename.render.contains("rudiments") then
-              Out.println(t"\rOn ${typename0.toString} ; Child ${typename.render} by $name\e[0K")
 
             if name != "_" && !flags.is(Synthetic) && !name.contains("$default$") then
               val node: Node = establish(typename)

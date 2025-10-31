@@ -1,7 +1,7 @@
 domain  java
 base    chiaroscuro
 
-memo  make structural comparisons between objects
+info  make structural comparisons between objects
 detail
     All about _Chiaroscuro_
 

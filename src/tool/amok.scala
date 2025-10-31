@@ -86,15 +86,15 @@ extension (typename: Typename)
     case Typename.Term(parent, name) => Member(parent, name)
     case Typename.Type(parent, name) => Member(parent, name)
 
-given translator: Tactic[CodlError] => Tactic[ParseError] => (model: Model) => Translator =
+given translator: Tactic[CodlError] => Tactic[ParseError] => (model: Model, root: RootPackage, mountPoint: Mountpoint, imports: Imports) => Translator =
   new HtmlTranslator(AmokEmbedding(false), ScalaEmbedding):
     override def phrasing(node: Markdown.Ast.Inline): Seq[Html[Phrasing]] = node match
       case Markdown.Ast.Inline.SourceCode(code) =>
         List:
           Code:
             if code.starts(t".") then t"$code"
-            else if code.starts(t"#") then model.lookup(Typename(code.skip(1))).let: node =>
-              node.template.let(_.syntax().html)
+            else if code.starts(t"#") then
+              Typename(code.skip(1)).member.html
             else code
 
       case other => super.phrasing(other)

@@ -66,7 +66,7 @@ object Folio:
             Out.println(m"Replacing pre-existing folio")
             JvmFolio(mountpoint, file)
 
-        // . tap(_.model.overlay(amox))
+        . tap(_.model.overlay(amox))
       . or:
           mitigate:
             case error@IoError(path, _, _)   => LoadError(file, error)
@@ -82,7 +82,10 @@ object Folio:
               val doc = text.read[CodlDoc of AmokDoc].materialize
 
               given Model()
+              given Mountpoint = mountpoint
+              given Imports = Imports(Set())
 
+              given RootPackage(Member(Unset, ""))
               val sections = stripped.read[Md].broken.map(_.html).zipWithIndex.map: (content, index) =>
                 html5.Section(id = DomId(t"slide${index + 1}"))(content)
 

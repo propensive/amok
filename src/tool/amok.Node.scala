@@ -37,7 +37,7 @@ import scala.collection.mutable as scm
 import soundness.{is as _, Node as _, *}
 
 class Node():
-  private object state:
+  object state:
     var document: Optional[Text] = Unset
     var template: Optional[Template] = Unset
     var definition: Optional[Definition] = Unset

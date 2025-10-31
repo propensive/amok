@@ -1,7 +1,7 @@
 domain java
 base hallucination
 
-memo  supports working with raster images
+info  supports working with raster images
 detail
     _Hallucination_ provides simple facilities for working with raster images in common formats like
     [GIF](https://en.wikipedia.org/wiki/GIF), [JPEG](https://en.wikipedia.org/wiki/JPEG),

@@ -1,7 +1,7 @@
 domain java
 base dissonance
 
-memo  an implementation of Myers' _diff_ algorithm
+info  an implementation of Myers' _diff_ algorithm
 
 detail
     ### Basic usage
@@ -35,6 +35,8 @@ detail
     the left sequence, `#dissonance.Ins`, inserting an element into the right sequence, and
     `#dissonance.Par` (parity), which retains an element from the left into the right sequence. Each
     edit also holds the index of the element as it appears in the left and or right sequences.
+
+    See also `#chiaroscuro.Contrastable` for _structural_ diffs.
 
 entry .Diff  the representation of a set of edits between two different sequences
   entry .parse  reads content in the `ed` diff format

@@ -44,7 +44,7 @@ object Amox:
   case class Base
               (domain:   Text,
                language: Optional[Text],
-               base:     Optional[Text],
+               base:     Text,
                info:     Optional[Text],
                detail:   Optional[Text],
                entry:    List[Entry])
