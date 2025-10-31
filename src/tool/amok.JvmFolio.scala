@@ -168,7 +168,15 @@ extends Folio(mountpoint, t"jvm", source):
         def menu(member: Member): Element["details"] =
           model.lookup(member).lay(Details("missing")): node =>
             val path: Path on Www = mountpoint / "_entity" / member.encode
-            val link = A(href = path, target = id"main")(member.symbol, member.name)
+            val (name2: Text, symbol: Text, extra: Text) = member.name match
+              case "unary_-" => ("-⬚", " ", " unary_-")
+              case "unary_+" => ("+⬚", " ", " unary_+")
+              case "unary_!" => ("!⬚", " ", " unary_!")
+              case "unary_~" => ("~⬚", " ", " unary_~")
+              case "apply"   => ("⬚()", " ", " apply")
+              case "update"  => ("⬚() = ⬚", " ", " update")
+              case other     => (other, member.symbol, "")
+            val link = A(href = path, target = id"main")(symbol, name2, Small(extra))
             Details(name = member.encode, id = DomId(t"menu_${member.encode}"))
              (if node.members.isEmpty then Summary(link) else Summary.full(link),
               Div(node.typeMembers.map(menu(_)), node.termMembers.map(menu(_))))

@@ -150,7 +150,6 @@ class Model():
                 else typename0.lay(Typename.Top(name)): typename =>
                   if module then Typename.Term(typename, name) else Typename.Type(typename, name)
 
-            if name0.contains("rudiments") then Out.println(t"${typename.render}: ${body.size} / ${name0}")
             if name != "_" && (!flags.is(Synthetic) || flags.is(Module)) && !name.contains("$default$") then
               val node: Node = establish(typename)
               if name0.contains("rudiments") then Out.println(t"    ${node.toString}")

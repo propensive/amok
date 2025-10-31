@@ -86,7 +86,9 @@ extension (typename: Typename)
     case Typename.Term(parent, name) => Member(parent, name)
     case Typename.Type(parent, name) => Member(parent, name)
 
-given translator: Tactic[CodlError] => Tactic[ParseError] => (model: Model, root: RootPackage, mountPoint: Mountpoint, imports: Imports) => Translator =
+given translator: Tactic[CodlError] => Tactic[ParseError]
+      => (Model, RootPackage, Mountpoint, Imports)
+      => Translator =
   new HtmlTranslator(AmokEmbedding(false), ScalaEmbedding):
     override def phrasing(node: Markdown.Ast.Inline): Seq[Html[Phrasing]] = node match
       case Markdown.Ast.Inline.SourceCode(code) =>
@@ -106,23 +108,23 @@ given syntaxIsRenderable: (imports: Imports, mountpoint: Mountpoint, model: Mode
   def html(syntax: Syntax): Seq[Html[Phrasing]] = syntax match
     case Syntax.Simple(typename)       => typename.member.html
     case Syntax.Symbolic(text)         => List(text)
-    case Syntax.Project(Syntax.Simple(typename), text) => html(Syntax.Simple(Typename.Type(typename, text)))
-    case Syntax.Project(base, text)    => base.html :+ t"⌗" :+ text
-    case Syntax.Constant(text)         => List(text)
+    case Syntax.Projection(Syntax.Simple(typename), text) => html(Syntax.Simple(Typename.Type(typename, text)))
+    case Syntax.Projection(base, text)    => base.html :+ t"⌗" :+ text
+    case Syntax.Primitive(text)         => List(text)
     case Syntax.Selection(left, right) => left.html :+ t"." :+ right
     case Syntax.Prefix(prefix, base)   => prefix +: t" " +: base.html
     case Syntax.Suffix(base, suffix)   => base.html :+ suffix
 
-    case Syntax.Tuple(false, elements) =>
+    case Syntax.Sequence(false, elements) =>
       t"(" +: elements.flatMap(_.html :+ t", ").dropRight(1) :+ t")"
 
-    case Syntax.Tuple(true, elements)  =>
+    case Syntax.Sequence(true, elements)  =>
       t"[" +: elements.flatMap(_.html :+ t", ").dropRight(1) :+ t"]"
 
-    case Syntax.Singleton(typename)    => typename.member.html :+ ".type"
+    case Syntax.Value(typename)    => typename.member.html :+ ".type"
     case Syntax.Compound(syntaxes)     => syntaxes.flatMap(_.html)
 
-    case Syntax.Signature(method, syntaxes, result) =>
+    case Syntax.Declaration(method, syntaxes, result) =>
       syntaxes.flatMap(_.html) ++ ((if method then t": " else t"") +: result.html)
 
     case Syntax.Application(left, elements, infix) => left match
@@ -132,14 +134,14 @@ given syntaxIsRenderable: (imports: Imports, mountpoint: Mountpoint, model: Mode
       case _ =>
         left.html ++ (t"[" +: elements.flatMap(_.html :+ t", ").dropRight(1) :+ t"]")
 
-    case Syntax.Refined(base, members, defs) =>
+    case Syntax.Structural(base, members, defs) =>
       val members2 = members.map { (name, syntax) => s"type $name = ${syntax.text}".tt }
       val defs2 = defs.map { (name, syntax) => s"def $name${syntax.text}".tt }
       base.html :+ s" { ${(members2 ++ defs2).mkString("; ")} }".tt
 
     case Syntax.Infix(left, middle, right) =>
-      val left2 = if left.precedence < syntax.precedence then Syntax.Tuple(false, List(left)) else left
-      val right2 = if right.precedence < syntax.precedence then Syntax.Tuple(false, List(right)) else right
+      val left2 = if left.precedence < syntax.precedence then Syntax.Sequence(false, List(left)) else left
+      val right2 = if right.precedence < syntax.precedence then Syntax.Sequence(false, List(right)) else right
       left2.html ++ (t" " +: middle +: t" " +: right2.html)
 
     case Syntax.Named(isUsing, name, syntax) =>
