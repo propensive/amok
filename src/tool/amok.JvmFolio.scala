@@ -174,7 +174,7 @@ extends Folio(mountpoint, t"jvm", source):
             val link = A(href = path, target = id"main")(member.symbol, member.name)
             Details(name = member.encode, id = DomId(t"menu_${member.encode}"))
              (if node.members.isEmpty then Summary(link) else Summary.full(link),
-              Div(node.types.map(menu(_)), node.terms.map(menu(_))))
+              Div(node.typeMembers.map(menu(_)), node.termMembers.map(menu(_))))
 
         model.lookup(root).lay(Http.Response(NotFound(t"Not found"))): root =>
           Http.Response:
@@ -182,7 +182,7 @@ extends Folio(mountpoint, t"jvm", source):
              (mountpoint,
               List
                (Details(Summary(H3(Label(Input.Checkbox(id = id"root", value = member.encode)), link))),
-                Div.items(root.types.map(menu(_)), root.terms.map(menu(_)))),
+                Div.items(root.typeMembers.map(menu(_)), root.termMembers.map(menu(_)))),
               List(Iframe(id = id"api", name = t"main", src = initial)))
       . or:
           Http.Response(NotFound(t"Not found"))

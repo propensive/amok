@@ -78,7 +78,7 @@ class Model():
 
         typename.parent match
           case Unset       => roots += typename.member
-          case parent: Typename => establish(parent).add(typename)
+          case parent: Typename => establish(parent).add(typename.member)
 
   def packages: List[Member] = roots.to(List).sortBy(_.encode)
   def lookup(typename: Typename): Optional[Node] = index.at(Member(typename.parent, typename.name))
@@ -296,4 +296,4 @@ class Model():
         val size = node.members.size
         if size == 1 then
           roots.remove(root)
-          roots += node.members.head.member
+          roots += node.members.head

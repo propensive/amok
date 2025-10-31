@@ -44,21 +44,28 @@ class Node():
     var info: Optional[InlineMd] = Unset
     var hidden: Boolean = false
     var aliases: List[Typename] = Nil
-    val members: scm.HashSet[Typename] = scm.HashSet()
+    val members: scm.HashSet[Member] = scm.HashSet()
 
   def info: Optional[InlineMd] = state.info
   def document: Optional[Text] = state.document
-  def members: List[Typename] = state.members.to(List)
+  def members: List[Member] = state.members.to(List)
   def template: Optional[Template] = state.template
   def definition: Optional[Definition] = state.definition
 
   def namespace: List[(Declaration, List[Member])] = declarations.map:
-    case definition: Definition => definition -> terms
-    case template: Template     => template   -> types
+    case definition: Definition => definition -> termMembers
+    case template: Template     => template   -> typeMembers
+
+  def termMembers: List[Member] = members.filter:
+    case Member(Typename.Term(_, _) | Typename.Top(_), name) => true
+    case _                                                   => false
+
+  def typeMembers: List[Member] = members.filter:
+    case Member(Typename.Type(_, _), name) => true
+    case _                                 => false
+
 
   def declarations: List[Declaration] = List(definition, template).compact
-  def add(member: Typename): Unit = state.members += member
+  def add(member: Member): Unit = state.members += member
   def declare(definition: Definition): Unit = state.definition = definition
   def declare(template: Template): Unit = state.template = template
-  def terms: List[Member] = state.members.sift[Typename.Term].map(_.member).to(List).sortBy(_.name)
-  def types: List[Member] = state.members.sift[Typename.Type].map(_.member).to(List).sortBy(_.name)
