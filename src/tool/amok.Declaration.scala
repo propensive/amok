@@ -40,6 +40,7 @@ sealed trait Declaration:
   def modifiers: List[Modifier]
   def parameters: Optional[Syntax]
   def returnType: Optional[Syntax]
+  def hidden: Boolean
 
   def group: Optional[Syntax] = this match
     case `extension`(params, _, _) => params
@@ -51,6 +52,7 @@ enum Definition extends Declaration:
   case `enum.case`(modifiers: List[Modifier], parameters0: Optional[Syntax])
   case `def`(modifiers: List[Modifier], parameters0: Optional[Syntax], returnType0: Optional[Syntax])
   case `val`(modifiers: List[Modifier], returnType0: Optional[Syntax])
+  case TermParam(modifiers: List[Modifier], returnType0: Optional[Syntax])
   case `var`(modifiers: List[Modifier], returnType0: Optional[Syntax])
   case `given`(modifiers: List[Modifier], returnType0: Optional[Syntax])
   case `extension`(params: Syntax, `def`: Definition.`def`, modifiers: List[Modifier] = Nil)
@@ -65,6 +67,7 @@ enum Definition extends Declaration:
       case _: `var`                => t"var"
       case _: `given`              => t"given"
       case _: `extension`          => t"extension"
+      case _: TermParam            => t"val"
 
   def parameters: Optional[Syntax] = this match
     case definition: `enum.case` => definition.parameters0
@@ -72,13 +75,18 @@ enum Definition extends Declaration:
     case _                       => Unset
 
   def returnType: Optional[Syntax] = this match
-    case definition: `def`   => definition.returnType0
-    case definition: `val`   => definition.returnType0
-    case definition: `var`   => definition.returnType0
-    case definition: `given` => definition.returnType0
-    case _                   => Unset
+    case definition: `def`     => definition.returnType0
+    case definition: `val`     => definition.returnType0
+    case definition: TermParam => definition.returnType0
+    case definition: `var`     => definition.returnType0
+    case definition: `given`   => definition.returnType0
+    case _                     => Unset
 
   def modifiers: List[Modifier]
+  def hidden: Boolean = this match
+    case _: TermParam => true
+    case _            => false
+
 
   def syntax(brief: Boolean): Syntax = this match
     case `extension`(param, definition, _) =>
@@ -98,20 +106,27 @@ enum Template extends Declaration:
   case `enum`(modifiers: List[Modifier], extensions: List[Syntax] = Nil, derivations: List[Text] = Nil, parameters: Optional[Syntax])
   case `case`(modifiers: List[Modifier], extensions: List[Syntax] = Nil, parameters: Optional[Syntax])
   case `type`(modifiers: List[Modifier], extensions: Nil.type = Nil, parameters: Optional[Syntax])
+  case TypeParam(modifiers: List[Modifier], extensions: Nil.type = Nil, parameters: Optional[Syntax])
 
   def extensions: List[Syntax]
 
-  def keyword: Syntax.Symbolic = Syntax.Symbolic:
+  def keyword: Syntax.Symbolic =
     this match
-      case _: `case class` => t"case class"
-      case _: `class`      => t"class"
-      case _: `trait`      => t"trait"
-      case _: `enum`       => t"enum"
-      case _: `case`       => t"case"
-      case _: `type`       => t"type"
+      case _: `case class` => Syntax.Symbolic(t"case class")
+      case _: `class`      => Syntax.Symbolic(t"class")
+      case _: `trait`      => Syntax.Symbolic(t"trait")
+      case _: `enum`       => Syntax.Symbolic(t"enum")
+      case _: `case`       => Syntax.Symbolic(t"case")
+      case _: `type`       => Syntax.Symbolic(t"type")
+      case _: TypeParam    => Syntax.Symbolic(t"type")
 
   def modifiers: List[Modifier]
   def returnType: Optional[Syntax] = Unset
+
+  def hidden: Boolean = this match
+    case _: TypeParam => true
+    case _            => false
+
 
   def syntax(brief: Boolean): Syntax =
     val modifiers2 = modifiers.flatMap(_.keyword :: Syntax.Symbolic(t" ") :: Nil)

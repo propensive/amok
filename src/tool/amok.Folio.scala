@@ -35,7 +35,6 @@ package amok
 import soundness.{is as _, Node as _, *}
 
 import errorDiagnostics.stackTraces
-import codlPrinters.standard
 
 object Folio:
   given Folio is Tabulable[Text] = () =>

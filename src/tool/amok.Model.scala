@@ -38,6 +38,8 @@ import scala.collection.mutable as scm
 
 import soundness.{is as _, open as _, Node as _, *}
 
+import environments.jre
+
 extension (using Quotes)(flags: quotes.reflect.Flags)
   def modifier(modifier: Modifier): Boolean =
     import quotes.reflect.*
@@ -159,9 +161,12 @@ class Model():
                 Typename(tree.symbol.fullName)
 
               case _ =>
-                if module then typename0.or(Typename.Top(name))
+                if packageObject then typename0.or(Typename.Top(name))
                 else typename0.lay(Typename.Top(name)): typename =>
                   if module then Typename.Term(typename, name) else Typename.Type(typename, name)
+
+            if typename.render.contains("rudiments") then
+              Out.println(t"\rOn ${typename0.toString} ; Child ${typename.render} by $name\e[0K")
 
             if name != "_" && !flags.is(Synthetic) && !name.contains("$default$") then
               val node: Node = establish(typename)
@@ -210,7 +215,8 @@ class Model():
                     if groups0.isEmpty && flags.is(Trait) then Unset
                     else Syntax.Compound(groups0.map(Syntax.clause(_, true)))
 
-                  if flags.is(Synthetic) then Unset
+                  if flags.is(Module)
+                  then node.declare(`object`(flags.has(`case`)))
                   else if flags.is(Trait)
                   then node.declare(Template.`trait`(flags.has(`private`, `erased`, `into`, `sealed`, `transparent`), extensions, params))
                   else if flags.is(Module) && !flags.is(Case) && flags.is(Enum)
@@ -223,8 +229,7 @@ class Model():
 
                   body.each(walk(_, typename))
 
-                case tree@DefDef(_, groups0, result, _)
-                  if !tree.symbol.flags.is(Synthetic) && !tree.symbol.flags.is(Private) =>
+                case tree@DefDef(_, groups0, result, _) =>
 
                   val isGiven = flags.is(Given)
                   val isInfix = flags.is(Infix)
@@ -252,7 +257,7 @@ class Model():
 
                   if isGiven then node.declare(`given`(flags.has(`inline`, `transparent`, `erased`), returnType))
                   else
-                    val definition: amok.Definition.`def` =
+                    val definition: `def` =
                       `def`(flags.has(`abstract`, `override`, `private`, `protected`, `erased`, `final`, `infix`, `transparent`, `inline`), params, returnType)
 
                     if ext then node.declare(`extension`(Syntax.Compound(preClauses.map(Syntax.clause(_, true))), definition))
@@ -261,6 +266,7 @@ class Model():
                 case tree@TypeDef(name, result) =>
                   if !flags.is(Flags.Param)
                   then node.declare(Template.`type`(flags.has(`into`, `opaque`, `infix`), Nil, Unset))
+                  else node.declare(Template.TypeParam(flags.has(`into`, `opaque`, `infix`), Nil, Unset))
 
                 case Export(term, exports) => exports.map:
                   case SimpleSelector(name)    => //node(of(name.tt))
@@ -277,11 +283,11 @@ class Model():
       val t0 = java.lang.System.currentTimeMillis
       val grades = "▏▎▍▌▋▊▉█"
 
-      val columns = summon[Terminal].columns.or(100)
+      val columns = summon[Terminal].columns.or(safely(Environment.columns)).or(100)
       tastys.each: tasty =>
         val percent = 8*columns*count/total
         val bar = e"${t"█"*(percent/8)}${grades(percent%8)}"
-        Out.print(e"\r${Bg(rgb"#221100")}(${rgb"#DD9900"}($bar)${t" "*(columns - percent/8 - 1)})")
+        Out.print(e"\r\e[?7l${Bg(rgb"#221100")}(${rgb"#DD9900"}($bar)${t" "*(columns - percent/8 - 1)})\e[?7h")
         walk(tasty.ast, Unset)
         count += 1
 

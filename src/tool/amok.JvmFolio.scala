@@ -119,12 +119,12 @@ extends Folio(mountpoint, t"jvm", source):
                     val keywords = declaration.syntax().html
                     val parameters = declaration.parameters.let(_.html)
                     val returnType = declaration.returnType.let(_.html)
-                    val title = H3(Code(keywords, " ", typename.name, parameters, colon0, returnType))
-                    val titleRow = Tr(Td(colspan = 3)(title))
-
+                    val signature = Code(keywords, " ", typename.name, parameters, colon0, returnType)
+                    val subhead = Tr(Td(colspan = 3)(H3(signature)))
                     val methods0 = members.map { member => model.lookup(member).let(member -> _) }
-                    val grouped = methods0.compact.groupBy(_(1).definition.let(_.group))
-                    val methods = grouped.flatMap: (group, members) =>
+                    val grouped = methods0.compact.groupBy(_(1).definition.let(_.group)).to(List)
+
+                    val entries = grouped.flatMap: (group, members) =>
                       val head = group.lay(Nil): group =>
                         List(Tr(Td(Code("extension ", group.html))))
 
@@ -142,7 +142,7 @@ extends Folio(mountpoint, t"jvm", source):
                           Tr(Td, Td),
                           child.info.let { info => Tr(Td, Td(colspan = 2)(info.html)) })
 
-                    titleRow :: methods.to(List)),
+                    subhead :: entries),
               Div(node.document.let(_.read[Md].html)))
       . or:
           Http.Response(NotFound(t"Not found"))
