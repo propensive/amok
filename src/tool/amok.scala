@@ -106,20 +106,23 @@ given syntaxIsRenderable: (imports: Imports, mountpoint: Mountpoint, model: Mode
   type Result = Phrasing
 
   def html(syntax: Syntax): Seq[Html[Phrasing]] = syntax match
-    case Syntax.Simple(typename)       => typename.member.html
-    case Syntax.Symbolic(text)         => List(text)
+    case Syntax.Simple(typename)                          => typename.member.html
+    case Syntax.Symbolic(text)                            => List(text)
     case Syntax.Projection(Syntax.Simple(typename), text) => html(Syntax.Simple(Typename.Type(typename, text)))
-    case Syntax.Projection(base, text)    => base.html :+ t"⌗" :+ text
-    case Syntax.Primitive(text)         => List(text)
-    case Syntax.Selection(left, right) => left.html :+ t"." :+ right
-    case Syntax.Prefix(prefix, base)   => prefix +: t" " +: base.html
-    case Syntax.Suffix(base, suffix)   => base.html :+ suffix
+    case Syntax.Projection(base, text)                    => base.html :+ t"⌗" :+ text
+    case Syntax.Primitive(text)                           => List(text)
+    case Syntax.Selection(left, right)                    => left.html :+ t"." :+ right
+    case Syntax.Prefix(prefix, base)                      => prefix +: t" " +: base.html
+    case Syntax.Suffix(base, suffix)                      => base.html :+ suffix
 
-    case Syntax.Sequence(false, elements) =>
+    case Syntax.Sequence('(', elements) =>
       t"(" +: elements.flatMap(_.html :+ t", ").dropRight(1) :+ t")"
 
-    case Syntax.Sequence(true, elements)  =>
+    case Syntax.Sequence('[', elements)  =>
       t"[" +: elements.flatMap(_.html :+ t", ").dropRight(1) :+ t"]"
+
+    case Syntax.Sequence('{', elements)  =>
+      t"{" +: elements.flatMap(_.html :+ t", ").dropRight(1) :+ t"}"
 
     case Syntax.Value(typename)    => typename.member.html :+ ".type"
     case Syntax.Compound(syntaxes)     => syntaxes.flatMap(_.html)
@@ -140,8 +143,8 @@ given syntaxIsRenderable: (imports: Imports, mountpoint: Mountpoint, model: Mode
       base.html :+ s" { ${(members2 ++ defs2).mkString("; ")} }".tt
 
     case Syntax.Infix(left, middle, right) =>
-      val left2 = if left.precedence < syntax.precedence then Syntax.Sequence(false, List(left)) else left
-      val right2 = if right.precedence < syntax.precedence then Syntax.Sequence(false, List(right)) else right
+      val left2 = if left.precedence < syntax.precedence then Syntax.Sequence('(', List(left)) else left
+      val right2 = if right.precedence < syntax.precedence then Syntax.Sequence('(', List(right)) else right
       left2.html ++ (t" " +: middle +: t" " +: right2.html)
 
     case Syntax.Named(isUsing, name, syntax) =>

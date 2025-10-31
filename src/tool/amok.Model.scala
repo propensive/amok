@@ -152,7 +152,6 @@ class Model():
 
             if name != "_" && (!flags.is(Synthetic) || flags.is(Module)) && !name.contains("$default$") then
               val node: Node = establish(typename)
-              if name0.contains("rudiments") then Out.println(t"    ${node.toString}")
 
               tree match
                 case tree@PackageClause(packageName, _) =>
@@ -196,7 +195,7 @@ class Model():
 
                   val params =
                     if groups0.isEmpty && flags.is(Trait) then Unset
-                    else Syntax.Compound(groups0.map(Syntax.clause(_, true)))
+                    else Syntax.Compound(groups0.map(Syntax.clause(_, true, Map())))
 
                   if flags.is(Module)
                   then node.declare(`object`(flags.has(`case`)))
@@ -213,7 +212,6 @@ class Model():
                   body.each(walk(_, typename))
 
                 case tree@DefDef(_, groups0, result, _) =>
-
                   val isGiven = flags.is(Given)
                   val isInfix = flags.is(Infix)
                   val termName = name.show
@@ -225,16 +223,16 @@ class Model():
 
                   val preClauses = if ext then groups0.take(split) else Nil
                   val paramClauses = if ext then groups0.drop(split) else groups0
+                  val context = Syntax.contextBounds(paramClauses)
 
                   val params =
                     if isGiven then Unset
-                    else Syntax.Compound(Syntax.Symbolic(if isInfix then " " else "") :: paramClauses.map(Syntax.clause(_, true)))
-
+                    else Syntax.Compound(Syntax.Symbolic(if isInfix then " " else "") :: paramClauses.map(Syntax.clause(_, true, context)))
 
                   val returnType =
                     if isGiven then
                       Syntax.Compound(paramClauses.flatMap: clause =>
-                        List(Syntax.clause(clause, false), Syntax.Symbolic(t" => "))
+                        List(Syntax.clause(clause, false, context), Syntax.Symbolic(t" => "))
                       :+ Syntax(result.tpe))
                     else Syntax(result.tpe)
 
@@ -243,7 +241,7 @@ class Model():
                     val definition: `def` =
                       `def`(flags.has(`abstract`, `override`, `private`, `protected`, `erased`, `final`, `infix`, `transparent`, `inline`), params, returnType)
 
-                    if ext then node.declare(`extension`(Syntax.Compound(preClauses.map(Syntax.clause(_, true))), definition))
+                    if ext then node.declare(`extension`(Syntax.Compound(preClauses.map(Syntax.clause(_, true, context))), definition))
                     else node.declare(definition)
 
                 case tree@TypeDef(name, result) =>

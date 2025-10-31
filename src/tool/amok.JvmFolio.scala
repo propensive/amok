@@ -168,18 +168,10 @@ extends Folio(mountpoint, t"jvm", source):
         def menu(member: Member): Element["details"] =
           model.lookup(member).lay(Details("missing")): node =>
             val path: Path on Www = mountpoint / "_entity" / member.encode
-            val (name2: Text, symbol: Text, extra: Text) = member.name match
-              case "unary_-" => ("-⬚", " ", " unary_-")
-              case "unary_+" => ("+⬚", " ", " unary_+")
-              case "unary_!" => ("!⬚", " ", " unary_!")
-              case "unary_~" => ("~⬚", " ", " unary_~")
-              case "apply"   => ("⬚()", " ", " apply")
-              case "update"  => ("⬚() = ⬚", " ", " update")
-              case other     => (other, member.symbol, "")
-            val link = A(href = path, target = id"main")(symbol, name2, Small(extra))
+            val link = A(href = path, target = id"main")(member.symbol, member.name)
             Details(name = member.encode, id = DomId(t"menu_${member.encode}"))
              (if node.members.isEmpty then Summary(link) else Summary.full(link),
-              Div(node.typeMembers.map(menu(_)), node.termMembers.map(menu(_))))
+              Div(node.typeMembers.sortBy(_.name).map(menu(_)), node.termMembers.sortBy(_.name).map(menu(_))))
 
         model.lookup(root).lay(Http.Response(NotFound(t"Not found"))): root =>
           Http.Response:
@@ -187,7 +179,7 @@ extends Folio(mountpoint, t"jvm", source):
              (mountpoint,
               List
                (Details(Summary(H3(Label(Input.Checkbox(id = id"root", value = member.encode)), link))),
-                Div.items(root.typeMembers.map(menu(_)), root.termMembers.map(menu(_)))),
+                Div.items(root.typeMembers.sortBy(_.name).map(menu(_)), root.termMembers.sortBy(_.name).map(menu(_)))),
               List(Iframe(id = id"api", name = t"main", src = initial)))
       . or:
           Http.Response(NotFound(t"Not found"))
