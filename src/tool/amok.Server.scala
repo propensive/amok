@@ -34,7 +34,7 @@ package amok
 
 import scala.collection.mutable as scm
 
-import soundness.{is as _, Node as _, *}
+import soundness.{Node as _, *}
 
 object Server:
   private val mappings: scm.HashMap[Mountpoint, Folio] = scm.HashMap()

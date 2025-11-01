@@ -32,7 +32,7 @@
                                                                                                   */
 package amok
 
-import soundness.{is as _, Node as _, *}
+import soundness.{Node as _, *}
 
 export executives.completions
 export unhandledErrors.stackTrace
@@ -54,6 +54,8 @@ export charDecoders.utf8
 export textSanitizers.skip
 export classloaders.threadContext
 export webserverErrorPages.stackTraces
+export proximities.levenshteinDistance
+export caseSensitivity.caseInsensitive
 
 import html5.*
 

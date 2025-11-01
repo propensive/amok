@@ -34,7 +34,7 @@ package amok
 
 import scala.collection.mutable as scm
 
-import soundness.{is as _, Node as _, *}
+import soundness.{Node as _, *}
 
 class Node():
   object state:

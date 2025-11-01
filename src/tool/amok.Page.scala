@@ -32,7 +32,7 @@
                                                                                                   */
 package amok
 
-import soundness.{is as _, Node as _, *}
+import soundness.{Node as _, *}
 
 object Page:
   import html5.*

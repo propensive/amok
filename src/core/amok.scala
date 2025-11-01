@@ -37,7 +37,7 @@ package amok
 import anticipation.*
 import fulminate.*
 import gossamer.*
-import rudiments.{is as _, *}
+import rudiments.*
 import spectacular.*
 
 import scala.quoted.*

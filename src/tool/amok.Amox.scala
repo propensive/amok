@@ -32,7 +32,7 @@
                                                                                                   */
 package amok
 
-import soundness.{is as _, Node as _, *}
+import soundness.{Node as _, *}
 import errorDiagnostics.stackTraces
 
 case class LoadError(file: Path on Linux, reason: Error)(using Diagnostics)

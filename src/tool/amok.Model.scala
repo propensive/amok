@@ -36,7 +36,7 @@ import scala.tasty.*, inspector.*
 import scala.quoted.*
 import scala.collection.mutable as scm
 
-import soundness.{is as _, open as _, Node as _, *}
+import soundness.{open as _, Node as _, *}
 
 import environments.jre
 
@@ -66,6 +66,7 @@ extension (using Quotes)(flags: quotes.reflect.Flags)
 class Model():
   private val roots: scm.HashSet[Member] = scm.HashSet()
   private val index: scm.HashMap[Member, Node] = scm.HashMap()
+  private lazy val lexicon: Lexicon[Set[Member]] = Lexicon(index.keySet.to(Set).groupBy(_.name))
 
   def root(member: Member): Optional[Member] =
     if roots.contains(member) then member else member.parent.let(_.member).let(root(_))
@@ -83,6 +84,13 @@ class Model():
   def packages: List[Member] = roots.to(List).sortBy(_.encode)
   def lookup(typename: Typename): Optional[Node] = index.at(Member(typename.parent, typename.name))
   def lookup(member: Member): Optional[Node] = index.at(member)
+
+  def search(name: Text): Set[Member] =
+    def find(n: Int): Set[Member] =
+      if n >= 3 then Set() else lexicon.search(name, n).occupied.let(_.flatten).or(find(n + 1))
+
+    find(0)
+
   def has(member: Member): Boolean = index.contains(member)
 
   def overlay(amox: Amox.Base)(using Stdio): Unit =
@@ -278,3 +286,5 @@ class Model():
         if size == 1 then
           roots.remove(root)
           roots += node.members.head
+
+      lexicon

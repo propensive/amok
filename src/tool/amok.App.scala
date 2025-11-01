@@ -32,7 +32,7 @@
                                                                                                   */
 package amok
 
-import soundness.{is as _, Node as _, *}
+import soundness.{Node as _, *}
 import errorDiagnostics.stackTraces
 import textMetrics.uniform
 import tableStyles.horizontal
@@ -44,6 +44,7 @@ val Boot    = Subcommand("boot",    e"start Amok using the .amok file in the cur
 val Clear   = Subcommand("clear",   e"clear definitions from a JAR file")
 val Quit    = Subcommand("quit",    e"shutdown Amok")
 val Serve   = Subcommand("serve",   e"serve the documentation on a local HTTP server")
+val Search  = Subcommand("search",  e"search for an entity by name")
 val Folios  = Subcommand("list",    e"list all deployed mountpoints")
 
 val MountpointArg =
@@ -123,6 +124,27 @@ def application(): Unit = cli:
           Out.println(m"Error: ${error.toString}") yet Exit.Ok
 
     case Quit() :: _ => execute(service.shutdown() yet Exit.Ok)
+
+    case Search() :: term :: Nil =>
+      safely(MountpointArg())
+
+      execute:
+        given mountpoint: Mountpoint = MountpointArg().or(Mountpoint())
+        Server(mountpoint) match
+          case folio: JvmFolio =>
+            given Model = folio.model
+            given Imports = Imports(Set())
+            folio.model.search(term()).each: member =>
+              folio.model.lookup(member).let: node =>
+                val info = node.info.lay(e"") { info => e": $Italic($info)" }
+                Out.println(e"${member.parent.lay(t"")(_.render)}${member.symbol}$Bold(${member.name})$info")
+
+                node.declarations.each: declaration =>
+                  Out.println(declaration.syntax(false).show)
+                Out.println()
+            Exit.Ok
+          case _ =>
+            Out.println(m"This mountpoint is not searchable.") yet Exit.Fail(1)
 
     case Serve() :: _ => execute:
       recover:
