@@ -174,14 +174,14 @@ extends Folio(mountpoint, t"jvm", source):
              (if node.members.isEmpty then Summary(link) else Summary.full(link),
               Div(node.typeMembers.sortBy(_.name).map(menu(_)), node.termMembers.sortBy(_.name).map(menu(_))))
 
-        model.lookup(root).lay(Http.Response(NotFound(t"Not found"))): root =>
+        model.lookup(root).lay(Http.Response(NotFound(t"Not found"))): rootNode =>
           Http.Response:
             NoCache:
               Page
                (mountpoint,
                 List
                  (Details(Summary(H3(Label(Input.Checkbox(id = id"root", value = root.encode)), link))),
-                  Div.items(root.typeMembers.sortBy(_.name).map(menu(_)), root.termMembers.sortBy(_.name).map(menu(_)))),
+                  Div.items(rootNode.typeMembers.sortBy(_.name).map(menu(_)), rootNode.termMembers.sortBy(_.name).map(menu(_)))),
                 List(Iframe(id = id"api", name = t"main", src = initial)))
       . or:
           Http.Response(NotFound(t"Not found"))

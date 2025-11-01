@@ -1,6 +1,10 @@
 version  1
 title    A Higher Standard of Standard Library
 format   presentation
+
+styles
+  set  theme      light
+  set  mono-font  "JetBrains Mono"
 ##
 
 # A HIGHER STANDARD

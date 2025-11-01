@@ -47,6 +47,8 @@ html { font-size: 16px; }
         & .symbol   { color: #cc3366; }
         & .unparsed { color: #2288aa; } } }
 
+small { font-size: 70% }
+
 body
   { font-family:      var(--body-font);
     background-color: var(--bg-color);

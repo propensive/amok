@@ -72,4 +72,10 @@ object amok extends ProjectModule {
       )
   }
 
+  object test extends Submodule {
+    def sources = T.sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "src" / "test")))
+    def moduleDeps = Seq(tool)
+    def finalMainClass = "amok.Tests"
+  }
+
 }

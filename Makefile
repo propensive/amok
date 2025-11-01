@@ -16,6 +16,10 @@ build:
 	java -Dbuild.executable=runner -jar out/amok/runner/assembly.dest/out.jar
 	cp runner ~/.local/bin/amok
 
+test:
+	mill amok.test.assembly
+	java -cp out/amok/test/assembly.dest/out.jar amok.Tests
+
 dev:
 	mill -w amok.tool.compile
 
