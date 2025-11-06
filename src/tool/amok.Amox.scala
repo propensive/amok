@@ -68,4 +68,6 @@ object Amox:
       case error@StreamError(_)      => LoadError(file, error)
 
     . within:
-        file.open(_.read[CodlDoc of Base].materialize)
+        // This line has to be here to avoid a compiler crash
+        summon[Base is Decodable in Codl]
+        file.open(_.stream[Text].read[CodlDoc of Base].materialize)
