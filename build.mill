@@ -58,7 +58,7 @@ object amok extends ProjectModule {
     def compileResources = T.sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "res")))
     def resources = T.sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "res")))
     def moduleDeps = Seq()
-    def ivyDeps = Agg(ivy"dev.soundness:soundness-all:0.45.0")
+    def ivyDeps = Agg(ivy"dev.soundness:soundness-all:0.46.0")
   }
 
   object tool extends Submodule {

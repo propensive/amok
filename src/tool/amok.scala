@@ -35,7 +35,7 @@ package amok
 import soundness.{Node as _, *}
 
 export executives.completions
-export unhandledErrors.stackTrace
+export backstops.stackTrace
 export interpreters.posix
 export threading.platform
 export workingDirectories.daemonClient
@@ -55,7 +55,7 @@ export textSanitizers.skip
 export classloaders.threadContext
 export webserverErrorPages.stackTraces
 export proximities.levenshteinDistance
-export caseSensitivity.caseInsensitive
+export caseSensitivity.insensitive
 
 import html5.*
 

@@ -65,11 +65,13 @@ object Criteria:
 
     def recur(index: Ordinal, criteria: List[Criterion]): Criteria = text.at(index) match
       case Unset      => Criteria(criteria.reverse*)
-      case '?'        => recur(index + 1, Given :: criteria)
       case '!'        => val text = name(index + 1, index + 1, false, true)
                          recur(index + text.length + 1, Package(text) :: criteria)
       case ':'        => recur(index + 1, Type :: criteria)
       case '.'        => recur(index + 1, Term :: criteria)
+      case '?'        => recur(index + 1, Given :: criteria)
+      case '~'        => recur(index + 1, Extension :: criteria)
+      case '~'        => recur(index + 1, Extension :: criteria)
       case '+'        => val text = typename(index + 1, index + 1, Nil)
                          recur(index + text.length + 1, ReturnType(text) :: criteria)
       case '-'        => val text = typename(index + 1, index + 1, Nil)
@@ -91,3 +93,4 @@ enum Criterion:
   case Term
   case Type
   case Given
+  case Extension
