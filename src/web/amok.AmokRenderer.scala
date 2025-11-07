@@ -199,4 +199,4 @@ class AmokEmbedding(autoScale: Boolean)(using Tactic[CodlError], Tactic[ParseErr
         . init
         . tail
 
-    List(AmokEmbedding.formatCode(preamble.version.map(_.content), context, autoScale))
+    List(AmokEmbedding.formatCode(preamble.frame.map(_.content), context, autoScale))

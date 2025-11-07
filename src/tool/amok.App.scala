@@ -77,7 +77,7 @@ def application(): Unit = cli:
           val memory = Heap.used/1.mib
           val build = cp"/build.id".read[Text].trim
           val tagline = "a documentation engine for Scala"
-          Out.println(e"$Bold(Amok) prerelease version, build $build: $Italic($tagline)")
+          Out.println(e"$Bold(Amok) prerelease version 0.1.0, build $build: $Italic($tagline)")
           Out.println(e"© Copyright 2025 Propensive OÜ")
           Out.println()
           Out.println(e"Memory usage: $memory MiB")
@@ -163,7 +163,10 @@ def application(): Unit = cli:
             Out.println(e"Type Ctrl+C to exit")
             tcp"8080".serve:
               def notFound = Page.simple(Mountpoint(), t"There is no page at ${request.location}")
-              Server.at(request.location).lay(Http.Response(NotFound(notFound)))(_.handle)
+              try Server.at(request.location).lay(Http.Response(NotFound(notFound)))(_.handle)
+              catch case throwable: Throwable =>
+                Out.println(throwable.stackTrace.teletype)
+                Http.Response(t"Error: ${throwable.toString}")
 
             terminal.events.stream.takeWhile(_ != Keypress.Ctrl('C')).strict
 

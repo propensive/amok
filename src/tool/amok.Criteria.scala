@@ -71,7 +71,6 @@ object Criteria:
       case '.'        => recur(index + 1, Term :: criteria)
       case '?'        => recur(index + 1, Given :: criteria)
       case '~'        => recur(index + 1, Extension :: criteria)
-      case '~'        => recur(index + 1, Extension :: criteria)
       case '+'        => val text = typename(index + 1, index + 1, Nil)
                          recur(index + text.length + 1, ReturnType(text) :: criteria)
       case '-'        => val text = typename(index + 1, index + 1, Nil)

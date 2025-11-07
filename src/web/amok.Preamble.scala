@@ -42,4 +42,4 @@ case class Preamble
     caution:    List[Highlight],
     param:      List[Highlight],
     transform:  Optional[Transformation],
-    version:    List[Version])
+    frame:      List[Frame])

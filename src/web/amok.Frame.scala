@@ -34,4 +34,4 @@ package amok
 
 import soundness.*
 
-case class Version(content: Text)
+case class Frame(content: Text)

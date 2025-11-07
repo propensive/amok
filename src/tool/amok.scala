@@ -53,9 +53,13 @@ export charEncoders.utf8
 export charDecoders.utf8
 export textSanitizers.skip
 export classloaders.threadContext
-export webserverErrorPages.stackTraces
 export proximities.levenshteinDistance
 export caseSensitivity.insensitive
+
+given minimal: scintillate.WebserverErrorPage = (request, throwable) =>
+  import hieroglyph.charEncoders.utf8
+  Http.Response(Unfulfilled(t"An error occurred which prevented the request from completing."))
+export terminalOptions.terminalSizeDetection
 
 import html5.*
 
