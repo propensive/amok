@@ -1,139 +1,109 @@
-[<img alt="GitHub Workflow" src="https://img.shields.io/github/actions/workflow/status/propensive/amok/main.yml?style=for-the-badge" height="24">](https://github.com/propensive/amok/actions)
-[<img src="https://img.shields.io/discord/633198088311537684?color=8899f7&label=DISCORD&style=for-the-badge" height="24">](https://discord.com/invite/MBUrkTgMnA)
 <img src="/doc/images/github.png" valign="middle">
 
-# Amok
+## Amok
 
-__A comprehensive API documentation system__
+Amok is a tool for working with documentation, including presentations. It is incomplete, and
+available as a prerelease version which works on Mac OS X and Linux.
 
-Amok is a comprehensive tool for authoring, maintaining and sharing software documentation, in various forms.
+### Installation
 
-Providing documentation for software is a human communication challenge, with the primary goal to give users the
-most correct, precise and up-to-date information that's available, and a secondary goal of facilitating the
-development and continuance of that information in pristine condition.
+Download the prerelease version of [amok](https://github.com/propensive/amok), and put it onto your
+PATH, for example in `/usr/local/bin/amok`. Make sure that the file is executable.
 
-## Features
+Check that it runs with:
+```sh
+> amok about
+```
 
-TBC
-
-
-## Availability
-
-
-
-
-
-
+You should see a friendly welcome message.
 
 ## Getting Started
 
-TBC
+The prerelease version only supports presentations.
 
+### Presentations
 
+First, write a source file containing your presentation. For example, a simple file
+`presentation.amok` might look like the following:
 
+```amok
+version  1
+format   presentation
+title    Sample presentation
+##
 
-## Status
+# Your first slide
 
-Amok is classified as __embryotic__. For reference, Soundness projects are
-categorized into one of the following five stability levels:
+This is some Markdown content for the first slide.
 
-- _embryonic_: for experimental or demonstrative purposes only, without any guarantees of longevity
-- _fledgling_: of proven utility, seeking contributions, but liable to significant redesigns
-- _maturescent_: major design decisions broady settled, seeking probatory adoption and refinement
-- _dependable_: production-ready, subject to controlled ongoing maintenance and enhancement; tagged as version `1.0.0` or later
-- _adamantine_: proven, reliable and production-ready, with no further breaking changes ever anticipated
+---
 
-Projects at any stability level, even _embryonic_ projects, can still be used,
-as long as caution is taken to avoid a mismatch between the project's stability
-level and the required stability and maintainability of your own project.
+## A second slide
 
-Amok is designed to be _small_. Its entire source code currently consists
-of 715 lines of code.
+- items can be placed in a list
+- items will appear one-by-one
+- until they are all done
 
-## Building
+```
 
-Amok will ultimately be built by Fury, when it is published. In the
-meantime, two possibilities are offered, however they are acknowledged to be
-fragile, inadequately tested, and unsuitable for anything more than
-experimentation. They are provided only for the necessity of providing _some_
-answer to the question, "how can I try Amok?".
+That file can be displayed with,
+```sh
+> amok load presentation.amok
+```
+and it will be loaded into memory.
 
-1. *Copy the sources into your own project*
-   
-   Read the `fury` file in the repository root to understand Amok's build
-   structure, dependencies and source location; the file format should be short
-   and quite intuitive. Copy the sources into a source directory in your own
-   project, then repeat (recursively) for each of the dependencies.
+It can then be served from port 8080 with:
+```sh
+> amok serve
+```
 
-   The sources are compiled against the latest nightly release of Scala 3.
-   There should be no problem to compile the project together with all of its
-   dependencies in a single compilation.
+If everything worked, you should be able to view the presentation at `http://localhost:8080/`.
 
-2. *Build with [Wrath](https://github.com/propensive/wrath/)*
+Note that the file format is quite strict, and whitespace is significant. It will be fully
+documented later.
 
-   Wrath is a bootstrapping script for building Amok and other projects in
-   the absence of a fully-featured build tool. It is designed to read the `fury`
-   file in the project directory, and produce a collection of JAR files which can
-   be added to a classpath, by compiling the project and all of its dependencies,
-   including the Scala compiler itself.
-   
-   Download the latest version of
-   [`wrath`](https://github.com/propensive/wrath/releases/latest), make it
-   executable, and add it to your path, for example by copying it to
-   `/usr/local/bin/`.
+#### Code samples
 
-   Clone this repository inside an empty directory, so that the build can
-   safely make clones of repositories it depends on as _peers_ of `amok`.
-   Run `wrath -F` in the repository root. This will download and compile the
-   latest version of Scala, as well as all of Amok's dependencies.
+Amok allows Scala code samples to be included and animated. These should be added in `amok`
+fenced-code blocks in the markdown, like so:
 
-   If the build was successful, the compiled JAR files can be found in the
-   `.wrath/dist` directory.
+`````markdown
+```amok
+frame
+    def run(): Unit = ???
+frame
+    def run(): Unit = println("Hello world")
+frame
+    @main
+    def run(): Unit = ???
+```
+`````
 
-## Contributing
+Each step in the animation should be introduced with the `frame` keyword, and the content should
+appear on the following lines, indented with four spaces.
 
-Contributors to Amok are welcome and encouraged. New contributors may like
-to look for issues marked
-[beginner](https://github.com/propensive/amok/labels/beginner).
+Amok will parse each frame as Scala, and interpolate between the different frames.
 
-We suggest that all contributors read the [Contributing
-Guide](/contributing.md) to make the process of contributing to Amok
-easier.
+#### Custom stylesheets
 
-Please __do not__ contact project maintainers privately with questions unless
-there is a good reason to keep them private. While it can be tempting to
-repsond to such questions, private answers cannot be shared with a wider
-audience, and it can result in duplication of effort.
+The CSS for the content can be customized by adding a `styles` keyword in the header with a `css`
+child. This should be formatted like so:
 
-## Author
+```
+version  1
+format   presentation
+title    Your title
+styles
+  css
+      /* Custom CSS styles can be added here */
+      body { font-family: "Times New Roman"; }
+##
+```
 
-Amok was designed and developed by Jon Pretty, and commercial support and
-training on all aspects of Scala 3 is available from [Propensive
-O&Uuml;](https://propensive.com/).
+Note that whitespace is significant, and each line of CSS must be indented by six spaces.
 
+#### Limitations
 
-
-## Name
-
-TBC
-
-In general, Soundness project names are always chosen with some rationale,
-however it is usually frivolous. Each name is chosen for more for its
-_uniqueness_ and _intrigue_ than its concision or catchiness, and there is no
-bias towards names with positive or "nice" meanings—since many of the libraries
-perform some quite unpleasant tasks.
-
-Names should be English words, though many are obscure or archaic, and it
-should be noted how willingly English adopts foreign words. Names are generally
-of Greek or Latin origin, and have often arrived in English via a romance
-language.
-
-## Logo
-
-
-
-## License
-
-Amok is copyright &copy; 2025 Jon Pretty & Propensive O&Uuml;, and
-is made available under the [Apache 2.0 License](/license.md).
-
+- external resources like images cannot be included in a presentation, unless they are stored
+  elsewhere
+- errors in markdown or
