@@ -38,18 +38,25 @@ import textMetrics.uniform
 import tableStyles.horizontal
 import columnAttenuation.ignore
 
-val About   = Subcommand("about",   e"find out about Amok")
-val Load    = Subcommand("load",    e"load definitions from a .jar or .amok file")
-val Boot    = Subcommand("boot",    e"start Amok using the .amok file in the current directory")
-val Clear   = Subcommand("clear",   e"clear definitions from a JAR file")
-val Quit    = Subcommand("quit",    e"shutdown Amok")
-val Serve   = Subcommand("serve",   e"serve the documentation on a local HTTP server")
-val Search  = Subcommand("search",  e"search for an entity by name")
-val Folios  = Subcommand("list",    e"list all deployed mountpoints")
+val About   = Subcommand("about",  e"find out about Amok")
+val Load    = Subcommand("load",   e"load definitions from a .jar or .amok file")
+val Boot    = Subcommand("boot",   e"start Amok using the .amok file in the current directory")
+val Clear   = Subcommand("clear",  e"clear definitions from a JAR file")
+val Quit    = Subcommand("quit",   e"shutdown Amok")
+val Serve   = Subcommand("serve",  e"serve the documentation on a local HTTP server")
+val Search  = Subcommand("search", e"search for an entity by name")
+val Folios  = Subcommand("list",   e"list all deployed mountpoints")
 
 val MountpointArg =
   Flag[Mountpoint]
    ("mountpoint", false, List('m'), "the URL at which to serve the folio, e.g. /tutorials")
+
+
+object External:
+  def unapply(argument: Argument)(using WorkingDirectory, Cli): Option[(Path on Linux) | HttpUrl] =
+    if argument().starts("https:") || argument().starts("http:")
+    then safely(Some(argument().decode[HttpUrl])).or(None)
+    else Pathname.unapply(argument)
 
 @main
 def application(): Unit = cli:
@@ -88,22 +95,22 @@ def application(): Unit = cli:
     case Folios() :: _ => execute:
       val base = workingDirectory[Path on Linux]
       val table =
-        Table[Folio]
-         (Column(e"$Bold(Mountpoint)")(_.base.show),
-          Column(e"$Bold(Source)")(_.source.relativeTo(base).encode),
-          Column(e"$Bold(Type)")(_.kind))
+        Scaffold[Folio, Text]
+         (Column(t"Mountpoint")((folio: Folio) => folio.base.show),
+          Column(t"Source")((folio: Folio) => folio.source.toward(base).encode),
+          Column(t"Type")((folio: Folio) => folio.kind))
 
       recover:
         case TerminalError() =>
-          Out.println(table.tabulate(Server.folios).grid(100))
+          Out.println(table.tabulate(Server.folios).grid(100).render.join(t"\n"))
 
       . within:
           interactive:
-            Out.println(table.tabulate(Server.folios).grid(terminal.columns.or(100)))
+            Out.println(table.tabulate(Server.folios).grid(terminal.columns.or(100)).render.join(t"\n"))
 
       Exit.Ok
 
-    case Load() :: Pathname(file) :: _ =>
+    case Load() :: External(external) :: _ =>
       safely(MountpointArg())
       execute:
         try
@@ -113,7 +120,21 @@ def application(): Unit = cli:
               Exit.Fail(1)
           . within:
               val mountpoint = MountpointArg().or(Mountpoint())
-              Out.println(m"Deploying $file to $mountpoint".teletype)
+              val file = external match
+                case url: HttpUrl =>
+                  import internetAccess.enabled
+                  val temporaryFile: Path on Linux = unsafely(temporaryDirectory[Path on Linux] / url.location.decode[Path on Www].name)
+                  Out.println(m"Downloading $url")
+                  unsafely:
+                    temporaryFile.open: handle =>
+                      url.fetch().writeTo(handle)
+                  Out.println(m"Deploying $url to $mountpoint".teletype)
+                  temporaryFile
+
+                case file: (Path on Linux) =>
+                  Out.println(m"Deploying $file to $mountpoint".teletype)
+                  file
+
               safely:
                 interactive:
                   Server.register(Folio.load(mountpoint, file))
@@ -130,13 +151,14 @@ def application(): Unit = cli:
 
       execute:
         given mountpoint: Mountpoint = MountpointArg().or(Mountpoint())
+
         Server(mountpoint) match
           case folio: JvmFolio =>
             given Model = folio.model
             given Imports = Imports(Set())
             folio.model.search(term()).each: member =>
               folio.model.lookup(member).let: node =>
-                val info = node.info.lay(e"") { info => e": $Italic($info)" }
+                val info = node.info.lay(e"") { info => e": $Italic(${info.toString.tt})" }
                 Out.println(e"${member.parent.lay(t"")(_.render)}${member.symbol}$Bold(${member.name})$info")
 
                 node.declarations.each: declaration =>

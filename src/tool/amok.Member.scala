@@ -34,8 +34,8 @@ package amok
 
 import soundness.{Node as _, *}
 
-object Member:
-  def unapply(text: Any): Option[Member] = text match
+object Item:
+  def unapply(text: Any): Option[Item] = text match
     case text: Text => Some(Typename(text.sub(t"~", t"#")).member)
     case _          => None
 
@@ -44,16 +44,16 @@ object Member:
     case Typename.Type(parent, name) => Typename.Type(urlDecode(parent), name.urlDecode)
     case Typename.Term(parent, name) => Typename.Term(urlDecode(parent), name.urlDecode)
 
-  given decodable: Member is Decodable in Text =
+  given decodable: Item is Decodable in Text =
     text => urlDecode(Typename(text.sub("~", "#"))).member
 
-  given encodable: Member is Encodable in Text =
-    case Member(Unset, name)                 => name
-    case Member(parent: Typename.Term, name) => t"${parent.url}.$name"
-    case Member(parent: Typename.Type, name) => t"${parent.url}~$name"
-    case Member(parent: Typename.Top, name)  => t"${parent.url}.$name"
+  given encodable: Item is Encodable in Text =
+    case Item(Unset, name)                 => name
+    case Item(parent: Typename.Term, name) => t"${parent.url}.$name"
+    case Item(parent: Typename.Type, name) => t"${parent.url}~$name"
+    case Item(parent: Typename.Top, name)  => t"${parent.url}.$name"
 
-case class Member(parent: Optional[Typename], name: Text):
+case class Item(parent: Optional[Typename], name: Text):
   val text: Text = parent.lay(name) { parent => t"${parent.render}$symbol$name" }
   def template: Typename = parent.let(Typename.Type(_, name)).or(Typename.Top(name))
   def definition: Typename = parent.let(Typename.Term(_, name)).or(Typename.Top(name))

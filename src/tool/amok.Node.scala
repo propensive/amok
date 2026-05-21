@@ -41,31 +41,31 @@ class Node():
     var document: Optional[Text] = Unset
     var template: Optional[Template] = Unset
     var definition: Optional[Definition] = Unset
-    var info: Optional[InlineMd] = Unset
+    var info: Optional[Markdown of Prose] = Unset
     var hidden: Boolean = false
     var aliases: List[Typename] = Nil
-    val members: scm.HashSet[Member] = scm.HashSet()
+    val members: scm.HashSet[Item] = scm.HashSet()
 
-  def info: Optional[InlineMd] = state.info
+  def info: Optional[Markdown of Prose] = state.info
   def document: Optional[Text] = state.document
-  def members: List[Member] = state.members.to(List)
+  def members: List[Item] = state.members.to(List)
   def template: Optional[Template] = state.template
   def definition: Optional[Definition] = state.definition
 
-  def namespace: List[(Declaration, List[Member])] = declarations.map:
+  def namespace: List[(Declaration, List[Item])] = declarations.map:
     case definition: Definition => definition -> termMembers
     case template: Template     => template   -> typeMembers
 
-  def termMembers: List[Member] = members.filter:
-    case Member(Typename.Term(_, _) | Typename.Top(_), name) => true
+  def termMembers: List[Item] = members.filter:
+    case Item(Typename.Term(_, _) | Typename.Top(_), name) => true
     case _                                                   => false
 
-  def typeMembers: List[Member] = members.filter:
-    case Member(Typename.Type(_, _), name) => true
+  def typeMembers: List[Item] = members.filter:
+    case Item(Typename.Type(_, _), name) => true
     case _                                 => false
 
 
   def declarations: List[Declaration] = List(definition, template).compact
-  def add(member: Member): Unit = state.members += member
+  def add(member: Item): Unit = state.members += member
   def declare(definition: Definition): Unit = state.definition = definition
   def declare(template: Template): Unit = state.template = template

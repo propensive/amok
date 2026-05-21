@@ -34,8 +34,6 @@ package amok
 
 import soundness.*
 
-case class AmokDoc
-            (version: Optional[Int], title: Text, format: Text, styles: Optional[Styles])
-
+case class AmokDoc(version: Optional[Int], title: Text, format: Text, styles: Optional[Styles])
 case class Styles(stylesheet: Optional[Text], set: List[Variable])
 case class Variable(key: Text, value: Text)

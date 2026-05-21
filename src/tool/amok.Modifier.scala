@@ -32,7 +32,7 @@
                                                                                                   */
 package amok
 
-import soundness.{Node as _, *}
+import soundness.*
 
 object Modifier:
   val all: List[Modifier] = values.to(List)

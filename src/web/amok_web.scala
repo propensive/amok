@@ -37,3 +37,6 @@ import soundness.*
 given Decimalizer = Decimalizer(1)
 
 val counter = Counter(0)
+
+export attributives.textAttributes
+export stylesheets.uncheckedClasses

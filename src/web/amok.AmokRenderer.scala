@@ -34,59 +34,60 @@ package amok
 
 import soundness.*
 
-import html5.*
+import doms.html.whatwg, whatwg.*
 
 object AmokEmbedding:
-  def formatCode(samples0: List[Text], context: Optional[Scala.Context], autoScale: Boolean)
-  : Html["div"] =
+  def format(samples0: List[Text], context: Optional[Scala.Context], autoScale: Boolean)
+  :   Html of Flow =
 
-      val samples: List[List[List[SourceToken]]] =
-        samples0.map(Scala.highlight(_, context).lines.to(List))
+    val samples: List[List[List[SourceToken]]] =
+      samples0.map(Scala.highlight(_, context).lines.to(List))
 
-      val name = t"f${counter()}"
-      val lineCount = samples.map(_.length).max
-      val maxWidth = samples0.flatMap(_.cut(t"\n")).map(_.length).max
-      val fontSize = (97.5/maxWidth).min(3.0)
-      given Decimalizer(decimalPlaces = 3)
+    val name = t"f${counter()}"
+    val lineCount = samples.map(_.length).max
+    val maxWidth = samples0.flatMap(_.cut(t"\n")).map(_.length).max
+    val fontSize = (97.5/maxWidth).min(3.0)
+    given Decimalizer(decimalPlaces = 3)
 
-      def similar(xs0: List[SourceToken], ys0: List[SourceToken]): Boolean =
-        val xs = xs0.filter(_.accent != Accent.Unparsed)
-        val ys = ys0.filter(_.accent != Accent.Unparsed)
-        xs.length > 0 && ys.length > 0
-        && (xs.sliding(ys.length).contains(ys) || ys.sliding(xs.length).contains(xs))
-        || diff(IArray.from(xs), IArray.from(ys)).size.toDouble/(xs.length + ys.length) < 0.5
+    def similar(xs0: List[SourceToken], ys0: List[SourceToken]): Boolean =
+      val xs = xs0.filter(_.accent != Accent.Unparsed)
+      val ys = ys0.filter(_.accent != Accent.Unparsed)
+      xs.length > 0 && ys.length > 0
+      && (xs.sliding(ys.length).contains(ys) || ys.sliding(xs.length).contains(xs))
+      || diff(IArray.from(xs), IArray.from(ys)).size.toDouble/(xs.length + ys.length) < 0.5
 
-      val iterators: IArray[Iterator[List[SourceToken]]] = IArray.from(samples.map(_.iterator))
+    val iterators: IArray[Iterator[List[SourceToken]]] = IArray.from(samples.map(_.iterator))
 
-      val lines: List[List[List[SourceToken]]] = evolve(samples, similar).sequence.map: atom =>
-        (0 until samples.length).to(List).map: lineNo =>
-          if !atom.presence.contains(lineNo.z) then Nil else
-            val line = iterators(lineNo).next()
-            if line.all(_.text.s.forall(_.isWhitespace)) then List(SourceToken(t" ", Accent.Unparsed))
-            else line
+    val lines: List[List[List[SourceToken]]] = evolve(samples, similar).sequence.map: atom =>
+      (0 until samples.length).to(List).map: lineNo =>
+        if !atom.presence.contains(lineNo.z) then Nil else
+          val line = iterators(lineNo).next()
+          if line.all(_.text.s.forall(_.isWhitespace)) then List(SourceToken(t" ", Accent.Unparsed))
+          else line
 
-      val radios =
-        (0 until samples.length).map: sample =>
-          html5.Input.Radio
-            (`class` = List(CssClass(t"s$sample")), name = name, checked = sample == 0)
-        . unless(samples.length <= 1)
+    val radios =
+      (0 until samples.length).map: sample =>
+        Input.Radio
+          (`class` = List(t"s$sample"), name = name, checked = sample == 0)
+      . unless(samples.length <= 1)
 
-      val code =
-        lines.map: line =>
-          evolve(line).sequence.map: atom =>
-            val classes = atom.presence.to(List).map { step => CssClass(t"v${step.n0}") }
-            html5.Code
-             (`class` = classes ::: ScalaEmbedding.className(atom.value.accent),
-              style = t"width: ${atom.value.text.length}ch")(atom.value.text)
-          :+ html5.Code(`class` = List(CssClass(t"blank")))
-        . map: line =>
-            html5.Span.line(line)
+    val code =
+      lines.map: line =>
+        evolve(line).sequence.map: atom =>
+          val classes = atom.presence.to(List).map { step => t"v${step.n0}" }
+          Code
+            (`class` = classes ::: formattables.scala.classes(atom.value.accent).classes.to(List),
+            style = t"width: ${atom.value.text.length}ch")(atom.value.text)
+        :+ Code(`class` = List(t"blank"))
+      . map: line =>
+          Span.line(line*)
 
-      if autoScale then html5.Div.amok(style = t"font-size: ${fontSize}vw")(radios, html5.Pre(code))
-      else html5.Div.amok(radios, html5.Pre(code))
+    if autoScale then Div(`class` = t"amok", style = t"font-size: ${fontSize}vw")(radios.or(Nil)*, Pre(code*))
+    else Div.amok(radios.or(Nil)*, Pre(code*))
 
-class AmokEmbedding(autoScale: Boolean)(using Tactic[CodlError], Tactic[ParseError]) extends Embedding(t"amok"):
-  def render(meta: Optional[Text], content: Text): Seq[Html["div"]] =
+class AmokEmbedding(autoScale: Boolean)(using Tactic[CodlError], Tactic[ParseError])
+extends Formattable:
+  def format(language: List[Text], content: Text): Html of Flow =
     val preamble = content.read[CodlDoc of Preamble].materialize
 
     val context = preamble.context match
@@ -155,48 +156,46 @@ class AmokEmbedding(autoScale: Boolean)(using Tactic[CodlError], Tactic[ParseErr
                 else panic(m"Should not happen: range.end=${range.end}, tokenStart=$tokenStart")
 
     def lines
-         (markup: List[SourceToken | Note],
-          line:   List[Element[Phrasing]]  = Nil,
-          done:   List[Element[Phrasing]]  = Nil)
-    :     List[Element[Phrasing]] =
-      import html5.*
-      def render(token: SourceToken | Note): Element[Phrasing] = token match
+      ( markup: List[SourceToken | Note],
+        line:   List[Html of Phrasing]   = Nil,
+        done:   List[Html of Phrasing]   = Nil )
+    :   List[Html of Phrasing] =
+      def render(token: SourceToken | Note): Html of Phrasing = token match
         case SourceToken(text, accent) =>
-          ScalaEmbedding.element(accent, text)
+          formattables.scala.element(accent, text)
 
         case Note(tokens, style, caption) =>
-          val captionSpan =
+          val captionSpan: List[Html of Phrasing] =
             caption.lay(Nil): text =>
               val textLines = text.cut(t"\n")
               val height = textLines.length*1.5
               val width = textLines.map(_.length).max + 1
-              List(Span.caption(style = t"width:${width}ch;height:${height}em")(Span(text)))
+              List(Span(`class` = t"caption", style = t"width:${width}ch;height:${height}em")(Span(text)))
 
-          val content =
+          val content: List[Html of Phrasing] =
             captionSpan
-            ++ tokens.reverse.map { token => ScalaEmbedding.element(token.accent, token.text) }
+            ++ tokens.reverse.map { token => formattables.scala.element(token.accent, token.text) }
 
           style match
-            case Note.Style.Erroneous => Span.err(content)
-            case Note.Style.Caution   => Span.warn(content)
-            case Note.Style.Highlight => Span.hi(content)
-            case Note.Style.Param     => Span.param(content)
+            case Note.Style.Erroneous => Span.err(content*)
+            case Note.Style.Caution   => Span.warn(content*)
+            case Note.Style.Highlight => Span.hi(content*)
+            case Note.Style.Param     => Span.param(content*)
 
       markup match
-        case Nil                         => done.unwind(List(Span.line(line.reverse)))
+        case Nil                         => done.unwind(List(Span.line(line.reverse*)))
         case SourceToken.Newline :: tail => lines(tail, Nil, Span.line(line.reverse*) :: done)
         case other :: tail               => lines(tail, render(other) :: line, done)
 
-    def style(text: Text): Element[Flow] =
-      import html5.*
+    def style(text: Text): Html of Flow =
       val ranges = errorRanges ++ cautionRanges ++ highlightRanges ++ paramRanges
 
-      Pre:
-        lines
-         (selections
-           (ranges.compact.sortBy(_.start),
-            Scala.highlight(text, context).lines.to(List).flatMap(SourceToken.Newline :: _)))
-        . init
-        . tail
+      Pre
+        ( lines
+            ( selections
+                ( ranges.compact.sortBy(_.start),
+                  Scala.highlight(text, context).lines.to(List).flatMap(SourceToken.Newline :: _) ) )
+          . init
+          . tail* )
 
-    List(AmokEmbedding.formatCode(preamble.frame.map(_.content), context, autoScale))
+    AmokEmbedding.format(preamble.frame.map(_.content), context, autoScale)

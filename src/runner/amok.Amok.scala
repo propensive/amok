@@ -59,7 +59,7 @@ import filesystemOptions.createNonexistent.enabled
 import filesystemOptions.createNonexistentParents.enabled
 
 given Tactic[CodlError] => Tactic[CodlReadError] => Translator =
-  HtmlTranslator(AmokEmbedding(autoScale = true), ScalaEmbedding)
+  Translator(AmokEmbedding(autoScale = true), ScalaEmbedding)
 
 case class AmokError()(using Diagnostics) extends Error(m"There was a problem")
 

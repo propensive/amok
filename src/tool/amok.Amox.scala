@@ -32,8 +32,7 @@
                                                                                                   */
 package amok
 
-import soundness.{Node as _, *}
-import errorDiagnostics.stackTraces
+import soundness.*
 
 case class LoadError(file: Path on Linux, reason: Error)(using Diagnostics)
 extends Error(m"could not load the file $file because ${reason.message}")
@@ -42,21 +41,21 @@ case class FiletypeError()(using Diagnostics) extends Error(m"the file was not t
 
 object Amox:
   case class Base
-              (domain:   Text,
-               language: Optional[Text],
-               base:     Text,
-               info:     Optional[Text],
-               detail:   Optional[Text],
-               entry:    List[Entry])
+    ( domain:   Text,
+      language: Optional[Text],
+      base:     Text,
+      info:     Optional[Text],
+      detail:   Optional[Text],
+      entry:    List[Entry] )
 
   case class Entry
-              (name:   Text,
-               info:   Optional[Text],
-               detail: Optional[Text],
-               until:  List[Rename],
-               hidden: Optional[Boolean],
-               refer:  List[Text],
-               entry:  List[Entry])
+    ( name:   Text,
+      info:   Optional[Text],
+      detail: Optional[Text],
+      until:  List[Rename],
+      hidden: Optional[Boolean],
+      refer:  List[Text],
+      entry:  List[Entry] )
 
   case class Rename(version: Text, name: Text)
 

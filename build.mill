@@ -1,81 +1,62 @@
+//| mill-version: 1.0.6
+//| mill-jvm-version: system
+//| mill-jvm-opts: ["-XX:NonProfiledCodeHeapSize=250m", "-XX:ReservedCodeCacheSize=500m"]
+
 package build
 
-import mill._
-import scalalib._
-import publish._
+import mill.*
+import mill.api.Result
+import scalalib.*
+import publish.*
 import os.Path
 
-object settings {
-  val scalaVersion = "3.7.2-RC2"
-  val scalaOptions = Seq(
-    "-experimental",
-    "-new-syntax",
-    "-feature",
-    //"-explain",
-    "-deprecation",
-    "-Wunused:imports",
-    "-Wimplausible-patterns",
-    "-Wsafe-init",
-    "-Xmax-inlines", "100",
-    "-Yrequire-targetName",
-    "-Ycc-new",
-    "-Yno-flexible-types",
-    "-Yexplicit-nulls",
-    "-Ycheck-all-patmat",
-    "-language:experimental.modularity",
-    "-language:experimental.genericNumberLiterals",
-    "-language:experimental.into",
-    "-language:experimental.erasedDefinitions",
-    "-language:experimental.saferExceptions",
-    "-language:experimental.namedTypeArguments",
-    "-language:implicitConversions"
-  )
-}
+object settings:
+  val scalaVersion = "3.8.1"
 
-trait ProjectModule extends Module {
-  def millSourcePath = super.millSourcePath / "src"
-}
+  val scalaOptions =
+    Seq
+      ( "-experimental",
+        "-new-syntax",
+        "-feature",
+        "-deprecation",
+        "-Wimplausible-patterns",
+        "-Wsafe-init",
+        "-Xmax-inlines", "100",
+        "-Ycc-new",
+        "-Yno-flexible-types",
+        "-Yexplicit-nulls",
+        "-Ycheck-all-patmat",
+        "-explain-cyclic",
+        "-language:experimental.modularity",
+        "-language:experimental.genericNumberLiterals",
+        "-language:experimental.into",
+        "-language:experimental.erasedDefinitions",
+        "-language:implicitConversions",
+        "-language:experimental.saferExceptions",
+        "-language:experimental.multiSpreads",
+        "-language:experimental.namedTypeArguments" )
 
-trait Submodule extends ScalaModule with PublishModule {
+trait Project extends Module:
+  def moduleDir =
+    super.moduleDir / os.up / "src"
+
+trait Component(dependencies: ScalaModule*) extends ScalaModule:
   override def scalaVersion = settings.scalaVersion
-  def publishVersion: T[String] = T { "0.1.0" }
-  def pomSettings = T(PomSettings(
-    description = "Amok",
-    organization = "dev.soundness",
-    url = "https://www.propensive.com/",
-    licenses = Seq(License.`Apache-2.0`),
-    versionControl = VersionControl.github("propensive", "amok"),
-    developers = Seq(Developer("propensive", "Jon Pretty", "https://github.com/propensive"))
-  ))
-
   override def scalacOptions = settings.scalaOptions
-  def consoleScalacOptions = scalacOptions()
-}
+  def consoleScalacOptions = super.consoleScalacOptions() ++ Seq("-experimental")
 
-object amok extends ProjectModule {
-  object web extends Submodule {
-    def sources = T.sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "src" / "web")))
-    def compileResources = T.sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "res")))
-    def resources = T.sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "res")))
-    def moduleDeps = Seq()
-    def ivyDeps = Agg(ivy"dev.soundness:soundness-all:0.46.0")
-  }
+  def moduleId: String = moduleDir.last
+  def resources = Task.Sources(moduleDir / os.up / os.up / "res")
+  def compileResources = Task.Sources(moduleDir / os.up / os.up / "res")
+  def moduleDeps: Seq[ScalaModule] = dependencies
+  def sources = Task.Sources(moduleDir)
 
-  object tool extends Submodule {
-    def sources = T.sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "src" / "tool")))
-    def resources = Seq(PathRef(millSourcePath / ".." / ".." / ".." / "res"))
-    def moduleDeps = Seq(web)
-    def ivyDeps =
-      Agg(
-        ivy"org.scala-lang::scala3-tasty-inspector:3.7.2-RC1",
-        //ivy"org.scala-lang::scala2-library-tasty-experimental:3.7.2-RC1"
-      )
-  }
+object amok extends Project:
+  object web extends Component():
+    def mvnDeps = Seq(mvn"dev.soundness:soundness-all:0.56.0")
 
-  object test extends Submodule {
-    def sources = T.sources(Seq(PathRef(millSourcePath / ".." / ".." / ".." / "src" / "test")))
-    def moduleDeps = Seq(tool)
+  object tool extends Component(web):
+    def mvnDeps = Seq(mvn"org.scala-lang::scala3-tasty-inspector:3.8.0")
+
+  object test extends Component(tool):
     def finalMainClass = "amok.Tests"
-  }
-
-}

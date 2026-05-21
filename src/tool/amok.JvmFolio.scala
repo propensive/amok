@@ -32,9 +32,9 @@
                                                                                                   */
 package amok
 
-import soundness.{Node as _, *}
+import soundness.*
 
-import Markdown.renderable
+import doms.html.whatwg, whatwg.*
 
 class JvmFolio(mountpoint: Mountpoint, source: Path on Linux, var model: Model = Model())
 extends Folio(mountpoint, t"jvm", source):
@@ -43,15 +43,14 @@ extends Folio(mountpoint, t"jvm", source):
   given Model = model
 
   def handle(using Http.Request, Stdio): Http.Response = subpath match
-    case %                   => Http.Response(NoCache(Page(mountpoint, Nil, List(html5.H2("Welcome")))))
+    case %                   => Http.Response(NoCache(Page(mountpoint, Nil, List(H2("Welcome")))))
     case % /: t"api.css"     => Http.Response(cp"/amok/api.css")
     case % /: t"code.css"    => Http.Response(cp"/amok/code.css")
     case % /: t"utils.js"    => Http.Response(cp"/amok/utils.js")
     case % /: t"navigate.js" => Http.Response(cp"/amok/navigate.js")
     case % /: t"logo.svg"    => Http.Response(cp"/amok/logo.svg")
 
-    case % /: t"_entity" /: Member(member) =>
-      import html5.*
+    case % /: t"_entity" /: Item(member) =>
       Out.println(t"Looking up ${member.text}")
       model.lookup(member).let: node =>
         Out.println(t"Found ${member.text}")
@@ -59,7 +58,7 @@ extends Folio(mountpoint, t"jvm", source):
         given RootPackage(root)
         Http.Response:
           recover:
-            case MarkdownError(_) | CodlError(_) | ParseError(_, _, _) =>
+            case CodlError(_) | ParseError(_, _, _) =>
               NoCache(Page.simple(mountpoint, H2(t"Error"), P(t"The page contained errors")))
 
           . within:
@@ -72,7 +71,7 @@ extends Folio(mountpoint, t"jvm", source):
                 recur(member.definition)
 
               def link(parent: Declaration, name: Text): Path on Www =
-                val child: Member = parent match
+                val child: Item = parent match
                   case parent: Definition => member.definition / name
                   case parent: Template   => member.template / name
 
@@ -87,7 +86,7 @@ extends Folio(mountpoint, t"jvm", source):
                                 t"scala.collection.immutable",
                                 t"scala",
                                 t"java.lang")
-                           . map(_.decode[Member])
+                           . map(_.decode[Item])
 
               given imports: Imports = Imports(Set
                      (Typename.decode(t"scala.Predef"),
@@ -96,7 +95,45 @@ extends Folio(mountpoint, t"jvm", source):
                       Typename.decode(t"scala"),
                       Typename.decode(t"java.lang")) ++ parents ++ cookieImports)
 
-              val parentPackage = H1.pkg(Code(full(parents.prim.let { parent => parent.member.html :+ member.symbol })))
+              val parentPackage = H1.pkg(Code(full(parents.prim.let { parent => Fragment[Phrasing](parent.member.html, member.symbol) })))
+
+              val rows = node.namespace.flatMap:
+                case (declaration, members) =>
+                  def colon0 = if members.isEmpty && declaration.returnType.absent then "" else ": "
+
+                  val typename = declaration match
+                    case _: Definition => member.definition
+                    case _: Template   => member.template
+
+                  given imports2: Imports = Imports(imports.typenames + typename)
+                  val keywords = declaration.syntax().html
+                  val parameters = declaration.parameters.let(_.html)
+                  val returnType = declaration.returnType.let(_.html)
+                  val signature = Code(keywords, " ", typename.name, parameters, colon0, returnType)
+                  val subhead = Tr(Td(colspan = 3)(H3(signature)))
+                  val methods0 = members.map { member => model.lookup(member).let(member -> _) }
+                  val grouped = methods0.compact.groupBy(_(1).definition.let(_.group)).to(List)
+
+                  val entries = grouped.flatMap: (group, members) =>
+                    val head = group.lay(Nil): group =>
+                      List(Tr(Td(Code("extension ", group.html))))
+
+                    head ::: members.flatMap: (member, child) =>
+                      val local = true
+                      val href = link(declaration, member.name)
+                      val kinds: List[Html of Phrasing] =
+                        child.declarations.flatMap(d => List[Html of Phrasing](d.syntax(true).html, Code(", "))).dropRight(1)
+                      val meta = child.declarations.map(_.returnType).prim.let(_.html).let(Code(_))
+                      val colon = if meta.present then ":" else ""
+                      val params = child.declarations.map(_.parameters).compact.prim.let(html)
+
+                      List
+                       (Tr.first(Td.kind(rowspan = 2)(Code(kinds*)), Td, Td),
+                        Tr(Td(Code(A(href = href)(B(member.name)), params, colon)), Td(rowspan = 2)(meta)),
+                        Tr(Td, Td),
+                        child.info.let { info => Tr(Td, Td(colspan = 2)(info.html)) })
+
+                  subhead :: entries
 
               NoCache:
                 Page.simple
@@ -104,75 +141,31 @@ extends Folio(mountpoint, t"jvm", source):
                   parentPackage,
                   H1(Code(member.name)),
                   Div(node.info.let(_.html)),
-                  Table.members(node.namespace.flatMap:
-                    case (declaration, members) =>
-                      def colon0 = if members.isEmpty && declaration.returnType.absent then "" else ": "
-
-                      val typename = declaration match
-                        case _: Definition => member.definition
-                        case _: Template   => member.template
-
-                      given imports2: Imports = Imports(imports.typenames + typename)
-                      val keywords = declaration.syntax().html
-                      val parameters = declaration.parameters.let(_.html)
-                      val returnType = declaration.returnType.let(_.html)
-                      val signature = Code(keywords, " ", typename.name, parameters, colon0, returnType)
-                      val subhead = Tr(Td(colspan = 3)(H3(signature)))
-                      val methods0 = members.map { member => model.lookup(member).let(member -> _) }
-                      val grouped = methods0.compact.groupBy(_(1).definition.let(_.group)).to(List)
-
-                      val entries = grouped.flatMap: (group, members) =>
-                        val head = group.lay(Nil): group =>
-                          List(Tr(Td(Code("extension ", group.html))))
-
-                        head ::: members.flatMap: (member, child) =>
-                          val local = true
-                          val href = link(declaration, member.name)
-                          val kinds = child.declarations.flatMap(_.syntax(true).html :+ Code(", ")).dropRight(1)
-                          val meta = child.declarations.map(_.returnType).prim.let(_.html).let(Code(_))
-                          val colon = if meta.present then ":" else ""
-                          val params = child.declarations.map(_.parameters).compact.prim.let(html)
-
-                          List
-                           (Tr.first(Td.kind(rowspan = 2)(Code(kinds)), Td, Td),
-                            Tr(Td(Code(A(href = href)(B(member.name)), params, colon)), Td(rowspan = 2)(meta)),
-                            Tr(Td, Td),
-                            child.info.let { info => Tr(Td, Td(colspan = 2)(info.html)) })
-
-                      subhead :: entries),
-                Div(node.document.dare(_.read[Md]).let(_.html)))
+                  Table.members(Tbody(rows.asInstanceOf[List[Optional[Html of (? <: whatwg.Tbody.Transport)]]]*)),
+                  Div(node.document.dare(Commonmark.parse(_)).let(_.html)))
       . or:
           Http.Response(NotFound(t"Not found"))
 
     case % /: t"_api" =>
-      import html5.*
-
       Http.Response:
         NoCache:
-          Page
-           (mountpoint,
-            Nil,
-            List
-             (H2(t"All Packages"),
-              Ul.all
-               (model.packages.map: root =>
-                  val link: Path on Www = mountpoint / "_api" / root.encode
-                  Li(Code(A(href = link)(root.encode))))))
+          val items = model.packages.map: root =>
+            val link: Path on Www = mountpoint / "_api" / root.encode
+            Li(Code(A(href = link)(root.encode)))
+          Page(mountpoint, Nil, List(H2(t"All Packages"), Ul.all(items*)))
 
-    case % /: t"_api" /: Member(member) =>
-      import html5.*
-
+    case % /: t"_api" /: Item(member) =>
       model.root(member).let: root =>
         val initial: Path on Www = mountpoint / "_entity" / member.encode
-        val link = A(target = id"main", href = initial)(root.encode)
+        val link = A(target = Target.Browse(t"main"), href = initial)(root.encode)
 
-        def menu(member: Member): Element["details"] =
+        def menu(member: Item): Element of "details" =
           model.lookup(member).lay(Details("missing")): node =>
             val path: Path on Www = mountpoint / "_entity" / member.encode
-            val link = A(href = path, target = id"main")(member.symbol, member.name)
+            val link = A(href = path, target = Target.Browse(t"main"))(member.symbol, member.name)
             Details(name = member.encode, id = DomId(t"menu_${member.encode}"))
              (if node.members.isEmpty then Summary(link) else Summary.full(link),
-              Div(node.typeMembers.sortBy(_.name).map(menu(_)), node.termMembers.sortBy(_.name).map(menu(_))))
+              Div(node.typeMembers.sortBy(_.name).map(menu(_))*, node.termMembers.sortBy(_.name).map(menu(_))*))
 
         model.lookup(root).lay(Http.Response(NotFound(t"Not found"))): rootNode =>
           Http.Response:
@@ -180,9 +173,9 @@ extends Folio(mountpoint, t"jvm", source):
               Page
                (mountpoint,
                 List
-                 (Details(Summary(H3(Label(Input.Checkbox(id = id"root", value = root.encode)), link))),
-                  Div.items(rootNode.typeMembers.sortBy(_.name).map(menu(_)), rootNode.termMembers.sortBy(_.name).map(menu(_)))),
-                List(Iframe(id = id"api", name = t"main", src = initial)))
+                 (Details(Summary(H3(Label(Input.Checkbox(id = DomId(t"root"), value = root.encode)), link))),
+                  Div.items(rootNode.typeMembers.sortBy(_.name).map(menu(_))*, rootNode.termMembers.sortBy(_.name).map(menu(_))*)),
+                List(Iframe(id = DomId(t"api"), name = t"main", src = initial)))
       . or:
           Http.Response(NotFound(t"Not found"))
 

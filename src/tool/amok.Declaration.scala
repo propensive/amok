@@ -97,8 +97,6 @@ enum Definition extends Declaration:
       val modifiers = other.modifiers.flatMap(_.keyword :: Syntax.Symbolic(t" ") :: Nil)
       if modifiers.isEmpty then keyword else Syntax.Compound(modifiers ::: keyword :: Nil)
 
-export Definition.*
-
 enum Template extends Declaration:
   case `case class`(modifiers: List[Modifier], extensions: List[Syntax] = Nil, derivations: List[Text] = Nil, parameters: Optional[Syntax])
   case `class`(modifiers: List[Modifier], extensions: List[Syntax] = Nil, parameters: Optional[Syntax], derivations: List[Text] = Nil)

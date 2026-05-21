@@ -38,7 +38,7 @@ import scala.collection.mutable as scm
 
 import soundness.{open as _, Node as _, *}
 
-import environments.jre
+import environments.java as javaEnv
 
 extension (using Quotes)(flags: quotes.reflect.Flags)
   def modifier(modifier: Modifier): Boolean =
@@ -64,15 +64,15 @@ extension (using Quotes)(flags: quotes.reflect.Flags)
   def has(modifiers: Modifier*): List[Modifier] = modifiers.filter(flags.modifier(_)).to(List)
 
 class Model():
-  private val roots: scm.HashSet[Member] = scm.HashSet()
-  private val index: scm.HashMap[Member, Node] = scm.HashMap()
-  private lazy val lexicon: Lexicon[Set[Member]] = Lexicon(index.keySet.to(Set).groupBy(_.name))
+  private val roots: scm.HashSet[Item] = scm.HashSet()
+  private val index: scm.HashMap[Item, Node] = scm.HashMap()
+  private lazy val lexicon: Lexicon[Set[Item]] = Lexicon(index.keySet.to(Set).groupBy(_.name))
 
-  def root(member: Member): Optional[Member] =
+  def root(member: Item): Optional[Item] =
     if roots.contains(member) then member else member.parent.let(_.member).let(root(_))
 
   def establish(typename: Typename): Node =
-    val member = Member(typename.parent, typename.name)
+    val member = Item(typename.parent, typename.name)
     index.at(member).or:
       Node().tap: node =>
         index(member) = node
@@ -81,38 +81,38 @@ class Model():
           case Unset       => roots += typename.member
           case parent: Typename => establish(parent).add(typename.member)
 
-  def packages: List[Member] = roots.to(List).sortBy(_.encode)
-  def lookup(typename: Typename): Optional[Node] = index.at(Member(typename.parent, typename.name))
-  def lookup(member: Member): Optional[Node] = index.at(member)
+  def packages: List[Item] = roots.to(List).sortBy(_.encode)
+  def lookup(typename: Typename): Optional[Node] = index.at(Item(typename.parent, typename.name))
+  def lookup(member: Item): Optional[Node] = index.at(member)
 
-  def search(name: Text): Set[Member] =
-    def find(n: Int): Set[Member] =
+  def search(name: Text): Set[Item] =
+    def find(n: Int): Set[Item] =
       if n >= 3 then Set() else lexicon.search(name, n).occupied.let(_.flatten).or(find(n + 1))
 
     find(0)
 
-  def has(member: Member): Boolean = index.contains(member)
+  def has(member: Item): Boolean = index.contains(member)
 
   def overlay(amox: Amox.Base)(using Stdio): Unit =
-    val root = Member(Unset, amox.base)
+    val root = Item(Unset, amox.base)
 
-    def recur(entries: List[Amox.Entry], focus0: Member): Unit =
+    def recur(entries: List[Amox.Entry], focus0: Item): Unit =
       entries.each: entry =>
-        val focus: Optional[Member] = entry.name.at(Prim) match
-          case '.'  => Member(focus0.definition, entry.name.skip(1))
-          case '#'  => Member(focus0.template, entry.name.skip(1))
+        val focus: Optional[Item] = entry.name.at(Prim) match
+          case '.'  => Item(focus0.definition, entry.name.skip(1))
+          case '#'  => Item(focus0.template, entry.name.skip(1))
           case char => Out.println(t"Unexpected entry: ${char.or('?')}") yet Unset
 
         focus.let: focus =>
           lookup(focus).let: node =>
-            node.state.info = entry.info.dare(_.read[InlineMd])
+            node.state.info = entry.info.let(text => Markdown(Prose.Textual(text)))
             node.state.document = entry.detail
             node.state.hidden = entry.hidden.or(false)
 
           recur(entry.entry, focus)
 
     lookup(root).let: node =>
-      node.state.info = amox.info.dare(_.read[InlineMd])
+      node.state.info = amox.info.let(text => Markdown(Prose.Textual(text)))
       node.state.document = amox.detail
 
     recur(amox.entry, root)

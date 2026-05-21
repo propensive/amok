@@ -32,25 +32,26 @@
                                                                                                   */
 package amok
 
-import soundness.{Node as _, *}
+import soundness.*
+import doms.html.whatwg, whatwg.*
 
 object Page:
-  import html5.*
 
-  def apply(mountpoint: Mountpoint, nav: List[Html[Flow]], article: List[Html[Flow]]): HtmlDoc =
-    HtmlDoc:
-      Html
-       (Head
-         (Script(src = mountpoint / "utils.js", defer = true),
-          Link.Stylesheet(href = mountpoint / "api.css")),
-        Body
-         (Header(Nav(Ul
-           (Li(A(href = mountpoint / "_api")(t"PACKAGES")),
-            Li(A(href = mountpoint / "_glossary")(t"GLOSSARY")),
-            Li(A(href = mountpoint / "_context")(t"CONTEXT")),
-            Li(Button(id = id"theme"))))),
-          Main(Aside(Nav(nav*)), Article(article)),
-          Footer(t"© Copyright 2025, Propensive OÜ")))
+  def apply(mountpoint: Mountpoint, nav: List[Html of Flow], article: List[Html of Flow]): Document[Html] =
+    val root: Html = Html
+     (Head
+       (Script(src = mountpoint / "utils.js", defer = true),
+        Link.Stylesheet(href = mountpoint / "api.css")),
+      Body
+       (Header(Nav(Ul
+         (Li(A(href = mountpoint / "_api")(t"PACKAGES")),
+          Li(A(href = mountpoint / "_glossary")(t"GLOSSARY")),
+          Li(A(href = mountpoint / "_context")(t"CONTEXT")),
+          Li(Button(id = DomId(t"theme")))))),
+        Main(Aside(Nav(nav*)), Article(article*)),
+        Footer(t"© Copyright 2025, Propensive OÜ")))
+    Document(root, whatwg)
 
-  def simple(mountpoint: Mountpoint, content: Html[Flow]*): HtmlDoc = HtmlDoc:
-    Html(Head(Link.Stylesheet(href = mountpoint / "api.css")), Body(content*))
+  def simple(mountpoint: Mountpoint, content: (Html of Flow)*): Document[Html] =
+    val root: Html = Html(Head(Link.Stylesheet(href = mountpoint / "api.css")), Body(content*))
+    Document(root, whatwg)

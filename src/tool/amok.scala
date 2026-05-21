@@ -32,7 +32,7 @@
                                                                                                   */
 package amok
 
-import soundness.{Node as _, *}
+import soundness.*
 
 export executives.completions
 export backstops.stackTrace
@@ -42,116 +42,131 @@ export workingDirectories.daemonClient
 export logging.silent
 export filesystemOptions.dereferenceSymlinks.{enabled as dereferencingEnabled}
 export filesystemOptions.readAccess.{enabled as readAccessEnabled}
-export filesystemOptions.writeAccess.{disabled as writeAccessDisabled}
-export filesystemOptions.createNonexistent.{disabled as creationDisabled}
+export filesystemOptions.writeAccess.{enabled as writeAccessEnabled}
+export filesystemOptions.createNonexistent.{enabled as creationEnabled}
+export filesystemOptions.createNonexistentParents.{enabled as parentCreationEnabled}
 export alphabets.base64.standard
 export treeStyles.default
 export httpServers.stdlibPublic
 export codicils.cancel
 export supervisors.global
 export charEncoders.utf8
-export charDecoders.utf8
+export charDecoders.utf8 as utf8Decoder
 export textSanitizers.skip
 export classloaders.threadContext
+export errorDiagnostics.stackTraces
 export proximities.levenshteinDistance
 export caseSensitivity.insensitive
+export temporaryDirectories.environment
+export terminalOptions.terminalSizeDetection
+export environments.java as defaultEnvironment
+
+export Definition.*
+
+import doms.html.whatwg, whatwg.*
 
 given minimal: scintillate.WebserverErrorPage = (request, throwable) =>
   import hieroglyph.charEncoders.utf8
   Http.Response(Unfulfilled(t"An error occurred which prevented the request from completing."))
-export terminalOptions.terminalSizeDetection
 
-import html5.*
+given pathOnWwwAttributive: (Path on Www) is Attributive to honeycomb.Whatwg.Url =
+  (key, value) => (key, value.encode)
 
-case class RootPackage(member: Member)
+given targetAttributive: Target is Attributive to honeycomb.Whatwg.Target =
+  (key, value) => (key, value.show)
+
+case class RootPackage(member: Item)
 
 given memberIsRenderable: (imports: Imports, mountpoint: Mountpoint, model: Model, root: RootPackage)
-      => Member is Renderable:
-  type Result = Phrasing
+      => (Item is Renderable { type Form = Phrasing }) =
+  new Renderable:
+    type Self = Item
+    type Form = Phrasing
 
-  def html(member: Member): List[Html[Phrasing]] =
-    def recur(member: Member): Html[Phrasing] =
-      def link(name: Text): Html[Phrasing] =
-        if model.root(member) == root.member then A(href = mountpoint / "_entity" / member.encode)(name)
-        else A(target = id"_top", href = mountpoint / "_api" / member.encode)(name)
+    def render(member: Item): Html of Phrasing =
+      def recur(member: Item): Html of Phrasing =
+        def link(name: Text): Html of Phrasing =
+          if model.root(member) == root.member then A(href = mountpoint / "_entity" / member.encode)(name)
+          else A(target = Target.Top, href = mountpoint / "_api" / member.encode)(name)
 
-      member match
-        case Member(Unset, name) => link(name)
+        member match
+          case Item(Unset, name) => link(name)
 
-        case Member(parent: Typename, name) =>
-          if imports.has(parent) then if model.has(member) then link(member.name) else member.name
-          else Span(Span(recur(parent.member)), member.symbol, if model.has(member) then link(name) else name)
+          case Item(parent: Typename, name) =>
+            if imports.has(parent) then if model.has(member) then link(member.name) else member.name
+            else Span(Span(recur(parent.member)), member.symbol, if model.has(member) then link(name) else name)
 
-    List(recur(member))
+      recur(member)
 
-given divisible: Typename is Divisible by Text to Member = Member(_, _)
+given divisible: Typename is Divisible by Text to Item = Item(_, _)
 
 extension (typename: Typename)
-  def member: Member = typename match
-    case Typename.Top(name)          => Member(Unset, name)
-    case Typename.Term(parent, name) => Member(parent, name)
-    case Typename.Type(parent, name) => Member(parent, name)
+  def member: Item = typename match
+    case Typename.Top(name)          => Item(Unset, name)
+    case Typename.Term(parent, name) => Item(parent, name)
+    case Typename.Type(parent, name) => Item(parent, name)
 
 given translator: Tactic[CodlError] => Tactic[ParseError]
       => (Model, RootPackage, Mountpoint, Imports)
       => Translator =
-  new HtmlTranslator(AmokEmbedding(false), ScalaEmbedding):
-    override def phrasing(node: Markdown.Ast.Inline): Seq[Html[Phrasing]] = node match
-      case Markdown.Ast.Inline.SourceCode(code) =>
-        List:
-          Code:
-            if code.starts(t".") then t"$code"
-            else if code.starts(t"#") then
-              Typename(code.skip(1)).member.html
-            else code
+  new Translator:
+    def translate(nodes: Seq[Markdown]): Seq[Html of Flow] = Nil
+    def phrasing(node: Markdown of Prose): Seq[Html of Phrasing] = Nil
 
-      case other => super.phrasing(other)
+given syntaxIsRenderable
+:   ( imports: Imports, mountpoint: Mountpoint, model: Model, root: RootPackage )
+=>  (Syntax is Renderable { type Form = Phrasing }) = new Renderable:
+  type Self = Syntax
+  type Form = Phrasing
 
-given syntaxIsRenderable: (imports: Imports, mountpoint: Mountpoint, model: Model, root: RootPackage)
-      => Syntax is Renderable:
-  type Result = Phrasing
+  def render(syntax: Syntax): Html of Phrasing =
+    def txt(t: Text): Html of Phrasing = t
+    def sep(items: List[Html of Phrasing], delim: Text): List[Html of Phrasing] =
+      items match
+        case Nil          => Nil
+        case head :: Nil  => head :: Nil
+        case head :: tail => head :: tail.flatMap(item => List(txt(delim), item))
 
-  def html(syntax: Syntax): Seq[Html[Phrasing]] = syntax match
-    case Syntax.Simple(typename)                          => typename.member.html
-    case Syntax.Symbolic(text)                            => List(text)
-    case Syntax.Projection(Syntax.Simple(typename), text) => html(Syntax.Simple(Typename.Type(typename, text)))
-    case Syntax.Projection(base, text)                    => base.html :+ t"⌗" :+ text
-    case Syntax.Primitive(text)                           => List(text)
-    case Syntax.Selection(left, right)                    => left.html :+ t"." :+ right
-    case Syntax.Prefix(prefix, base)                      => prefix +: t" " +: base.html
-    case Syntax.Suffix(base, suffix)                      => base.html :+ suffix
+    syntax match
+      case Syntax.Simple(typename)                          => typename.member.html
+      case Syntax.Symbolic(text)                            => txt(text)
+      case Syntax.Projection(Syntax.Simple(typename), text) => render(Syntax.Simple(Typename.Type(typename, text)))
+      case Syntax.Projection(base, text)                    => Fragment[Phrasing](render(base), txt(t"⌗"), txt(text))
+      case Syntax.Primitive(text)                           => txt(text)
+      case Syntax.Selection(left, right)                    => Fragment[Phrasing](render(left), txt(t"."), txt(right))
+      case Syntax.Prefix(prefix, base)                      => Fragment[Phrasing](txt(prefix), txt(t" "), render(base))
+      case Syntax.Suffix(base, suffix)                      => Fragment[Phrasing](render(base), txt(suffix))
 
-    case Syntax.Sequence('(', elements) =>
-      t"(" +: elements.flatMap(_.html :+ t", ").dropRight(1) :+ t")"
+      case Syntax.Sequence(open, elements) =>
+        val (l, r) = open match
+          case '(' => (t"(", t")")
+          case '[' => (t"[", t"]")
+          case '{' => (t"{", t"}")
+          case _   => (t"", t"")
+        Fragment[Phrasing](txt(l) :: sep(elements.map(render).to(List), t", ") ::: txt(r) :: Nil *)
 
-    case Syntax.Sequence('[', elements)  =>
-      t"[" +: elements.flatMap(_.html :+ t", ").dropRight(1) :+ t"]"
+      case Syntax.Value(typename)        => Fragment[Phrasing](typename.member.html, txt(t".type"))
+      case Syntax.Compound(syntaxes)     => Fragment[Phrasing](syntaxes.map(render).to(List)*)
 
-    case Syntax.Sequence('{', elements)  =>
-      t"{" +: elements.flatMap(_.html :+ t", ").dropRight(1) :+ t"}"
+      case Syntax.Declaration(method, syntaxes, result) =>
+        Fragment[Phrasing](syntaxes.map(render).to(List) ::: txt(if method then t": " else t"") :: render(result) :: Nil *)
 
-    case Syntax.Value(typename)    => typename.member.html :+ ".type"
-    case Syntax.Compound(syntaxes)     => syntaxes.flatMap(_.html)
+      case Syntax.Application(left, elements, infix) => left match
+        case Syntax.Simple(Typename.Type(parent, name)) if infix && imports.has(parent) =>
+          Fragment[Phrasing](render(elements(0)), txt(t" "), txt(name), txt(t" "), render(elements(1)))
 
-    case Syntax.Declaration(method, syntaxes, result) =>
-      syntaxes.flatMap(_.html) ++ ((if method then t": " else t"") +: result.html)
+        case _ =>
+          Fragment[Phrasing](render(left) :: txt(t"[") :: sep(elements.map(render).to(List), t", ") ::: txt(t"]") :: Nil *)
 
-    case Syntax.Application(left, elements, infix) => left match
-      case Syntax.Simple(Typename.Type(parent, name)) if infix && imports.has(parent) =>
-        elements(0).html ++ (t" " +: name +: t" " +: elements(1).html)
+      case Syntax.Structural(base, members, defs) =>
+        val members2 = members.map { (name, syntax) => s"type $name = ${syntax.text}".tt }
+        val defs2 = defs.map { (name, syntax) => s"def $name${syntax.text}".tt }
+        Fragment[Phrasing](render(base), txt(s" { ${(members2 ++ defs2).mkString("; ")} }".tt))
 
-      case _ =>
-        left.html ++ (t"[" +: elements.flatMap(_.html :+ t", ").dropRight(1) :+ t"]")
+      case Syntax.Infix(left, middle, right) =>
+        val left2 = if left.precedence < syntax.precedence then Syntax.Sequence('(', List(left)) else left
+        val right2 = if right.precedence < syntax.precedence then Syntax.Sequence('(', List(right)) else right
+        Fragment[Phrasing](render(left2), txt(t" "), txt(middle), txt(t" "), render(right2))
 
-    case Syntax.Structural(base, members, defs) =>
-      val members2 = members.map { (name, syntax) => s"type $name = ${syntax.text}".tt }
-      val defs2 = defs.map { (name, syntax) => s"def $name${syntax.text}".tt }
-      base.html :+ s" { ${(members2 ++ defs2).mkString("; ")} }".tt
-
-    case Syntax.Infix(left, middle, right) =>
-      val left2 = if left.precedence < syntax.precedence then Syntax.Sequence('(', List(left)) else left
-      val right2 = if right.precedence < syntax.precedence then Syntax.Sequence('(', List(right)) else right
-      left2.html ++ (t" " +: middle +: t" " +: right2.html)
-
-    case Syntax.Named(isUsing, name, syntax) =>
-      (if isUsing then t"using " else t"") +: name +: t": " +: syntax.html
+      case Syntax.Named(isUsing, name, inner) =>
+        Fragment[Phrasing](txt(if isUsing then t"using " else t""), txt(name), txt(t": "), render(inner))
