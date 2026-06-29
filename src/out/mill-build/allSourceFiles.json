@@ -1,9 +1,0 @@
-{
-    "value": [
-        "ref:v0:d36b1aa2:/Users/propensive/work/amok/src/out/mill-build/generatedScriptSources.dest/support/build_/BuildFileImpl.scala",
-        "ref:v0:7b3938e4:/Users/propensive/work/amok/src/out/mill-build/generatedScriptSources.dest/support/build_/MillMiscInfo.scala",
-        "ref:v0:1e06c9c4:/Users/propensive/work/amok/src/out/mill-build/generatedScriptSources.dest/wrapped/build_/build.mill"
-    ],
-    "valueHash": -1083190274,
-    "inputsHash": 1855866141
-}
