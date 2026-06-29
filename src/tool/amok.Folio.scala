@@ -34,15 +34,15 @@ package amok
 
 import soundness.{Node as _, *}
 
-import errorDiagnostics.stackTraces
+import errorDiagnostics.stackTracesDiagnostics
 
 object Folio:
   given Folio is Tabulable[Text] = () =>
-    Scaffold[Folio, Text](Column(t"", TextAlignment.Left, Unset, columnar.Prose):
+    Scaffold[Folio, Text](Column(t"", TextAlignment.Left, Unset, columnar.Paragraph):
       case folio: JvmFolio => t"jvm"
       case folio           => t"content")
 
-  def load(mountpoint: Mountpoint, file: Path on Linux)(using Stdio, Terminal)
+  def load(mountpoint: Mountpoint, file: Path on Local)(using Stdio, Terminal)
   :   Folio raises LoadError =
     val folio: Optional[Folio] = Server(mountpoint)
     if file.name.ends(t".jar") then
@@ -58,7 +58,7 @@ object Folio:
 
     else abort(LoadError(file, FiletypeError()))
 
-trait Folio(val base: Mountpoint, val kind: Text, val source: Path on Linux):
+trait Folio(val base: Mountpoint, val kind: Text, val source: Path on Local):
   def subpath(using Http.Request, Stdio): Path on Www under %.type = request.path.shift(base.endpoint.depth)
 
   def handle(using Http.Request, Stdio): Http.Response

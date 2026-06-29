@@ -32,41 +32,41 @@
                                                                                                   */
 package amok
 
-import soundness.*
+import soundness.{Span as _, *}
 
 export executives.completions
-export backstops.stackTrace
-export interpreters.posix
-export threading.platform
-export workingDirectories.daemonClient
-export logging.silent
+export backstops.stackTraceBackstop
+export interpreters.simpleInterpreter
+export threading.platformThreading
+export workingDirectories.daemonClientWorkingDirectory
+export logging.silentLogging
 export filesystemOptions.dereferenceSymlinks.{enabled as dereferencingEnabled}
 export filesystemOptions.readAccess.{enabled as readAccessEnabled}
 export filesystemOptions.writeAccess.{enabled as writeAccessEnabled}
 export filesystemOptions.createNonexistent.{enabled as creationEnabled}
 export filesystemOptions.createNonexistentParents.{enabled as parentCreationEnabled}
-export alphabets.base64.standard
-export treeStyles.default
-export httpServers.stdlibPublic
-export codicils.cancel
-export supervisors.global
-export charEncoders.utf8
-export charDecoders.utf8 as utf8Decoder
-export textSanitizers.skip
-export classloaders.threadContext
-export errorDiagnostics.stackTraces
-export proximities.levenshteinDistance
-export caseSensitivity.insensitive
-export temporaryDirectories.environment
-export terminalOptions.terminalSizeDetection
-export environments.java as defaultEnvironment
+export alphabets.base64Standard
+export treeStyles.defaultTreeStyle
+export httpServers.stdlibHttpServer
+export probates.cancelProbate
+export supervisors.globalSupervisor
+export charEncoders.utf8Encoder
+export charDecoders.utf8Decoder
+export textSanitizers.skipSanitizer
+export classloaders.threadContextClassloader
+export errorDiagnostics.stackTracesDiagnostics
+export proximities.levenshteinProximity
+export caseSensitivity.caseInsensitive
+export temporaryDirectories.javaTemporaryDirectory
+export environments.daemonClientEnvironment as defaultEnvironment
+export systems.javaSystem as defaultSystem
 
 export Definition.*
 
 import doms.html.whatwg, whatwg.*
 
 given minimal: scintillate.WebserverErrorPage = (request, throwable) =>
-  import hieroglyph.charEncoders.utf8
+  import hieroglyph.charEncoders.utf8Encoder
   Http.Response(Unfulfilled(t"An error occurred which prevented the request from completing."))
 
 given pathOnWwwAttributive: (Path on Www) is Attributive to honeycomb.Whatwg.Url =
@@ -106,7 +106,7 @@ extension (typename: Typename)
     case Typename.Term(parent, name) => Item(parent, name)
     case Typename.Type(parent, name) => Item(parent, name)
 
-given translator: Tactic[CodlError] => Tactic[ParseError]
+given translator: Tactic[TelError] => Tactic[ParseError]
       => (Model, RootPackage, Mountpoint, Imports)
       => Translator =
   new Translator:

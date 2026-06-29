@@ -1,0 +1,8 @@
+{
+    "value": [
+        "-Xplugin:/Users/propensive/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/com/lihaoyi/scalac-mill-moduledefs-plugin_3.8.0-RC2/0.12.3/scalac-mill-moduledefs-plugin_3.8.0-RC2-0.12.3.jar",
+        "-Xplugin:/Users/propensive/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/com/lihaoyi/mill-runner-autooverride-plugin_3.8.0-RC2/1.1.0-RC3/mill-runner-autooverride-plugin_3.8.0-RC2-1.1.0-RC3.jar"
+    ],
+    "valueHash": 1118305145,
+    "inputsHash": 1599846604
+}

@@ -1,0 +1,18 @@
+{
+    "value": [
+        "qref:v1:92ba63ef:/Users/propensive/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/com/lihaoyi/scalac-mill-moduledefs-plugin_3.8.0-RC2/0.12.3/scalac-mill-moduledefs-plugin_3.8.0-RC2-0.12.3.jar",
+        "qref:v1:1a4d9811:/Users/propensive/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/com/lihaoyi/mill-runner-autooverride-plugin_3.8.0-RC2/1.1.0-RC3/mill-runner-autooverride-plugin_3.8.0-RC2-1.1.0-RC3.jar",
+        "qref:v1:f3d4788d:/Users/propensive/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala3-compiler_3/3.8.0-RC2/scala3-compiler_3-3.8.0-RC2.jar",
+        "qref:v1:49310f8b:/Users/propensive/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala3-library_3/3.8.0-RC2/scala3-library_3-3.8.0-RC2.jar",
+        "qref:v1:dbc6627a:/Users/propensive/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/com/lihaoyi/mill-moduledefs_3/0.12.3/mill-moduledefs_3-0.12.3.jar",
+        "qref:v1:66928462:/Users/propensive/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/com/lihaoyi/unroll-annotation_3/0.2.0/unroll-annotation_3-0.2.0.jar",
+        "qref:v1:ed2548a5:/Users/propensive/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala3-interfaces/3.8.0-RC2/scala3-interfaces-3.8.0-RC2.jar",
+        "qref:v1:55a0ece8:/Users/propensive/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/tasty-core_3/3.8.0-RC2/tasty-core_3-3.8.0-RC2.jar",
+        "qref:v1:69cb58d7:/Users/propensive/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/modules/scala-asm/9.9.0-scala-1/scala-asm-9.9.0-scala-1.jar",
+        "qref:v1:9d520f0a:/Users/propensive/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-sbt/compiler-interface/1.10.7/compiler-interface-1.10.7.jar",
+        "qref:v1:b3c91df6:/Users/propensive/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/3.8.0-RC2/scala-library-3.8.0-RC2.jar",
+        "qref:v1:36f364ca:/Users/propensive/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-sbt/util-interface/1.10.7/util-interface-1.10.7.jar"
+    ],
+    "valueHash": -1978720971,
+    "inputsHash": 1599846604
+}

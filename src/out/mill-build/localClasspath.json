@@ -1,0 +1,9 @@
+{
+    "value": [
+        "ref:v0:c984eca8:/Users/propensive/work/amok/src/mill-build/compile-resources",
+        "ref:v0:c984eca8:/Users/propensive/work/amok/src/mill-build/resources",
+        "ref:v0:c737f011:/Users/propensive/work/amok/src/out/mill-build/compile.dest/transformed-classes"
+    ],
+    "valueHash": -1373426096,
+    "inputsHash": 53057131
+}

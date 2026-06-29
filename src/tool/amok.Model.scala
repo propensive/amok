@@ -38,8 +38,6 @@ import scala.collection.mutable as scm
 
 import soundness.{open as _, Node as _, *}
 
-import environments.java as javaEnv
-
 extension (using Quotes)(flags: quotes.reflect.Flags)
   def modifier(modifier: Modifier): Boolean =
     import quotes.reflect.*
@@ -107,7 +105,7 @@ class Model():
           lookup(focus).let: node =>
             node.state.info = entry.info.let(text => Markdown(Prose.Textual(text)))
             node.state.document = entry.detail
-            node.state.hidden = entry.hidden.or(false)
+            node.state.hidden = entry.hidden.lay(false) { value => value == t"yes" || value == t"true" }
 
           recur(entry.entry, focus)
 
@@ -117,19 +115,20 @@ class Model():
 
     recur(amox.entry, root)
 
-  def load(path: Path on Linux)(using Stdio, Terminal): Unit =
+  def load(path: Path on Local)(using Stdio, Terminal): Unit =
     val inspector = DocInspector()
     try TastyInspector.inspectTastyFilesInJar(path.encode.s)(inspector)
     catch case error: Throwable =>
       Out.println(error.stackTrace.teletype)
 
-    Syntax.clear()
     java.lang.System.gc()
 
   case class DocInspector()(using Stdio, Terminal) extends Inspector:
     def inspect(using Quotes)(tastys: List[Tasty[quotes.type]]): Unit =
       import quotes.reflect.*
       import Flags.*
+
+      given stenography.Bindings = stenography.Bindings()
 
 
       def walk(tree: Tree, typename0: Optional[Typename] = Unset): Unit =
@@ -272,11 +271,11 @@ class Model():
       val t0 = java.lang.System.currentTimeMillis
       val grades = "▏▎▍▌▋▊▉█"
 
-      val columns = summon[Terminal].columns.or(safely(Environment.columns)).or(100)
+      val columns = summon[Terminal].knownColumns
       tastys.each: tasty =>
         val percent = 8*columns*count/total
         val bar = e"${t"█"*(percent/8)}${grades(percent%8)}"
-        Out.print(e"\r\e[?7l${Bg(rgb"#221100")}(${rgb"#DD9900"}($bar)${t" "*(columns - percent/8 - 1)})\e[?7h")
+        Out.print(e"\r\e[?7l${Bg(rgb"#221100")}(${Fg(rgb"#DD9900")}($bar)${t" "*(columns - percent/8 - 1)})\e[?7h")
         walk(tasty.ast, Unset)
         count += 1
 

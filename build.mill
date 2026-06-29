@@ -53,10 +53,50 @@ trait Component(dependencies: ScalaModule*) extends ScalaModule:
 
 object amok extends Project:
   object web extends Component():
-    def mvnDeps = Seq(mvn"dev.soundness:soundness-all:0.56.0")
+    def mvnDeps = Seq(mvn"dev.soundness:soundness-all:0.61.0")
 
   object tool extends Component(web):
     def mvnDeps = Seq(mvn"org.scala-lang::scala3-tasty-inspector:3.8.0")
+
+    // Cross-OS installer built with Ziggurat. Bundles the assembly JAR (as the
+    // `data` payload) together with native Rust runners pulled from
+    // `ethereal-core` resources, then asks `ziggurat.Xeq` to fuse them into a
+    // single polyglot installer script (POSIX sh + Windows bat/ps1).
+    val ziggurat_rustRunners = Seq(
+      "linux-x64", "linux-arm64", "macos-x64", "macos-arm64", "windows-x64.exe")
+
+    def ziggurat(): Command[PathRef] = Task.Command:
+      val jar = assembly().path
+      val classpath = runClasspath().map(_.path)
+
+      val ethereal = classpath.find(_.last.startsWith("ethereal-core")).getOrElse:
+        throw new RuntimeException("ethereal-core jar not on the runtime classpath")
+
+      val staging = Task.dest / "staging"
+      os.makeDir.all(staging)
+
+      val zf = new java.util.zip.ZipFile(ethereal.toIO)
+      try
+        ziggurat_rustRunners.foreach: label =>
+          val entryName = s"ethereal/runner-$label"
+          val entry = zf.getEntry(entryName)
+          if entry == null then
+            throw new RuntimeException(s"$entryName not found in $ethereal")
+          val out = staging / s"runner-$label"
+          val in = zf.getInputStream(entry).nn
+          try os.write.over(out, in.readAllBytes().nn)
+          finally in.close()
+      finally zf.close()
+
+      os.copy.over(jar, staging / "data")
+
+      val target = Task.dest / "amok"
+      val cp = classpath.map(_.toString).mkString(java.io.File.pathSeparator)
+      os.proc("java", "-cp", cp, "ziggurat.Xeq", "installer", target.toString, staging.toString)
+        .call(stdout = os.Inherit, stderr = os.Inherit)
+
+      new java.io.File(target.toString).setExecutable(true)
+      PathRef(target)
 
   object test extends Component(tool):
     def finalMainClass = "amok.Tests"

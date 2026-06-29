@@ -34,7 +34,7 @@ package amok
 
 import soundness.*
 
-case class LoadError(file: Path on Linux, reason: Error)(using Diagnostics)
+case class LoadError(file: Path on Local, reason: Error)(using Diagnostics)
 extends Error(m"could not load the file $file because ${reason.message}")
 
 case class FiletypeError()(using Diagnostics) extends Error(m"the file was not the right type")
@@ -53,20 +53,29 @@ object Amox:
       info:   Optional[Text],
       detail: Optional[Text],
       until:  List[Rename],
-      hidden: Optional[Boolean],
+      hidden: Optional[Text],
       refer:  List[Text],
       entry:  List[Entry] )
 
   case class Rename(version: Text, name: Text)
 
-  def read(file: Path on Linux)(using Stdio): Base raises LoadError =
+  // `Entry` is recursive (it contains a `List[Entry]`), which the generic
+  // `Tel.Decodable` derivation cannot resolve on its own; naming the instances
+  // breaks the cycle by turning `Entry` into a resolved leaf within `Base`'s graph.
+  given entryDecodable: Tactic[TelError] => (Entry is Tel.Decodable) =
+    Tel.DecodableDerivation.derived
+
+  given baseDecodable: Tactic[TelError] => (Base is Tel.Decodable) =
+    Tel.DecodableDerivation.derived
+
+  def read(file: Path on Local)(using Stdio): Base raises LoadError =
+    def decode(text: Text)(using Tactic[TelError]): Base = text.read[Tel].as[Base]
+
     mitigate:
-      case error@IoError(_, _, _)    => LoadError(file, error)
-      case error@CodlError(_)        => LoadError(file, error)
+      case error@IoError(_, _, _, _) => LoadError(file, error)
+      case error@TelError(_, _)      => LoadError(file, error)
       case error@ParseError(_, _, _) => LoadError(file, error)
       case error@StreamError(_)      => LoadError(file, error)
 
-    . within:
-        // This line has to be here to avoid a compiler crash
-        summon[Base is Decodable in Codl]
-        file.open(_.stream[Text].read[CodlDoc of Base].materialize)
+    . protect:
+        decode(file.open(_.stream[Text].join))

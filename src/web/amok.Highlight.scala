@@ -32,7 +32,7 @@
                                                                                                   */
 package amok
 
-import soundness.*
+import soundness.{Note as _, Highlight as _, *}
 
 case class Highlight(selection: Selection, caption: Optional[Text]):
   def rangeIn(text: Text, style: Note.Style): Optional[Range] =

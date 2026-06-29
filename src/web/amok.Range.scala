@@ -32,7 +32,7 @@
                                                                                                   */
 package amok
 
-import soundness.*
+import soundness.{Note as _, *}
 
 case class Range(start: Int, end: Int, style: Note.Style, caption: Optional[Text]):
   def length: Int = end - start

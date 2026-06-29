@@ -33,10 +33,10 @@
 package amok
 
 import soundness.{Node as _, *}
-import errorDiagnostics.stackTraces
-import textMetrics.uniform
-import tableStyles.horizontal
-import columnAttenuation.ignore
+import errorDiagnostics.stackTracesDiagnostics
+import textMetrics.uniformMetric
+import tableStyles.horizontalTableStyle
+import columnAttenuation.ignoreAttenuation
 
 val About   = Subcommand("about",  e"find out about Amok")
 val Load    = Subcommand("load",   e"load definitions from a .jar or .amok file")
@@ -53,7 +53,7 @@ val MountpointArg =
 
 
 object External:
-  def unapply(argument: Argument)(using WorkingDirectory, Cli): Option[(Path on Linux) | HttpUrl] =
+  def unapply(argument: Argument)(using WorkingDirectory, Cli): Option[(Path on Local) | HttpUrl] =
     if argument().starts("https:") || argument().starts("http:")
     then safely(Some(argument().decode[HttpUrl])).or(None)
     else Pathname.unapply(argument)
@@ -68,7 +68,7 @@ def application(): Unit = cli:
       recover:
         case SerializationError(_, _) => panic(m"Failed to deserialize")
 
-      . within:
+      . protect:
           Out.println()
           t"""H4sIADMTXWgAA51RwQ3AIAj8OwWjNr77lDFqnYlJGoO2ojaChhjEu+NQAO0ivCgcJTA6NREoeN63OKLvGBh7Z4
               RnhxgroFCtDobJCdMEX7DMYgZX23yO+KrBZ694/89e71p/pqx8Zu7iFl6smdR51ZPd95oz+4XunQTCet5RdA9q
@@ -93,7 +93,7 @@ def application(): Unit = cli:
       Exit.Ok
 
     case Folios() :: _ => execute:
-      val base = workingDirectory[Path on Linux]
+      val base = workingDirectory[Path on Local]
       val table =
         Scaffold[Folio, Text]
          (Column(t"Mountpoint")((folio: Folio) => folio.base.show),
@@ -104,9 +104,9 @@ def application(): Unit = cli:
         case TerminalError() =>
           Out.println(table.tabulate(Server.folios).grid(100).render.join(t"\n"))
 
-      . within:
+      . protect:
           interactive:
-            Out.println(table.tabulate(Server.folios).grid(terminal.columns.or(100)).render.join(t"\n"))
+            Out.println(table.tabulate(Server.folios).grid(terminal.knownColumns).render.join(t"\n"))
 
       Exit.Ok
 
@@ -118,12 +118,12 @@ def application(): Unit = cli:
             case error@LoadError(_, _) =>
               Out.println(error.message)
               Exit.Fail(1)
-          . within:
+          . protect:
               val mountpoint = MountpointArg().or(Mountpoint())
               val file = external match
                 case url: HttpUrl =>
-                  import internetAccess.enabled
-                  val temporaryFile: Path on Linux = unsafely(temporaryDirectory[Path on Linux] / url.location.decode[Path on Www].name)
+                  import internetAccess.online
+                  val temporaryFile: Path on Local = unsafely(temporaryDirectory[Path on Local] / url.location.decode[Path on Www].name)
                   Out.println(m"Downloading $url")
                   unsafely:
                     temporaryFile.open: handle =>
@@ -131,7 +131,7 @@ def application(): Unit = cli:
                   Out.println(m"Deploying $url to $mountpoint".teletype)
                   temporaryFile
 
-                case file: (Path on Linux) =>
+                case file: (Path on Local) =>
                   Out.println(m"Deploying $file to $mountpoint".teletype)
                   file
 
@@ -155,7 +155,7 @@ def application(): Unit = cli:
         Server(mountpoint) match
           case folio: JvmFolio =>
             given Model = folio.model
-            given Imports = Imports(Set())
+            given Imports = Imports(Set(), Set())
             folio.model.search(term()).each: member =>
               folio.model.lookup(member).let: node =>
                 val info = node.info.lay(e"") { info => e": $Italic(${info.toString.tt})" }
@@ -179,7 +179,7 @@ def application(): Unit = cli:
         case TerminalError() =>
           panic(m"Could not start the terminal")
 
-      . within:
+      . protect:
           interactive:
             Out.println(e"Listening on $Italic(http://localhost:8080)")
             Out.println(e"Type Ctrl+C to exit")

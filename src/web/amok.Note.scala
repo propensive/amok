@@ -32,7 +32,8 @@
                                                                                                   */
 package amok
 
-import soundness.*
+import soundness.{Token as _, *}
+import harlequin.Token
 
 object Note:
   enum Style:
@@ -40,4 +41,4 @@ object Note:
 
   export Style.*
 
-case class Note(tokens: List[SourceToken], style: Note.Style, caption: Optional[Text])
+case class Note(tokens: List[Token], style: Note.Style, caption: Optional[Text])

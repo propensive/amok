@@ -32,15 +32,19 @@
                                                                                                   */
 package amok
 
-import soundness.*
+import soundness.{Token as _, Note as _, Span as _, *}
+import harlequin.Token
+import charEncoders.utf8Encoder
 
 import doms.html.whatwg, whatwg.*
+
+given (Unit is Tel.Decodable) = Tel.Decodable(Morphology.Empty)(_ => ())
 
 object AmokEmbedding:
   def format(samples0: List[Text], context: Optional[Scala.Context], autoScale: Boolean)
   :   Html of Flow =
 
-    val samples: List[List[List[SourceToken]]] =
+    val samples: List[List[List[Token]]] =
       samples0.map(Scala.highlight(_, context).lines.to(List))
 
     val name = t"f${counter()}"
@@ -49,46 +53,46 @@ object AmokEmbedding:
     val fontSize = (97.5/maxWidth).min(3.0)
     given Decimalizer(decimalPlaces = 3)
 
-    def similar(xs0: List[SourceToken], ys0: List[SourceToken]): Boolean =
+    def similar(xs0: List[Token], ys0: List[Token]): Boolean =
       val xs = xs0.filter(_.accent != Accent.Unparsed)
       val ys = ys0.filter(_.accent != Accent.Unparsed)
       xs.length > 0 && ys.length > 0
       && (xs.sliding(ys.length).contains(ys) || ys.sliding(xs.length).contains(xs))
       || diff(IArray.from(xs), IArray.from(ys)).size.toDouble/(xs.length + ys.length) < 0.5
 
-    val iterators: IArray[Iterator[List[SourceToken]]] = IArray.from(samples.map(_.iterator))
+    val iterators: IArray[Iterator[List[Token]]] = IArray.from(samples.map(_.iterator))
 
-    val lines: List[List[List[SourceToken]]] = evolve(samples, similar).sequence.map: atom =>
+    val lines: List[List[List[Token]]] = evolve(samples, similar).sequence.map: atom =>
       (0 until samples.length).to(List).map: lineNo =>
         if !atom.presence.contains(lineNo.z) then Nil else
           val line = iterators(lineNo).next()
-          if line.all(_.text.s.forall(_.isWhitespace)) then List(SourceToken(t" ", Accent.Unparsed))
+          if line.all(_.text.s.forall(_.isWhitespace)) then List(Token(t" ", Accent.Unparsed))
           else line
 
     val radios =
       (0 until samples.length).map: sample =>
         Input.Radio
-          (`class` = List(t"s$sample"), name = name, checked = sample == 0)
+          (`class` = List(unsafely(Name[CssClass](t"s$sample"))), name = name, checked = sample == 0)
       . unless(samples.length <= 1)
 
     val code =
       lines.map: line =>
         evolve(line).sequence.map: atom =>
-          val classes = atom.presence.to(List).map { step => t"v${step.n0}" }
+          val classes = atom.presence.to(List).map { step => unsafely(Name[CssClass](t"v${step.n0}")) }
           Code
             (`class` = classes ::: formattables.scala.classes(atom.value.accent).classes.to(List),
             style = t"width: ${atom.value.text.length}ch")(atom.value.text)
-        :+ Code(`class` = List(t"blank"))
+        :+ Code(`class` = List(unsafely(Name[CssClass](t"blank"))))
       . map: line =>
           Span.line(line*)
 
     if autoScale then Div(`class` = t"amok", style = t"font-size: ${fontSize}vw")(radios.or(Nil)*, Pre(code*))
     else Div.amok(radios.or(Nil)*, Pre(code*))
 
-class AmokEmbedding(autoScale: Boolean)(using Tactic[CodlError], Tactic[ParseError])
+class AmokEmbedding(autoScale: Boolean)(using Tactic[TelError], Tactic[ParseError])
 extends Formattable:
   def format(language: List[Text], content: Text): Html of Flow =
-    val preamble = content.read[CodlDoc of Preamble].materialize
+    val preamble = content.read[Tel].as[Preamble]
 
     val context = preamble.context match
       case t"term" => Scala.Context.Term
@@ -107,10 +111,10 @@ extends Formattable:
     @tailrec
     def selections
          (ranges0:    List[Range],
-          tokens0:    List[SourceToken],
+          tokens0:    List[Token],
           tokenStart: Int                      = -1,
-          result:     List[SourceToken | Note] = Nil)
-    :     List[SourceToken | Note] =
+          result:     List[Token | Note] = Nil)
+    :     List[Token | Note] =
 
       ranges0 match
         case Nil =>
@@ -156,12 +160,12 @@ extends Formattable:
                 else panic(m"Should not happen: range.end=${range.end}, tokenStart=$tokenStart")
 
     def lines
-      ( markup: List[SourceToken | Note],
+      ( markup: List[Token | Note],
         line:   List[Html of Phrasing]   = Nil,
         done:   List[Html of Phrasing]   = Nil )
     :   List[Html of Phrasing] =
-      def render(token: SourceToken | Note): Html of Phrasing = token match
-        case SourceToken(text, accent) =>
+      def render(token: Token | Note): Html of Phrasing = token match
+        case Token(text, accent, _, _) =>
           formattables.scala.element(accent, text)
 
         case Note(tokens, style, caption) =>
@@ -184,7 +188,7 @@ extends Formattable:
 
       markup match
         case Nil                         => done.unwind(List(Span.line(line.reverse*)))
-        case SourceToken.Newline :: tail => lines(tail, Nil, Span.line(line.reverse*) :: done)
+        case Token.Newline :: tail => lines(tail, Nil, Span.line(line.reverse*) :: done)
         case other :: tail               => lines(tail, render(other) :: line, done)
 
     def style(text: Text): Html of Flow =
@@ -194,7 +198,7 @@ extends Formattable:
         ( lines
             ( selections
                 ( ranges.compact.sortBy(_.start),
-                  Scala.highlight(text, context).lines.to(List).flatMap(SourceToken.Newline :: _) ) )
+                  Scala.highlight(text, context).lines.to(List).flatMap(Token.Newline :: _) ) )
           . init
           . tail* )
 

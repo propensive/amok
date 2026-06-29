@@ -32,7 +32,7 @@
                                                                                                   */
 package amok
 
-import soundness.*
+import soundness.{Highlight as _, Frame as _, *}
 
 case class Preamble
    (syntax:     Optional[Text],

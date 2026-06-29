@@ -36,7 +36,7 @@ import soundness.*
 
 import doms.html.whatwg, whatwg.*
 
-class JvmFolio(mountpoint: Mountpoint, source: Path on Linux, var model: Model = Model())
+class JvmFolio(mountpoint: Mountpoint, source: Path on Local, var model: Model = Model())
 extends Folio(mountpoint, t"jvm", source):
 
   given Mountpoint = mountpoint
@@ -58,10 +58,10 @@ extends Folio(mountpoint, t"jvm", source):
         given RootPackage(root)
         Http.Response:
           recover:
-            case CodlError(_) | ParseError(_, _, _) =>
+            case TelError(_, _) | ParseError(_, _, _) =>
               NoCache(Page.simple(mountpoint, H2(t"Error"), P(t"The page contained errors")))
 
-          . within:
+          . protect:
               def parents: List[Typename] =
                 def recur(typename: Typename): List[Typename] = typename match
                   case Typename.Type(parent, _) => parent :: recur(parent)
@@ -77,7 +77,7 @@ extends Folio(mountpoint, t"jvm", source):
 
                 mountpoint / "_entity" / child.encode
 
-              def full[result](lambda: Imports ?=> result): result = lambda(using Imports(Set()))
+              def full[result](lambda: Imports ?=> result): result = lambda(using Imports(Set(), Set()))
 
               val cookieImports = cookie("imports").let(_.cut(t",").to(Set)).or(Set()).map(Typename(_))
 
@@ -93,7 +93,7 @@ extends Folio(mountpoint, t"jvm", source):
                       Typename.decode(t"scala.collection"),
                       Typename.decode(t"scala.collection.immutable"),
                       Typename.decode(t"scala"),
-                      Typename.decode(t"java.lang")) ++ parents ++ cookieImports)
+                      Typename.decode(t"java.lang")) ++ parents ++ cookieImports, Set())
 
               val parentPackage = H1.pkg(Code(full(parents.prim.let { parent => Fragment[Phrasing](parent.member.html, member.symbol) })))
 
@@ -105,7 +105,7 @@ extends Folio(mountpoint, t"jvm", source):
                     case _: Definition => member.definition
                     case _: Template   => member.template
 
-                  given imports2: Imports = Imports(imports.typenames + typename)
+                  given imports2: Imports = Imports(imports.typenames + typename, imports.direct)
                   val keywords = declaration.syntax().html
                   val parameters = declaration.parameters.let(_.html)
                   val returnType = declaration.returnType.let(_.html)
@@ -142,7 +142,7 @@ extends Folio(mountpoint, t"jvm", source):
                   H1(Code(member.name)),
                   Div(node.info.let(_.html)),
                   Table.members(Tbody(rows.asInstanceOf[List[Optional[Html of (? <: whatwg.Tbody.Transport)]]]*)),
-                  Div(node.document.dare(Commonmark.parse(_)).let(_.html)))
+                  Div(node.document.let(Parser.parse(_)).let(_.html)))
       . or:
           Http.Response(NotFound(t"Not found"))
 
@@ -163,7 +163,7 @@ extends Folio(mountpoint, t"jvm", source):
           model.lookup(member).lay(Details("missing")): node =>
             val path: Path on Www = mountpoint / "_entity" / member.encode
             val link = A(href = path, target = Target.Browse(t"main"))(member.symbol, member.name)
-            Details(name = member.encode, id = DomId(t"menu_${member.encode}"))
+            Details(name = member.encode, id = unsafely(Name[DomId](t"menu_${member.encode}")))
              (if node.members.isEmpty then Summary(link) else Summary.full(link),
               Div(node.typeMembers.sortBy(_.name).map(menu(_))*, node.termMembers.sortBy(_.name).map(menu(_))*))
 
@@ -173,12 +173,11 @@ extends Folio(mountpoint, t"jvm", source):
               Page
                (mountpoint,
                 List
-                 (Details(Summary(H3(Label(Input.Checkbox(id = DomId(t"root"), value = root.encode)), link))),
+                 (Details(Summary(H3(Label(Input.Checkbox(id = unsafely(Name[DomId](t"root")), value = root.encode)), link))),
                   Div.items(rootNode.typeMembers.sortBy(_.name).map(menu(_))*, rootNode.termMembers.sortBy(_.name).map(menu(_))*)),
-                List(Iframe(id = DomId(t"api"), name = t"main", src = initial)))
+                List(Iframe(id = unsafely(Name[DomId](t"api")), name = t"main", src = initial)))
       . or:
           Http.Response(NotFound(t"Not found"))
 
     case _ =>
-      Server.at(request.location).let(_.handle(using request)).or:
-        Http.Response(NotFound(t"Not found"))
+      Http.Response(NotFound(t"Not found"))
